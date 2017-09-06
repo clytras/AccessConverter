@@ -1,0 +1,29 @@
+
+access-file
+log-file
+zip-file
+task : convert-json | convert-mysql-dump | convert-sqlite
+json-files-mode : one | many
+//json-analisys : full | simple
+json-data : assoc | array
+//result: std | file
+output-file
+
+json-columns
+mysql-drop-tables
+no-log
+compress
+output-result : json | json-pretty | normal
+
+
+Tests:
+
+JSON:
+-json-columns --access-file "E:\Programming\Java\AccessConverter\allTypes.accdb" --task convert-json --json-data assoc
+-compress -json-columns --access-file "E:\Programming\Java\AccessConverter\allTypes.accdb" --task convert-json --json-data assoc
+
+MySQL:
+-mysql-drop-tables --access-file "E:\Programming\Java\AccessConverter\allTypes.accdb" --task convert-mysql-dump
+
+SQLite:
+-compress --access-file "E:\Programming\Java\AccessConverter\allTypes.accdb" --task convert-sqlite

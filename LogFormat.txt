@@ -1,0 +1,26 @@
+{
+    "generator": "<generator>",
+    "version": "<version>",
+    "date": "<date>",
+    "arguments": {
+        "options": {
+        },
+        "flags": [
+        ]
+    },
+    "result": "<result>",
+    "outputFile": "<output file>",
+    "logs": [
+        {
+            "text": "<text>",
+            "source": "<source>"
+        }
+    ],
+    "errors": [
+        {
+            "text": "<text>",
+            "exception": "<exception>",
+            "source": "<source>"
+        }
+    ],
+}

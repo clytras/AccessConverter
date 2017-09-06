@@ -1,0 +1,9 @@
+*.accdb
+*.mdb
+*.json
+*.zip
+*.sql
+*.sqlite3
+dist/
+build/
+/*.jar
