@@ -29,3 +29,16 @@ It is a command line tool and it accepts arguments. The output result on the scr
 | `-mysql-drop-tables` | | Add `DROP TABLE IF EXISTS` for each table |
 | `-compress` | | Compress the output file to a zip archive file |
 | `-no-log` | | Does not generate a log file |
+
+## Examples
+**Convert a .accdb file to JSON**
+
+*Output file will have the same filename as the access file and it will be saved at the same location*
+
+    java -jar AccessConverter.jar --access-file "/home/test/somedb.accdb" --task convert-json --json-data assoc -json-columns
+
+**Convert a .accdb file to MySQL dump file**
+
+*Use different files and location for both output and log files. Console output JSON pretty-print result*
+
+    java -jar AccessConverter.jar --access-file "/home/test/somedb.accdb" --task convert-mysql-dump --output-file "/home/sql/somedb_dump.sql" --log-file "/home/logs/somedb.log" -mysql-drop-tables --output-result json-pretty
