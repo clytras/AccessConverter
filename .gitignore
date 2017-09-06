@@ -7,3 +7,4 @@
 dist/
 build/
 /*.jar
+nbproject/private/private.properties
