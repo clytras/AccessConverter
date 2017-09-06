@@ -23,6 +23,7 @@ It is a command line tool and it accepts arguments. The output result on the scr
 | `--access-file` | `"<path>"` | The input access database file (mdb, accdb) |
 | `--log-file` | `"<path>"` | The output log file |
 | `--zip-file` | `"<path>"` | The output zip archive file that contains the converted file |
+| `--output-file` | `"<path>"` | The output file with the converted data (.json, .sql, .sqlite3, etc.) |
 | `--task` | `convert-json`<br>`convert-mysql-dump`<br>`convert-sqlite` | The task to perform.<br>Convert to JSON or MySQL dump or SQLite |
 | `--json-data` | `assoc`<br>`array` | Either to use associative arrays or simple indexed tables for tha JSON data |
 | `-json-columns` | | Add extended columns information for each table |
