@@ -6,5 +6,6 @@
 *.sqlite3
 dist/
 build/
+releases/
 /*.jar
 nbproject/private/private.properties
