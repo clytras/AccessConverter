@@ -9,3 +9,4 @@ build/
 releases/
 /*.jar
 nbproject/private/private.properties
+Test_SQLite_quotes.png
