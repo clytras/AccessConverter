@@ -95,6 +95,10 @@ public class AccessConverter {
         errors.add(new ErrorRecord(error, exception, source));
     }
     
+    public static void Error(String error, Exception exception, String source, String sql) {
+        errors.add(new ErrorRecord(error, exception, source, sql));
+    }
+    
     public static boolean CheckCommandArguments() {
         if(!args.HasOption("access-file")) {
             Error("No input Access file specified");
@@ -424,6 +428,7 @@ public class AccessConverter {
     public static class LogRecord {
         public String text;
         public String source = "AccessConverter";
+        public String sql = "";
         
         public LogRecord(String text) {
             this.text = text;
@@ -434,10 +439,18 @@ public class AccessConverter {
             this.source += ":" + source;
         }
         
+        public LogRecord(String text, String source, String sql) {
+            this.text = text;
+            this.source += ":" + source;
+            this.sql = sql;
+        }
+        
         public JsonObjectBuilder toJsonObject() {
             JsonObjectBuilder json = Json.createObjectBuilder();
             json.add("text", text);
             json.add("source", source);
+            if(!sql.isEmpty())
+                json.add("sql", sql);
             return json;
         }
     }
@@ -457,6 +470,12 @@ public class AccessConverter {
         public ErrorRecord(String text, Exception exception, String source) {
             super(text, source);
             this.exception = exception;
+        }
+        
+        public ErrorRecord(String text, Exception exception, String source, String sql) {
+            super(text, source);
+            this.exception = exception;
+            this.sql = sql;
         }
         
         @Override

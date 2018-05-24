@@ -18,7 +18,8 @@ import java.io.IOException;
 import java.util.Set;
 //import java.util.logging.Level;
 //import java.util.logging.Logger;
-import org.apache.commons.lang3.text.StrBuilder;
+//import org.apache.commons.lang3.text.StrBuilder;
+import org.apache.commons.text.TextStringBuilder;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -93,7 +94,7 @@ public class SQLiteConverter extends Converter {
     
     private boolean createTable(Table table) {
         final String methodName = "createTable";
-        StrBuilder sql = new StrBuilder();
+        TextStringBuilder sql = new TextStringBuilder();
         sql.append(String.format("CREATE TABLE %s (", table.getName()));
         
         boolean isFirst = true;
@@ -159,7 +160,7 @@ public class SQLiteConverter extends Converter {
         } catch (SQLException e) {
             //lastError.add(String.format("Could not create table '%s'", table.getName()));
             //AccessConverter.Error(String.format("Could not create table '%s'", table.getName()));
-            Error(String.format("Could not create table '%s'", table.getName()), e, methodName);
+            Error(String.format("Could not create table '%s'", table.getName()), e, methodName, sql.build());
             return false;
         }
     }
@@ -172,8 +173,8 @@ public class SQLiteConverter extends Converter {
             return true;
         
         String tableName = table.getName();
-        StrBuilder sql = new StrBuilder();
-        StrBuilder insertHeader = new StrBuilder();
+        TextStringBuilder sql = new TextStringBuilder();
+        TextStringBuilder insertHeader = new TextStringBuilder();
         
         insertHeader.append(String.format("INSERT INTO %s (", tableName));
         boolean isFirst = true;
@@ -276,7 +277,7 @@ public class SQLiteConverter extends Converter {
         } catch(SQLException e) {
             //lastError.add(String.format("Could not create table '%s'", table.getName()));
             //AccessConverter.Error(String.format("Could not insert to table '%s'", table.getName()));
-            Error(String.format("Could not insert to table '%s'", table.getName()), e, methodName);
+            Error(String.format("Could not insert to table '%s'", table.getName()), e, methodName, sql.build());
             result = false;
         } finally {
             if(statement != null) {

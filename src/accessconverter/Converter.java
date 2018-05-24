@@ -37,4 +37,8 @@ public abstract class Converter {
     void Error(String error, Exception exception, String source) {
         AccessConverter.Error(error, exception, logSource(source));
     }
+    
+    void Error(String error, Exception exception, String source, String sql) {
+        AccessConverter.Error(error, exception, logSource(source), sql);
+    }
 }
