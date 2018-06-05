@@ -27,7 +27,7 @@ import javax.json.JsonObjectBuilder;
 import javax.json.JsonWriter;
 import javax.json.stream.JsonGenerator;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.FilenameUtils; 
 
 /**
  *
@@ -46,13 +46,25 @@ public class AccessConverter {
     public static File logFile = null;
     public static String zipFilename = null;
     public static File zipFile = null;
+    public static ProgressStatus progressStatus = null;
     
     /**
      * @param cmdArgs the command line arguments
      */
-    public static void main(String[] cmdArgs) {
+    public static void main(String[] cmdArgs) throws InterruptedException {
 
         args = new Args(cmdArgs);
+        
+        /*ProgressStatus ps = new ProgressStatus();
+        
+        for(int i = 0; i < 50; i++) {
+            ps.update();
+            Thread.sleep(200);
+        }
+        
+        ps.resetLine();
+        
+        return;*/
         
         //debugTestDb();
         
@@ -95,6 +107,10 @@ public class AccessConverter {
         errors.add(new ErrorRecord(error, exception, source));
     }
     
+    public static void Error(String error, Exception exception, String source, String sql) {
+        errors.add(new ErrorRecord(error, exception, source, sql));
+    }
+    
     public static boolean CheckCommandArguments() {
         if(!args.HasOption("access-file")) {
             Error("No input Access file specified");
@@ -119,7 +135,10 @@ public class AccessConverter {
         
         try {
             File dbFile = new File(args.GetOption("access-file"));
-            Database db = DatabaseBuilder.open(dbFile);
+            Database db = new DatabaseBuilder(dbFile).setReadOnly(true).open();
+
+            progressStatus = new ProgressStatus(db);
+            progressStatus.calculateAllRows();
             
             switch(args.GetOption("task")) {
                 case "convert-json":
@@ -424,6 +443,7 @@ public class AccessConverter {
     public static class LogRecord {
         public String text;
         public String source = "AccessConverter";
+        public String sql = "";
         
         public LogRecord(String text) {
             this.text = text;
@@ -434,10 +454,18 @@ public class AccessConverter {
             this.source += ":" + source;
         }
         
+        public LogRecord(String text, String source, String sql) {
+            this.text = text;
+            this.source += ":" + source;
+            this.sql = sql;
+        }
+        
         public JsonObjectBuilder toJsonObject() {
             JsonObjectBuilder json = Json.createObjectBuilder();
             json.add("text", text);
             json.add("source", source);
+            if(!sql.isEmpty())
+                json.add("sql", sql);
             return json;
         }
     }
@@ -457,6 +485,12 @@ public class AccessConverter {
         public ErrorRecord(String text, Exception exception, String source) {
             super(text, source);
             this.exception = exception;
+        }
+        
+        public ErrorRecord(String text, Exception exception, String source, String sql) {
+            super(text, source);
+            this.exception = exception;
+            this.sql = sql;
         }
         
         @Override

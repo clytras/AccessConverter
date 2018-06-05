@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import org.apache.commons.lang3.text.StrBuilder;
+import org.apache.commons.text.TextStringBuilder;
 
 /**
  *
@@ -50,7 +50,7 @@ public class MySQLConverter extends Converter {
     public Args args;
     //public List<String> lastError = new ArrayList<>();
     public Map<String, AutoIncrement> autoIncrements = new HashMap<>();
-    public StrBuilder sqlDump;
+    public TextStringBuilder sqlDump;
     
     public MySQLConverter(Args args, Database db) {
         this.args = args;
@@ -62,16 +62,18 @@ public class MySQLConverter extends Converter {
         final String methodName = "toMySQLDump";
         
         try {
-            sqlDump = new StrBuilder();
+            sqlDump = new TextStringBuilder();
             addHeader();
             Set<String> tableNames = db.getTableNames();
 
             tableNames.forEach((tableName) -> {
                 try {
                     Table table = db.getTable(tableName);
+                    AccessConverter.progressStatus.startTable(table);
                     addTableCreate(table);
                     addTableInsert(table);
                     addAutoIncrements();
+                    AccessConverter.progressStatus.endTable();
                 } catch(IOException e) {
                     //lastError.add(String.format("Could not load table '%s'", tableName));
                     Error(String.format("Could not load table '%s'", tableName), e, methodName);
@@ -79,6 +81,7 @@ public class MySQLConverter extends Converter {
             });
             
             addFooter();
+            AccessConverter.progressStatus.resetLine();
             result = true;
         } catch(IOException e) {
             //lastError.add("Could not fetch tables from the database");
@@ -229,7 +232,7 @@ public class MySQLConverter extends Converter {
         sqlDump.appendln("--");
         sqlDump.appendNewLine();
         
-        StrBuilder insertHeader = new StrBuilder();
+        TextStringBuilder insertHeader = new TextStringBuilder();
         insertHeader.append(String.format("INSERT INTO `%s` (", tableName));
         boolean isFirst = true;
         

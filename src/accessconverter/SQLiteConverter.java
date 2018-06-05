@@ -11,6 +11,7 @@ import com.healthmarketscience.jackcess.Row;
 import com.healthmarketscience.jackcess.Table;
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 //import java.util.ArrayList;
 //import java.util.HashMap;
 //import java.util.List;
@@ -18,7 +19,8 @@ import java.io.IOException;
 import java.util.Set;
 //import java.util.logging.Level;
 //import java.util.logging.Logger;
-import org.apache.commons.lang3.text.StrBuilder;
+//import org.apache.commons.lang3.text.StrBuilder;
+import org.apache.commons.text.TextStringBuilder;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -67,14 +69,18 @@ public class SQLiteConverter extends Converter {
             tableNames.forEach((tableName) -> {
                 try {
                     Table table = db.getTable(tableName);
+                    AccessConverter.progressStatus.startTable(table);
                     createTable(table);
                     insertData(table);
+                    AccessConverter.progressStatus.endTable();
                 } catch(IOException e) {
                     //lastError.add(String.format("Could not load table '%s'", tableName));
                     //AccessConverter.Error(String.format("Could not load table '%s'", tableName));
                     Error(String.format("Could not load table '%s'", tableName), e, methodName);
                 }
             });
+            
+            AccessConverter.progressStatus.resetLine();
             
             //addFooter();
             result = true;
@@ -93,8 +99,8 @@ public class SQLiteConverter extends Converter {
     
     private boolean createTable(Table table) {
         final String methodName = "createTable";
-        StrBuilder sql = new StrBuilder();
-        sql.append(String.format("CREATE TABLE %s (", table.getName()));
+        TextStringBuilder sql = new TextStringBuilder();
+        sql.append(String.format("CREATE TABLE `%s` (", table.getName()));
         
         boolean isFirst = true;
         
@@ -113,38 +119,38 @@ public class SQLiteConverter extends Converter {
                 case "INT":
                 case "LONG":
                     if(column.isAutoNumber()) {
-                        sql.append(String.format("%s INTEGER PRIMARY KEY AUTOINCREMENT", name));
+                        sql.append(String.format("`%s` INTEGER PRIMARY KEY AUTOINCREMENT", name));
                     } else {
-                        sql.append(String.format("%s INT NOT NULL DEFAULT 0", name));
+                        sql.append(String.format("`%s` INT NOT NULL DEFAULT 0", name));
                     }
                     break;
                 case "FLOAT":
-                    sql.append(String.format("%s FLOAT NOT NULL DEFAULT 0", name));
+                    sql.append(String.format("`%s` FLOAT NOT NULL DEFAULT 0", name));
                     break;
                 case "DOUBLE":
-                    sql.append(String.format("%s DOUBLE NOT NULL DEFAULT 0", name));
+                    sql.append(String.format("`%s` DOUBLE NOT NULL DEFAULT 0", name));
                     break;
                 case "NUMERIC":
-                    sql.append(String.format("%s DECIMAL(28,0) NOT NULL DEFAULT 0", name));
+                    sql.append(String.format("`%s` DECIMAL(28,0) NOT NULL DEFAULT 0", name));
                     break;
                 case "MONEY":
-                    sql.append(String.format("%s DECIMAL(15,4) NOT NULL DEFAULT 0", name));
+                    sql.append(String.format("`%s` DECIMAL(15,4) NOT NULL DEFAULT 0", name));
                     break;
                 case "BOOLEAN":
-                    sql.append(String.format("%s TINYINT NOT NULL DEFAULT 0", name));
+                    sql.append(String.format("`%s` TINYINT NOT NULL DEFAULT 0", name));
                     break;
                 case "SHORT_DATE_TIME":
-                    sql.append(String.format("%s DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00'", name));
+                    sql.append(String.format("`%s` DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00'", name));
                     break;
                 case "MEMO":
-                    sql.append(String.format("%s TEXT", name));
+                    sql.append(String.format("`%s` TEXT", name));
                     break;
                 case "GUID":
-                    sql.append(String.format("%s VARCHAR(50) DEFAULT '{00000000-0000-0000-0000-000000000000}'", name));
+                    sql.append(String.format("`%s` VARCHAR(50) DEFAULT '{00000000-0000-0000-0000-000000000000}'", name));
                     break;
                 case "TEXT":
                 default:
-                    sql.append(String.format("%s VARCHAR(255) DEFAULT ''", name));
+                    sql.append(String.format("`%s` VARCHAR(255) DEFAULT ''", name));
                     break;
             }
         }
@@ -159,7 +165,7 @@ public class SQLiteConverter extends Converter {
         } catch (SQLException e) {
             //lastError.add(String.format("Could not create table '%s'", table.getName()));
             //AccessConverter.Error(String.format("Could not create table '%s'", table.getName()));
-            Error(String.format("Could not create table '%s'", table.getName()), e, methodName);
+            Error(String.format("Could not create table '%s'", table.getName()), e, methodName, sql.build());
             return false;
         }
     }
@@ -172,10 +178,10 @@ public class SQLiteConverter extends Converter {
             return true;
         
         String tableName = table.getName();
-        StrBuilder sql = new StrBuilder();
-        StrBuilder insertHeader = new StrBuilder();
+        TextStringBuilder sql = new TextStringBuilder();
+        TextStringBuilder insertHeader = new TextStringBuilder();
         
-        insertHeader.append(String.format("INSERT INTO %s (", tableName));
+        insertHeader.append(String.format("INSERT INTO `%s` (", tableName));
         boolean isFirst = true;
         
         for(Column column : table.getColumns()) {
@@ -183,7 +189,7 @@ public class SQLiteConverter extends Converter {
                 insertHeader.append(", ");
             else
                 isFirst = false;
-            insertHeader.append(String.format("%s", column.getName()));
+            insertHeader.append(String.format("`%s`", column.getName()));
         }
         
         insertHeader.append(") VALUES (");
@@ -195,7 +201,8 @@ public class SQLiteConverter extends Converter {
         Statement statement = null;
         
         try {
-            connection.setAutoCommit(false);
+            //connection.setAutoCommit(false);
+            connection.setAutoCommit(true);
             statement = connection.createStatement();
             
             for(Row row : table) {
@@ -214,27 +221,30 @@ public class SQLiteConverter extends Converter {
                     try {
                         switch(type) {
                             case "BYTE":
-                                sql.append(row.getByte(name));
+                                sql.append(row.getByte(name).byteValue());
                                 break;
                             case "INT":
-                                sql.append(row.getShort(name));
+                                sql.append(row.getShort(name).shortValue());
                                 break;
                             case "LONG":
                                 if(column.isAutoNumber()) {
                                     hasAutoIncrement = true;
                                     autoIncrement = Math.max(autoIncrement, row.getInt(name));
                                 }
-                                sql.append(row.getInt(name));
+                                sql.append(row.getInt(name).intValue());
                                 break;
                             case "FLOAT":
-                                sql.append(row.getFloat(name));
+                                //Float f = row.getFloat(name);
+                                sql.append(Globals.defaultIfNullFloat(row.getFloat(name)));
                                 break;
                             case "DOUBLE":
-                                sql.append(row.getDouble(name));
+                                //Double dd = row.getDouble(name);
+                                sql.append(Globals.defaultIfNullDouble(row.getDouble(name)));
                                 break;
                             case "NUMERIC":
                             case "MONEY":
-                                sql.append(row.getBigDecimal(name));
+                                //BigDecimal bd = row.getBigDecimal(name);
+                                sql.append(Globals.defaultIfNullBigDecimal(row.getBigDecimal(name)));
                                 break;
                             case "BOOLEAN":
                                 sql.append(row.getBoolean(name) ? 1 : 0);
@@ -260,23 +270,33 @@ public class SQLiteConverter extends Converter {
                 }
 
                 sql.append(")");
-                statement.executeUpdate(sql.build());
+                
+                try {
+                    statement.executeUpdate(sql.build());
+                    AccessConverter.progressStatus.step();
+                } catch(SQLException e) {
+                    Error(String.format("Could not insert to table '%s'; Continue to next row", table.getName()), e, methodName, sql.build());
+                }
+                
                 sql.clear();
+                
+                //if(AccessConverter.progressStatus.currentTableCurrentRow > 10) break;
             }
             
-            connection.commit();
+            //connection.commit();
             
             if(hasAutoIncrement) {
                 //System.out.printf("Adding autoIncrement %s", autoIncrement);
                 statement.executeUpdate(String.format("UPDATE SQLITE_SEQUENCE SET seq = %d WHERE name = '%s'", autoIncrement, tableName));
-                connection.commit();
+                //connection.commit();
             }
             
             result = true;
         } catch(SQLException e) {
             //lastError.add(String.format("Could not create table '%s'", table.getName()));
             //AccessConverter.Error(String.format("Could not insert to table '%s'", table.getName()));
-            Error(String.format("Could not insert to table '%s'", table.getName()), e, methodName);
+            //Error(String.format("Could not insert to table '%s'", table.getName()), e, methodName, sql.build());
+            Error(String.format("Could not create statement for table '%s'", table.getName()), e, methodName);
             result = false;
         } finally {
             if(statement != null) {

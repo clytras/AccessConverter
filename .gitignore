@@ -6,5 +6,8 @@
 *.sqlite3
 dist/
 build/
+test/
+releases/
 /*.jar
 nbproject/private/private.properties
+Test_SQLite_quotes.png
