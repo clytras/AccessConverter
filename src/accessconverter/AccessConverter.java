@@ -27,7 +27,7 @@ import javax.json.JsonObjectBuilder;
 import javax.json.JsonWriter;
 import javax.json.stream.JsonGenerator;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.FilenameUtils; 
 
 /**
  *
@@ -46,13 +46,25 @@ public class AccessConverter {
     public static File logFile = null;
     public static String zipFilename = null;
     public static File zipFile = null;
+    public static ProgressStatus progressStatus = null;
     
     /**
      * @param cmdArgs the command line arguments
      */
-    public static void main(String[] cmdArgs) {
+    public static void main(String[] cmdArgs) throws InterruptedException {
 
         args = new Args(cmdArgs);
+        
+        /*ProgressStatus ps = new ProgressStatus();
+        
+        for(int i = 0; i < 50; i++) {
+            ps.update();
+            Thread.sleep(200);
+        }
+        
+        ps.resetLine();
+        
+        return;*/
         
         //debugTestDb();
         
@@ -123,7 +135,10 @@ public class AccessConverter {
         
         try {
             File dbFile = new File(args.GetOption("access-file"));
-            Database db = DatabaseBuilder.open(dbFile);
+            Database db = new DatabaseBuilder(dbFile).setReadOnly(true).open();
+
+            progressStatus = new ProgressStatus(db);
+            progressStatus.calculateAllRows();
             
             switch(args.GetOption("task")) {
                 case "convert-json":

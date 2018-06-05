@@ -69,9 +69,11 @@ public class MySQLConverter extends Converter {
             tableNames.forEach((tableName) -> {
                 try {
                     Table table = db.getTable(tableName);
+                    AccessConverter.progressStatus.startTable(table);
                     addTableCreate(table);
                     addTableInsert(table);
                     addAutoIncrements();
+                    AccessConverter.progressStatus.endTable();
                 } catch(IOException e) {
                     //lastError.add(String.format("Could not load table '%s'", tableName));
                     Error(String.format("Could not load table '%s'", tableName), e, methodName);
@@ -79,6 +81,7 @@ public class MySQLConverter extends Converter {
             });
             
             addFooter();
+            AccessConverter.progressStatus.resetLine();
             result = true;
         } catch(IOException e) {
             //lastError.add("Could not fetch tables from the database");

@@ -10,7 +10,7 @@ package accessconverter;
  * @author Christos Lytras <christos.lytras@gmail.com>
  */
 public class Application {
-    public static String Version = "1.0";
+    public static String Version = "1.1.1";
     public static String Name = "AccessConverter";
     public static String Title = "Access Converter";
     public static String Author = "Christos Lytras <christos.lytras@gmail.com>";

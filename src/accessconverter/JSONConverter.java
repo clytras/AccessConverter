@@ -59,6 +59,7 @@ public class JSONConverter extends Converter {
                 try {
                     boolean isDataAssoc = args.GetOption("json-data", "assoc").equals("assoc");
                     Table table = db.getTable(tableName);
+                    AccessConverter.progressStatus.startTable(table);
 
                     JsonObjectBuilder jsonTable = Json.createObjectBuilder();
                     JsonArrayBuilder jsonColumns = Json.createArrayBuilder();
@@ -99,12 +100,15 @@ public class JSONConverter extends Converter {
 
                     jsonTable.add("data", jsonRows);
                     json.add(jsonTable);
+                    
+                    AccessConverter.progressStatus.endTable();
                 } catch(IOException e) {
                     //lastError.add(String.format("Could not load table '%s'", tableName));
                     Error(String.format("Could not load table '%s'", tableName), e, methodName);
                 }
             });
             
+            AccessConverter.progressStatus.resetLine();
             result = true;
         } catch(IOException e) {
             //lastError.add("Could not fetch tables from the database");
