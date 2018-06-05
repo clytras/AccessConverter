@@ -8,7 +8,8 @@ An online application that uses AccessConverter to convert databases can be foun
 - JDK 1.8
 - Apache Commons IO 2.5 ([commons-io-2.5](http://commons.apache.org/proper/commons-io/download_io.cgi))
 - Apache Commons Lang 2.6 ([commons-lang-2.6](https://commons.apache.org/proper/commons-lang/download_lang.cgi))
-- Apache Commons Lang 3.6 ([commons-lang3-3.6](https://commons.apache.org/proper/commons-lang/download_lang.cgi))
+- ~~Apache Commons Lang 3.6 ([commons-lang3-3.6](https://commons.apache.org/proper/commons-lang/download_lang.cgi))~~
+- Apache Commons Text 1.3 ([commons-text-1.3](https://commons.apache.org/proper/commons-text/download_text.cgi))
 - Apache Commons Logging 1.2 ([commons-logging-1.2](http://commons.apache.org/proper/commons-logging/download_logging.cgi))
 - SQLite JDBC Driver 3.18.0 ([sqlite-jdbc-3.18.0](https://github.com/xerial/sqlite-jdbc))
 - JSR 353 (JSON Processing) 1.0.2 ([javax.json-1.0.2](https://docs.oracle.com/javaee/7/api/javax/json/package-summary.html))
@@ -43,3 +44,8 @@ It is a command line tool and it accepts arguments. The output result on the scr
 *Use different files and location for both output and log files. Console output JSON pretty-print result*
 
     java -jar AccessConverter.jar --access-file "/home/test/somedb.accdb" --task convert-mysql-dump --output-file "/home/sql/somedb_dump.sql" --log-file "/home/logs/somedb.log" -mysql-drop-tables --output-result json-pretty
+
+## Update 24/5/2018 (v1.1)
+
+- Added SQL code logging on errors
+- Replaces *org.apache.commons.lang3.StrBuilder* with *org.apache.commons.text.TextStringBuilder* due to deprecation of the first
