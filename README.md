@@ -31,6 +31,9 @@ It is a command line tool and it accepts arguments. The output result on the scr
 | `-mysql-drop-tables` | | Add `DROP TABLE IF EXISTS` for each table |
 | `-compress` | | Compress the output file to a zip archive file |
 | `-no-log` | | Does not generate a log file |
+| `-no-log` | | Does not generate a log file |
+| `-show-progress` | | Displays progress status (Current table name, records inserted and total progress percentage) |
+
 
 ## Examples
 **Convert a .accdb file to JSON**
@@ -49,3 +52,9 @@ It is a command line tool and it accepts arguments. The output result on the scr
 
 - Added SQL code logging on errors
 - Replaces *org.apache.commons.lang3.StrBuilder* with *org.apache.commons.text.TextStringBuilder* due to deprecation of the first
+
+## Update 29/5/2018 (v1.1.1)
+
+- Fixed SQLite names conversion by enclosing all names (tables/fields) using the grave accent character "`"
+- Fixed when an INSERT error would break the entire transaction. Now each row is inserted individually
+- Added progress status when using the flag parameter "-show-progress"
