@@ -4,6 +4,7 @@
 *.zip
 *.sql
 *.sqlite3
+.idea/
 dist/
 build/
 test/
