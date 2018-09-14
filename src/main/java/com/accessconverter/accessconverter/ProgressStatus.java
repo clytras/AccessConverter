@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package accessconverter;
+package com.accessconverter.accessconverter;
 
 import com.healthmarketscience.jackcess.Database;
 import com.healthmarketscience.jackcess.Table;
@@ -117,7 +117,7 @@ public class ProgressStatus {
         TextStringBuilder output = new TextStringBuilder();
         //StringUtils.
         
-        output.append("\r%s%s", status, StringUtils.repeat(".", dotMarkCount));
+        output.append("\r%s%s", status, StringUtils.repeat("", dotMarkCount));
         
         //int padLength = Math.max(status.length(), totalRows)
         

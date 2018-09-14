@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package accessconverter;
+package com.accessconverter.accessconverter;
 
 import com.healthmarketscience.jackcess.Column;
 import java.math.BigDecimal;
