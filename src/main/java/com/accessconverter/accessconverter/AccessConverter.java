@@ -199,7 +199,7 @@ public class AccessConverter {
     private static File getOutputFile(String extension) {
         outputFilename = args.HasOption("output-file") ? 
                 args.GetOption("output-file") : 
-                FilenameUtils.getBaseName(args.GetOption("access-file")) + "" + extension;
+                FilenameUtils.getBaseName(args.GetOption("access-file")) + "." + extension;
         
         File outFile = new File(FilenameUtils.concat(FilenameUtils.getFullPath(args.GetOption("access-file")), outputFilename));
         if(outFile.exists()) {

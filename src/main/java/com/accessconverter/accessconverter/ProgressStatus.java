@@ -117,7 +117,7 @@ public class ProgressStatus {
         TextStringBuilder output = new TextStringBuilder();
         //StringUtils.
         
-        output.append("\r%s%s", status, StringUtils.repeat("", dotMarkCount));
+        output.append("\r%s%s", status, StringUtils.repeat(".", dotMarkCount));
         
         //int padLength = Math.max(status.length(), totalRows)
         
