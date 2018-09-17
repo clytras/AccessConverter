@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package accessconverter;
+package com.lytrax.accessconverter;
 
 import com.healthmarketscience.jackcess.Column;
 import com.healthmarketscience.jackcess.Database;
@@ -11,7 +11,6 @@ import com.healthmarketscience.jackcess.Row;
 import com.healthmarketscience.jackcess.Table;
 import java.io.File;
 import java.io.IOException;
-import java.math.BigDecimal;
 //import java.util.ArrayList;
 //import java.util.HashMap;
 //import java.util.List;

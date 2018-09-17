@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package accessconverter;
+package com.lytrax.accessconverter;
 
 import com.healthmarketscience.jackcess.*;
 import java.io.IOException;

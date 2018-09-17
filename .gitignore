@@ -4,9 +4,10 @@
 *.zip
 *.sql
 *.sqlite3
+.idea/
 dist/
 build/
-test/
+target/
 releases/
 /*.jar
 nbproject/private/private.properties
