@@ -31,7 +31,6 @@ It is a command line tool and it accepts arguments. The output result on the scr
 | `-mysql-drop-tables` | | Add `DROP TABLE IF EXISTS` for each table |
 | `-compress` | | Compress the output file to a zip archive file |
 | `-no-log` | | Does not generate a log file |
-| `-no-log` | | Does not generate a log file |
 | `-show-progress` | | Displays progress status (Current table name, records inserted and total progress percentage) |
 
 
