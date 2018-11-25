@@ -105,6 +105,9 @@ public class SQLiteConverter extends Converter {
         
         for(Column column : table.getColumns()) {
             String name = column.getName();
+                if (name == "Index") {
+                    name = "Idx";
+            }
             String type = column.getType().toString().toUpperCase();
             //short length = column.getLength();
             
@@ -148,6 +151,11 @@ public class SQLiteConverter extends Converter {
                     sql.append(String.format("`%s` VARCHAR(50) DEFAULT '{00000000-0000-0000-0000-000000000000}'", name));
                     break;
                 case "TEXT":
+                    sql.append(String.format("`%s` VARCHAR(255) DEFAULT ''", name));
+                    break;
+                case "OLE":
+                    sql.append(String.format("`%s` BLOB", name));
+                    break;
                 default:
                     sql.append(String.format("`%s` VARCHAR(255) DEFAULT ''", name));
                     break;
@@ -257,6 +265,20 @@ public class SQLiteConverter extends Converter {
                             case "GUID":
                             case "TEXT":
                                 sql.append(String.format("'%s'", row.getString(name).replace("'", "''")));
+                            	break;
+                            case "BINARY":
+                            case "OLE":
+                                byte[] ba = row.getBytes(name);
+                                if (ba.length > 0) {
+                                    final String    HEXES    = "0123456789ABCDEF";
+                                    sql.append("x'");
+                                    for (byte b : ba) {
+                                        sql.append(HEXES.charAt((b & 0xF0) >> 4)).append(HEXES.charAt((b & 0x0F)));
+                                    }
+                                    sql.append("'");
+                                } else {
+                                    sql.append("NULL");
+                                }
                                 break;
                             case "COMPLEX_TYPE":
                             default:
