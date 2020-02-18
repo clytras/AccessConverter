@@ -5,6 +5,7 @@
 *.sql
 *.sqlite3
 .idea/
+.settings/
 dist/
 build/
 target/

@@ -3,17 +3,10 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/E:/Programming/Java/AccessConverter/src/accessconverter/SQLiteConverter.java</file>
-            <file>file:/E:/Programming/Java/AccessConverter/src/accessconverter/Globals.java</file>
-            <file>file:/E:/Programming/Java/AccessConverter/src/accessconverter/AccessConverter.java</file>
-            <file>file:/E:/Programming/Java/AccessConverter/src/accessconverter/MySQLConverter.java</file>
-            <file>file:/E:/Programming/Java/AccessConverter/Arguments.txt</file>
-            <file>file:/E:/Programming/Java/AccessConverter/src/accessconverter/Converter.java</file>
-            <file>file:/E:/Programming/Java/AccessConverter/src/accessconverter/Application.java</file>
-            <file>file:/E:/Programming/Java/AccessConverter/src/accessconverter/JSONConverter.java</file>
-            <file>file:/E:/Programming/Java/AccessConverter/src/accessconverter/ProgressStatus.java</file>
-            <file>file:/E:/Programming/Java/AccessConverter/LogFormat.txt</file>
-            <file>file:/E:/Programming/Java/AccessConverter/src/accessconverter/Args.java</file>
+            <file>file:/E:/Programming/Java/AccConv/src/main/java/com/lytrax/accessconverter/Converter.java</file>
+            <file>file:/E:/Programming/Java/AccConv/src/main/java/com/lytrax/accessconverter/Args.java</file>
+            <file>file:/E:/Programming/Java/AccConv/src/main/java/com/lytrax/accessconverter/Globals.java</file>
+            <file>file:/E:/Programming/Java/AccConv/src/main/java/com/lytrax/accessconverter/AccessConverter.java</file>
         </group>
     </open-files>
 </project-private>

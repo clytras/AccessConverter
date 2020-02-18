@@ -1,7 +1,25 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * The MIT License
+ *
+ * Copyright 2020 Christos Lytras <christos.lytras@gmail.com>.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 package com.lytrax.accessconverter;
 
@@ -19,8 +37,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-//import java.util.logging.Level;
-//import java.util.logging.Logger;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObjectBuilder;
@@ -31,7 +47,7 @@ import org.apache.commons.io.FilenameUtils;
 
 /**
  *
- * @author Christos Lytras <christos.lytras@gmail.com>
+ * @author Christos Lytras {@literal <christos.lytras@gmail.com>}
  */
 public class AccessConverter {
 
@@ -48,29 +64,22 @@ public class AccessConverter {
     public static File zipFile = null;
     public static ProgressStatus progressStatus = null;
     
+    static {
+        System.setProperty("org.apache.commons.logging.Log",
+                           "org.apache.commons.logging.impl.NoOpLog");
+    }
+    
     /**
      * @param cmdArgs the command line arguments
      */
     public static void main(String[] cmdArgs) throws InterruptedException {
-
         args = new Args(cmdArgs);
         
-        /*ProgressStatus ps = new ProgressStatus();
-        
-        for(int i = 0; i < 50; i++) {
-            ps.update();
-            Thread.sleep(200);
-        }
-        
-        ps.resetLine();
-        
-        return;*/
-        
-        //debugTestDb();
+        // debugTestDb();
         
         
-        //debugArgs(args.options.keySet().toArray(new String[0]));
-        //debugArgs(args.flags.keySet().toArray(new String[0]));
+        // debugArgs(args.options.keySet().toArray(new String[0]));
+        // debugArgs(args.flags.keySet().toArray(new String[0]));
         
         if(CheckCommandArguments())
             Run();
@@ -85,30 +94,42 @@ public class AccessConverter {
             System.out.println(str);
     }
     
+    public static void Debug(String str) {
+        if(args.GetFlag("debug", false)) {
+            System.out.println("DEBUG: " + str);
+        }
+    }
+    
     public static void Log(String str) {
         logs.add(new LogRecord(str));
+        Debug(str);
     }
     
     public static void Log(String str, String source) {
         logs.add(new LogRecord(str, source));
+        Debug(str + " -> " + source);
     }
     
     public static void Error(String error) {
         //lastError = error;
         //Log("ERROR: " + error);
         errors.add(new ErrorRecord(error));
+        Debug(error);
     }
     
     public static void Error(String error, Exception exception) {
         errors.add(new ErrorRecord(error, exception));
+        Debug(error + " -> " + exception.toString());
     }
     
     public static void Error(String error, Exception exception, String source) {
         errors.add(new ErrorRecord(error, exception, source));
+        Debug(error + " : " + exception.toString() + " -> " + source);
     }
     
     public static void Error(String error, Exception exception, String source, String sql) {
         errors.add(new ErrorRecord(error, exception, source, sql));
+        Debug(error + " : " + exception.toString() + " -> " + source + " ~ " + sql);
     }
     
     public static boolean CheckCommandArguments() {
@@ -192,7 +213,7 @@ public class AccessConverter {
             if("success".equals(result) && args.HasFlag("compress") && outputFile != null)
                 Compress();
         } catch(IOException e) {
-            Error("Can't open Access file");
+            Error("Can't open Access file", e);
         }
     }
     
