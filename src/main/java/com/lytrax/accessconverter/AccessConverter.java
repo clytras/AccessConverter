@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2020 Christos Lytras <christos.lytras@gmail.com>.
+ * Copyright 2024 Christos Lytras <christos.lytras@gmail.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -77,6 +77,8 @@ public class AccessConverter {
         
         // debugTestDb();
         
+        // return;
+        
         
         // debugArgs(args.options.keySet().toArray(new String[0]));
         // debugArgs(args.flags.keySet().toArray(new String[0]));
@@ -133,12 +135,12 @@ public class AccessConverter {
     }
     
     public static boolean CheckCommandArguments() {
-        if(!args.HasOption("access-file")) {
+        if (!args.HasOption("access-file")) {
             Error("No input Access file specified");
             return false;
         }
         
-        if(!args.HasOption("task")) {
+        if (!args.HasOption("task")) {
             Error("No task specified");
             return false;
         }
@@ -161,14 +163,14 @@ public class AccessConverter {
             progressStatus = new ProgressStatus(db);
             progressStatus.calculateAllRows();
             
-            switch(args.GetOption("task")) {
+            switch (args.GetOption("task")) {
                 case "convert-json":
                     JSONConverter jsonConverter = new JSONConverter(args, db);
                     
-                    if(jsonConverter.toJson()) {
+                    if (jsonConverter.toJson()) {
                         outputFile = getOutputFile("json");
 
-                        if(outputFile != null) {
+                        if (outputFile != null) {
                             FileUtils.write(outputFile, jsonConverter.getPrettyPrinted(), "UTF-8");
                             Log(String.format("JSON file '%s' created successfully", outputFilename));
                             result = "success";
@@ -180,10 +182,10 @@ public class AccessConverter {
                 case "convert-mysql-dump":
                     MySQLConverter mysqlConverter = new MySQLConverter(args, db);
                     
-                    if(mysqlConverter.toMySQLDump()) {
+                    if (mysqlConverter.toMySQLDump()) {
                         outputFile = getOutputFile("sql");
 
-                        if(outputFile != null) {
+                        if (outputFile != null) {
                             FileUtils.write(outputFile, mysqlConverter.sqlDump.build(), "UTF-8");
                             Log(String.format("MySQL dump file '%s' created successfully", outputFilename));
                             result = "success";
@@ -194,9 +196,9 @@ public class AccessConverter {
                     break;
                 case "convert-sqlite":
                     File sqliteFile = getOutputFile("sqlite3");
-                    if(sqliteFile != null) {
+                    if (sqliteFile != null) {
                         SQLiteConverter sqliteConverter = new SQLiteConverter(args, db, sqliteFile);
-                        if(sqliteConverter.toSQLiteFile()) {
+                        if (sqliteConverter.toSQLiteFile()) {
                             Log(String.format("SQLite database '%s' created successfully", outputFilename));
                             outputFile = sqliteConverter.sqliteFile;
                             result = "success";
@@ -210,23 +212,24 @@ public class AccessConverter {
                     break;
             }
             
-            if("success".equals(result) && args.HasFlag("compress") && outputFile != null)
+            if ("success".equals(result) && args.HasFlag("compress") && outputFile != null)
                 Compress();
-        } catch(IOException e) {
+        } catch (IOException e) {
             Error("Can't open Access file", e);
         }
     }
     
     private static File getOutputFile(String extension) {
-        outputFilename = args.HasOption("output-file") ? 
-                args.GetOption("output-file") : 
-                FilenameUtils.getBaseName(args.GetOption("access-file")) + "." + extension;
+        outputFilename = args.HasOption("output-file")
+            ? args.GetOption("output-file")
+            : FilenameUtils.getBaseName(args.GetOption("access-file")) + "." + extension;
         
         File outFile = new File(FilenameUtils.concat(FilenameUtils.getFullPath(args.GetOption("access-file")), outputFilename));
-        if(outFile.exists()) {
+
+        if (outFile.exists()) {
             try {
                 outFile.delete();
-            } catch(SecurityException e) {
+            } catch (SecurityException e) {
                 Error(String.format("Could not delete existing output file '%s'", outputFilename));
                 return null;
             }
@@ -236,15 +239,15 @@ public class AccessConverter {
     }
     
     public static void CreateLog() {
-        if(args.HasFlag("no-log"))
+        if (args.HasFlag("no-log"))
             return;
         
-        logFilename = args.HasOption("log-file") ? 
-                args.GetOption("log-file") : 
-                FilenameUtils.getBaseName(args.GetOption("access-file")) + ".log.json";
+        logFilename = args.HasOption("log-file")
+            ? args.GetOption("log-file")
+            : FilenameUtils.getBaseName(args.GetOption("access-file")) + ".log.json";
 
         logFile = new File(FilenameUtils.concat(FilenameUtils.getFullPath(args.GetOption("access-file")), logFilename));
-        if(logFile.exists()) {
+        if (logFile.exists()) {
             try {
                 logFile.delete();
             } catch(SecurityException e) {
@@ -267,7 +270,7 @@ public class AccessConverter {
         boolean hasOptions = false;
         boolean hasFlags = false;
         
-        if(!args.options.isEmpty()) {
+        if (!args.options.isEmpty()) {
             hasOptions = true;
             JsonObjectBuilder jsonOptions = Json.createObjectBuilder();
             args.options.keySet().forEach((key) -> {
@@ -276,7 +279,7 @@ public class AccessConverter {
             jsonArguments.add("options", jsonOptions);
         }
         
-        if(!args.flags.isEmpty()) {
+        if (!args.flags.isEmpty()) {
             hasFlags = true;
             JsonArrayBuilder jsonFlags = Json.createArrayBuilder();
             args.flags.keySet().forEach((key) -> {
@@ -285,17 +288,17 @@ public class AccessConverter {
             jsonArguments.add("flags", jsonFlags);
         }
         
-        if(hasOptions || hasFlags)
+        if (hasOptions || hasFlags)
             json.add("arguments", jsonArguments);
         
         json.add("result", result);
-        if(outputFile != null)
+        if (outputFile != null)
             json.add("outputFile", outputFile.getAbsolutePath());
         
-        if(zipFile != null)
+        if (zipFile != null)
             json.add("zipFile", zipFile.getAbsolutePath());
         
-        if(!logs.isEmpty()) {
+        if (!logs.isEmpty()) {
             JsonArrayBuilder jsonLogs = Json.createArrayBuilder();
             logs.forEach((log) -> {
                 jsonLogs.add(log.toJsonObject());
@@ -303,7 +306,7 @@ public class AccessConverter {
             json.add("logs", jsonLogs);
         }
         
-        if(!errors.isEmpty()) {
+        if (!errors.isEmpty()) {
             JsonArrayBuilder jsonErrors = Json.createArrayBuilder();
             errors.forEach((error) -> {
                 jsonErrors.add(error.toJsonObject());
@@ -332,10 +335,11 @@ public class AccessConverter {
                 FilenameUtils.getBaseName(args.GetOption("access-file")) + ".zip";
 
         zipFile = new File(FilenameUtils.concat(FilenameUtils.getFullPath(args.GetOption("access-file")), zipFilename));
-        if(zipFile.exists()) {
+
+        if (zipFile.exists()) {
             try {
                 zipFile.delete();
-            } catch(SecurityException ex) {
+            } catch (SecurityException ex) {
                 Error(String.format("Could not delete existing zip file '%s'", logFilename), ex);
                 return;
             }
@@ -344,7 +348,6 @@ public class AccessConverter {
         Map<String, String> env = new HashMap<>(); 
         env.put("create", "true");
 
-        //URI uri = URI.create(String.format("jar:file:/%s", zipFile.getAbsolutePath()));
         URI uri = URI.create(String.format("jar:%s", zipFile.toURI().toString()));
         try (FileSystem zipfs = FileSystems.newFileSystem(uri, env)) {
             Path externalTxtFile = Paths.get(outputFile.getAbsolutePath());
@@ -358,7 +361,7 @@ public class AccessConverter {
     }
     
     public static void Exit() {
-        switch(args.GetOption("output-result", "normal")) {
+        switch (args.GetOption("output-result", "normal")) {
             case "json":
                 ExitJson(false);
                 break;
@@ -373,33 +376,33 @@ public class AccessConverter {
     public static void ExitNormal() {
         System.out.println(String.format("Result: %s", "success".equals(result) ? "Success" : "Failure"));
         
-        if(outputFile != null)
+        if (outputFile != null)
             System.out.println(String.format("Output file: %s", outputFile.getAbsolutePath()));
         
-        if(logFile != null)
+        if (logFile != null)
             System.out.println(String.format("Log file: %s", logFile.getAbsolutePath()));
         
-        if(zipFile != null && zipFile.exists())
+        if (zipFile != null && zipFile.exists())
             System.out.println(String.format("Zip file: %s", zipFile.getAbsolutePath()));
     }
     
     public static void ExitJson(boolean pretyPrint) {
         JsonObjectBuilder json = Json.createObjectBuilder();
         
-        if(result.length() == 0)
+        if (result.length() == 0)
             result = "fail";
         
         json.add("result", result);
-        if(outputFile != null)
+        if (outputFile != null)
             json.add("outputFile", outputFile.getAbsolutePath());
         
-        if(logFile != null)
+        if (logFile != null)
             json.add("logFile", logFile.getAbsolutePath());
         
-        if(zipFile != null && zipFile.exists())
+        if (zipFile != null && zipFile.exists())
             json.add("zipFile", zipFile.getAbsolutePath());
         
-        if(pretyPrint) {
+        if (pretyPrint) {
             Map<String, Object> properties = new HashMap<>(1);
             properties.put(JsonGenerator.PRETTY_PRINTING, true);
             StringWriter stringWriter = new StringWriter();
@@ -417,49 +420,6 @@ public class AccessConverter {
             System.out.println(arg);
         }
     }
-    
-    public static void debugTestDb() {
-        Log(String.format("Access File %s", args.GetOption("access-file")));
-        
-        Database db = null;
-        Table tbl;
-        
-        try {
-            File dbFile = new File(args.GetOption("access-file"));
-            db = DatabaseBuilder.open(dbFile);
-            
-            try {
-                Table table = db.getTable("testTable");
-                
-                for(Row row : table) {
-                    for(Column column : table.getColumns()) {
-                        String columnName = column.getName();
-                        Object value = row.get(columnName);
-                        
-                        String cls = "";
-                        try {
-                            cls = value.getClass().toString();
-                        } catch(NullPointerException e) {
-                            
-                        }
-                        
-                        
-
-                        System.out.println("Column " + columnName + " = '" + value + "' (" + column.getType() + ") (" + column.getLength() + " : p - "+ column.getPrecision() + ") (" + cls + ")");
-                        
-                        //System.out.println("Column " + columnName + "(" + column.getType() + "): "
-                        //                   + value + " (" + value.getClass() + ")");
-                    }
-                }
-                
-            } catch(IOException e) {
-                System.out.println("Error: " + e.toString());
-            }
-        } catch(IOException e) {
-            Error("Can't open Access file");
-        }
-    }
-    
     
     public static class LogRecord {
         public String text;
@@ -485,7 +445,7 @@ public class AccessConverter {
             JsonObjectBuilder json = Json.createObjectBuilder();
             json.add("text", text);
             json.add("source", source);
-            if(!sql.isEmpty())
+            if (!sql.isEmpty())
                 json.add("sql", sql);
             return json;
         }
@@ -517,7 +477,7 @@ public class AccessConverter {
         @Override
         public JsonObjectBuilder toJsonObject() {
             JsonObjectBuilder json = super.toJsonObject();
-            if(exception != null)
+            if (exception != null)
                 json.add("exception", exception.toString());
             return json;
         }

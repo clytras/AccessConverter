@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2020 Christos Lytras <christos.lytras@gmail.com>.
+ * Copyright 2024 Christos Lytras <christos.lytras@gmail.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,15 +42,14 @@ public class Args {
         
         int i = 0;
         
-        while(i < args.length) {
-            if(args[i].startsWith("--")) {
+        while (i < args.length) {
+            if (args[i].startsWith("--")) {
                 String name = args[i].substring(2);
-                if(++i < args.length) {
+                if (++i < args.length) {
                     String value = args[i];
                     options.put(name, value);
                 }
-            } else
-            if(args[i].startsWith("-")) {
+            } else if (args[i].startsWith("-")) {
                 String name = args[i].substring(1);
                 flags.put(name, true);
             }
@@ -67,7 +66,7 @@ public class Args {
     }
     
     public String GetOption(String name, String defaultValue) {
-        if(options.containsKey(name))
+        if (options.containsKey(name))
             return options.get(name);
         return defaultValue;
     }
@@ -81,7 +80,7 @@ public class Args {
     }
     
     public boolean GetFlag(String name, boolean defaultValue) {
-        if(flags.containsKey(name))
+        if (flags.containsKey(name))
             return flags.get(name);
         return defaultValue;
     }

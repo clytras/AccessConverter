@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2020 Christos Lytras <christos.lytras@gmail.com>.
+ * Copyright 2024 Christos Lytras <christos.lytras@gmail.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -84,8 +84,8 @@ public class JSONConverter extends Converter {
                     
                     jsonTable.add("name", tableName);
                     
-                    if(args.HasFlag("json-columns")) {
-                        for(Column column : table.getColumns()) {
+                    if (args.HasFlag("json-columns")) {
+                        for (Column column : table.getColumns()) {
                             JsonObjectBuilder jsonColumn = Json.createObjectBuilder();
                             jsonColumn.add("name", column.getName());
                             jsonColumn.add("type", column.getType().toString());
@@ -100,17 +100,17 @@ public class JSONConverter extends Converter {
                     JsonArrayBuilder jsonDataArray = Json.createArrayBuilder();
                     JsonObjectBuilder jsonDataObject = Json.createObjectBuilder();
 
-                    for(Row row : table) {
-                        for(Column column : table.getColumns()) {
+                    for (Row row : table) {
+                        for (Column column : table.getColumns()) {
                             //String columnName = column.getName();
 
-                            if(isDataAssoc)
+                            if (isDataAssoc)
                                 addToJson(jsonDataObject, column, row);
                             else
                                 addToJson(jsonDataArray, column, row);
                         }
 
-                        if(isDataAssoc)
+                        if (isDataAssoc)
                             jsonRows.add(jsonDataObject);
                         else
                             jsonRows.add(jsonDataArray);
@@ -120,7 +120,7 @@ public class JSONConverter extends Converter {
                     json.add(jsonTable);
                     
                     AccessConverter.progressStatus.endTable();
-                } catch(IOException e) {
+                } catch (IOException e) {
                     //lastError.add(String.format("Could not load table '%s'", tableName));
                     Error(String.format("Could not load table '%s'", tableName), e, methodName);
                 }
@@ -128,7 +128,7 @@ public class JSONConverter extends Converter {
             
             AccessConverter.progressStatus.resetLine();
             result = true;
-        } catch(IOException e) {
+        } catch (IOException e) {
             //lastError.add("Could not fetch tables from the database");
             Error("Could not fetch tables from the database", e, methodName);
         }
@@ -141,7 +141,7 @@ public class JSONConverter extends Converter {
         String name = column.getName();
         //Object value = row.get(name);
         
-        switch(type) {
+        switch (type) {
             case "INT":
                 //jsonData.add(Short.parseShort(value.toString()));
                 jsonData.add(row.getShort(name));
@@ -177,7 +177,7 @@ public class JSONConverter extends Converter {
                     Date d = row.getDate(name);
                     SimpleDateFormat format = new SimpleDateFormat("yyyy-mm-dd kk:mm:ss");
                     jsonData.add(format.format(d));
-                } catch(Exception e) {
+                } catch (Exception e) {
                     jsonData.add("");
                 }
             break;
@@ -187,7 +187,7 @@ public class JSONConverter extends Converter {
                 //jsonData.add(value.toString());
                 try {
                     jsonData.add(row.getString(name));
-                } catch(Exception e) {
+                } catch (Exception e) {
                     jsonData.add("");
                 }
             break;
@@ -201,7 +201,7 @@ public class JSONConverter extends Converter {
         String name = column.getName();
         //Object value = row.get(name);
         
-        if(name == null) return;
+        if (name == null) return;
         
         try {
         
@@ -251,7 +251,7 @@ public class JSONConverter extends Converter {
                     jsonData.addNull(name);
                     break;
             }
-        } catch(NullPointerException e) {
+        } catch (NullPointerException e) {
             jsonData.addNull(name);
         }
     }
