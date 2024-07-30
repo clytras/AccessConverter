@@ -34,7 +34,6 @@ import com.healthmarketscience.jackcess.Index;
 import com.healthmarketscience.jackcess.JackcessException;
 import com.healthmarketscience.jackcess.PropertyMap;
 import com.healthmarketscience.jackcess.PropertyMap.Property;
-import com.healthmarketscience.jackcess.complex.ComplexColumnInfo;
 import com.healthmarketscience.jackcess.Relationship;
 import com.healthmarketscience.jackcess.Row;
 import com.healthmarketscience.jackcess.Table;
@@ -68,16 +67,16 @@ public class AccessDebugger {
 
     public static void debugInfo(String filePath, String tableName) throws SQLException {
         Log(String.format("Access File %s", filePath));
-        
+
         Database db = null;
-        
+
         try {
             File dbFile = new File(filePath);
             db = DatabaseBuilder.open(dbFile);
-            
+
             try {
                 Table table = db.getTable(tableName);
-                
+
                 for (Column column : table.getColumns()) {
                     String columnName = column.getName();
 
@@ -96,10 +95,6 @@ public class AccessDebugger {
                             "  complex info: " + column.getComplexInfo() + "\n" +
                             "  complex type: " + column.getComplexInfo().getType().name() + "\n"
                         );
-
-                        // for (ComplexColumnInfo cci: column.getComplexInfo()) {
-
-                        // }
                     }
 
                     for (Property prop: column.getProperties()) {
@@ -113,7 +108,7 @@ public class AccessDebugger {
                         "  default value: " + column.getProperties().getValue(PropertyMap.DEFAULT_VALUE_PROP, null)
                     );
                 }
-                
+
                 for (Index idx: table.getIndexes()) {
                     Log(
                         "Index: " + idx.getName() +
@@ -122,15 +117,15 @@ public class AccessDebugger {
                         "  required: " + (idx.isRequired() ? 'Y' : 'N') +
                         "  unique: " + (idx.isUnique() ? 'Y' : 'N')
                     );
-                    
+
                     for (Index.Column col: idx.getColumns()) {
                         Log(
                             "    index column: " + col.getName()
                         );
                     }
-                    
+
                 }
-                
+
                 for (Relationship rel: db.getRelationships(table)) {
                     Log(
                         "Relationship: " + rel.getName() +
@@ -140,23 +135,23 @@ public class AccessDebugger {
                         "     to columns: " + rel.getToColumns().toString()
                     );
                 }
-                
+
                 for (Row row : table) {
                     for (Column column : table.getColumns()) {
                         String columnName = column.getName();
                         Object value = row.get(columnName);
-                        
+
                         String cls = "";
                         try {
                             cls = value.getClass().toString();
                         } catch(NullPointerException e) {
-                            
+
                         }
 
                         Log("Column " + columnName + " = '" + value + "' (" + column.getType() + ") (" + column.getLength() + " : p - "+ column.getPrecision() + ") (" + cls + ")");
                     }
                 }
-                
+
             } catch (IOException e) {
                 System.out.println("Error: " + e.toString());
             }

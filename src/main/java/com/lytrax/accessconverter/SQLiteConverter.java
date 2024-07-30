@@ -30,22 +30,27 @@ import com.healthmarketscience.jackcess.PropertyMap;
 import com.healthmarketscience.jackcess.Relationship;
 import com.healthmarketscience.jackcess.Row;
 import com.healthmarketscience.jackcess.Table;
+import com.healthmarketscience.jackcess.complex.Attachment;
+import com.healthmarketscience.jackcess.complex.ComplexValueForeignKey;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.text.TextStringBuilder;
 
 /**
@@ -56,29 +61,25 @@ public class SQLiteConverter extends Converter {
     public Database db;
     public Args args;
     public File sqliteFile;
-    //public List<String> lastError = new ArrayList<>();
     private Connection connection = null;
-    
+
     public SQLiteConverter(Args args, Database db, File sqliteFile) {
         this.args = args;
         this.db = db;
         this.sqliteFile = sqliteFile;
     }
-    
+
     public boolean toSQLiteFile() {
         boolean result = false;
         final String methodName = "toSQLiteFile";
-        
+
         try {
-            // load the sqlite-JDBC driver using the current class loader
             Class.forName("org.sqlite.JDBC");
         } catch (ClassNotFoundException e) {
-            //Logger.getLogger(SQLiteConverter.class.getName()).log(Level.SEVERE, null, ex);
-            //AccessConverter.Error("Coud not load class org.sqlite.JDBC");
             Error("Coud not load class org.sqlite.JDBC", e, methodName);
             return false;
         }
-        
+
         try {
             connection = DriverManager.getConnection(String.format("jdbc:sqlite:%s", sqliteFile.getAbsolutePath()));
             Set<String> tableNames = db.getTableNames();
@@ -94,35 +95,28 @@ public class SQLiteConverter extends Converter {
                     }
                     AccessConverter.progressStatus.endTable();
                 } catch (IOException e) {
-                    //lastError.add(String.format("Could not load table '%s'", tableName));
-                    //AccessConverter.Error(String.format("Could not load table '%s'", tableName));
                     Error(String.format("Could not load table '%s'", tableName), e, methodName);
                 }
             });
-            
+
             AccessConverter.progressStatus.resetLine();
-            
-            //addFooter();
+
             result = true;
         } catch (IOException e) {
-            //lastError.add("Could not fetch tables from the database");
-            //AccessConverter.Error("Could not fetch tables from the database");
             Error("Could not fetch tables from the database", e, methodName);
         } catch (SQLException e) {
-            //lastError.add(String.format("SQLite database creation/execution error '%s'", sqliteFile.getName()));
-            //AccessConverter.Error(String.format("SQLite database creation/execution error '%s'", sqliteFile.getName()));
             Error(String.format("SQLite database creation/execution error '%s'", sqliteFile.getName()), e, methodName);
         }
-        
+
         return result;
     }
-    
+
     private boolean createTable(Table table) throws IOException {
         final String methodName = "createTable";
         List<String> primaryKeys = new ArrayList<>();
         String autoIncrementColumn = "";
         List<String> body = new ArrayList<>();
-        
+
         for (Column column : table.getColumns()) {
             List<String> definitions = new ArrayList<>();
             String type = column.getType().toString().toUpperCase();
@@ -152,10 +146,9 @@ public class SQLiteConverter extends Converter {
             var columnTypeDef = getColumnType(type, defaultValue);
             var columnType = columnTypeDef.getLeft();
             var useDefaultValue = columnTypeDef.getMiddle();
-            // var columnIsNumeric = columnTypeDef.getRight();
 
             definitions.add(columnType);
-            
+
             if (column.isAutoNumber()) {
                 primaryKeys.add(name);
 
@@ -180,7 +173,7 @@ public class SQLiteConverter extends Converter {
 
         if (!primaryKeys.isEmpty()) {
             List<String> primaryKeyList = primaryKeys.stream().map(s -> "`" + s + "`").collect(Collectors.toList());
-    
+
             if (primaryKeys.size() > 1 && !autoIncrementColumn.isEmpty()) {
                 body.add(String.format("UNIQUE (%s)", String.join(",", primaryKeyList)));
             }
@@ -190,7 +183,7 @@ public class SQLiteConverter extends Converter {
 
         // Make relationships
 
-        for (Relationship rel: this.db.getRelationships(table)) {
+        for (Relationship rel : this.db.getRelationships(table)) {
             if (!table.getName().equals(rel.getToTable().getName())) {
                 continue;
             }
@@ -209,12 +202,18 @@ public class SQLiteConverter extends Converter {
         }
 
         List<String> statements = new ArrayList<>();
-        
-        statements.add(String.format("CREATE TABLE `%s` (%s)", table.getName(), String.join(", \n", body)));
+
+        statements.add(
+            String.format(
+                "CREATE TABLE `%s` (%s)",
+                table.getName(),
+                String.join(", \n", body)
+            )
+        );
 
         // Make indexes
 
-        for (Index idx: table.getIndexes()) {
+        for (Index idx : table.getIndexes()) {
             if (idx.isPrimaryKey()) {
                 // PK is already handled
                 continue;
@@ -226,7 +225,7 @@ public class SQLiteConverter extends Converter {
                 String.format(
                     "%s INDEX `%s` ON `%s` (%s)",
                     idx.isUnique() ? "CREATE UNIQUE" : "CREATE",
-                    idx.getName(),
+                    String.format("%s_%s", table.getName(), idx.getName()),
                     table.getName(),
                     String.join(", ", columnNames)
                 )
@@ -236,10 +235,8 @@ public class SQLiteConverter extends Converter {
         // Execute SQL statements
 
         for (String sql : statements) {
-            try {
-                try (Statement statement = connection.createStatement()) {
-                    statement.executeUpdate(sql);
-                }
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate(sql);
             } catch (SQLException e) {
                 Error(String.format("Could not execute statement on table '%s'", table.getName()), e, methodName, sql);
                 return false;
@@ -281,68 +278,62 @@ public class SQLiteConverter extends Converter {
                 Triple.of("VARCHAR(50)", getDefaultValue(defaultValue, "{00000000-0000-0000-0000-000000000000}", true), false);
             case "TEXT" ->
                 Triple.of("VARCHAR(255)", getDefaultValue(defaultValue, "", true), false);
-            case "BINARY", "OLE" ->
+            case "BINARY" ->
                 Triple.of("BLOB", null, null);
+            case "COMPLEX_TYPE", "OLE" ->
+                Triple.of("TEXT", null, null);
             default ->
                 Triple.of("VARCHAR(255)", getDefaultValue(defaultValue, "", true), false);
         };
     }
-    
+
     private boolean insertData(Table table) {
         final String methodName = "insertData";
         boolean result = false;
-        
+
         if (table.getRowCount() == 0)
             return true;
-        
+
         String tableName = table.getName();
         TextStringBuilder sql = new TextStringBuilder();
-        TextStringBuilder insertHeader = new TextStringBuilder();
-        
-        insertHeader.append("INSERT INTO `%s` (", tableName);
-        boolean isFirst = true;
-        
-        for (Column column : table.getColumns()) {
-            if (!isFirst)
-                insertHeader.append(", ");
-            else
-                isFirst = false;
-            insertHeader.append("`%s`", column.getName());
-        }
-        
-        insertHeader.append(") VALUES (");
+        List<String> columnNames = table.getColumns()
+            .stream()
+            .map(Column::getName)
+            .collect(Collectors.toList());
 
-        boolean isFirstColumn;
+        sql.append(
+            "INSERT INTO `%s` (%s) VALUES (%s)",
+            tableName,
+            String.join(", ", Utils.quoteSqlNames(columnNames)),
+            String.join(", ", new ArrayList<String>(Collections.nCopies(table.getColumns().size(), "?")))
+        );
+
         int autoIncrement = -1;
         boolean hasAutoIncrement = false;
-        
-        Statement statement = null;
-        
-        try {
+
+        try (
+            Statement statement = connection.createStatement();
+            PreparedStatement ps = connection.prepareStatement(sql.build());
+        ) {
             connection.setAutoCommit(true);
-            statement = connection.createStatement();
-            
+            sql.clear();
+
+            int batchCount = 0;
+
             for (Row row : table) {
-                isFirstColumn = true;
-                sql.append(insertHeader);
-
                 for (Column column : table.getColumns()) {
-                    String type = column.getType().toString().toUpperCase();
-                    String name = column.getName();
-
-                    if (!isFirstColumn)
-                        sql.append(", ");
-                    else
-                        isFirstColumn = false;
+                    var type = column.getType().toString().toUpperCase();
+                    var name = column.getName();
+                    var columnIndex = column.getColumnIndex() + 1;
 
                     try {
                         switch (type) {
                             case "BYTE": {
-                                sql.append(row.getByte(name).byteValue());
+                                ps.setByte(columnIndex, row.getByte(name).byteValue());
                                 break;
                             }
                             case "INT": {
-                                sql.append(row.getShort(name).shortValue());
+                                ps.setInt(columnIndex, row.getShort(name).shortValue());
                                 break;
                             }
                             case "LONG": {
@@ -350,34 +341,35 @@ public class SQLiteConverter extends Converter {
                                     hasAutoIncrement = true;
                                     autoIncrement = Math.max(autoIncrement, row.getInt(name));
                                 }
-                                sql.append(row.getInt(name).intValue());
+
+                                ps.setInt(columnIndex, row.getInt(name).intValue());
                                 break;
                             }
                             case "FLOAT": {
-                                sql.append(Globals.defaultIfNullFloat(row.getFloat(name)));
+                                ps.setFloat(columnIndex, Globals.defaultIfNullFloat(row.getFloat(name)));
                                 break;
                             }
                             case "DOUBLE": {
-                                sql.append(Globals.defaultIfNullDouble(row.getDouble(name)));
+                                ps.setDouble(columnIndex, Globals.defaultIfNullDouble(row.getDouble(name)));
                                 break;
                             }
                             case "NUMERIC":
                             case "MONEY": {
-                                sql.append(Globals.defaultIfNullBigDecimal(row.getBigDecimal(name)));
+                                ps.setBigDecimal(columnIndex, Globals.defaultIfNullBigDecimal(row.getBigDecimal(name)));
                                 break;
                             }
                             case "BOOLEAN": {
-                                sql.append(row.getBoolean(name) ? 1 : 0);
+                                ps.setBoolean(columnIndex, row.getBoolean(name));
                                 break;
                             }
                             case "SHORT_DATE_TIME": {
                                 LocalDateTime value = row.getLocalDateTime(name);
 
                                 if (value == null) {
-                                    sql.append("NULL");
+                                    ps.setNull(columnIndex, Types.DATE);
                                 } else {
                                     DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                                    sql.append("'%s'", value.format(format));
+                                    ps.setTimestamp(columnIndex, Timestamp.valueOf(value.format(format)));
                                 }
 
                                 break;
@@ -385,88 +377,117 @@ public class SQLiteConverter extends Converter {
                             case "MEMO":
                             case "GUID":
                             case "TEXT": {
-                                sql.append("'%s'", Utils.escapeSingleQuotes(row.getString(name)));
-                            	break;
-                            }
-                            case "BINARY":
-                            case "OLE": {
-                                byte[] data = row.getBytes(name);
-                                if (data.length > 0) {
-                                    sql.append("x'%s'", Hex.encodeHexString(data));
-
-                                    // final String hexAlphabet = "0123456789ABCDEF";
-                                    // sql.append("x'");
-                                    // for (byte b: data) {
-                                    //     sql.append(hexAlphabet.charAt((b & 0xF0) >> 4)).append(hexAlphabet.charAt((b & 0x0F)));
-                                    // }
-                                    // sql.append("'");
-                                } else {
-                                    sql.append("NULL");
-                                }
+                                ps.setString(columnIndex, row.getString(name));
                                 break;
                             }
-                            case "COMPLEX_TYPE":
+                            case "BINARY": {
+                                byte[] data = row.getBytes(name);
+
+                                if (data.length > 0) {
+                                    ps.setBytes(columnIndex, data);
+                                } else {
+                                    ps.setNull(columnIndex, Types.BLOB);
+                                }
+
+                                break;
+                            }
+                            case "OLE": {
+                                var fileValue = new FileValue(args, Globals.OUTPUT_SQLITE, this);
+
+                                try {
+                                    if (fileValue.handleOle(column, row, row.getBlob(name))) {
+                                        var json = fileValue.getRecordsJson();
+                                        ps.setString(columnIndex, json);
+                                    } else {
+                                        ps.setNull(columnIndex, Types.BLOB);
+                                    }
+                                } catch (IOException e) {
+                                    ps.setNull(columnIndex, Types.BLOB);
+                                    Error(
+                                        String.format(
+                                            "Count not fetch OLE data for column '%s' (%s) in table '%s'",
+                                            name, row.getId().hashCode(), tableName
+                                        )
+                                    );
+                                }
+
+                                break;
+                            }
+                            case "COMPLEX_TYPE": {
+                                if (column.getComplexInfo().getType().name() == "ATTACHMENT") {
+                                    try {
+                                        ComplexValueForeignKey valueFk =
+                                            (ComplexValueForeignKey)column.getRowValue(row);
+                                        List<Attachment> attachments = valueFk.getAttachments();
+
+                                        if (!attachments.isEmpty()) {
+                                            var fileValue = new FileValue(args, Globals.OUTPUT_SQLITE, this);
+
+                                            if (fileValue.handleAttachments(column, row, attachments)) {
+                                                var json = fileValue.getRecordsJson();
+                                                ps.setString(columnIndex, json);
+                                            } else {
+                                                ps.setNull(columnIndex, Types.BLOB);
+                                            }
+                                        } else {
+                                            ps.setNull(columnIndex, Types.BLOB);
+                                        }
+                                    } catch (IOException ex) {
+                                        ps.setNull(columnIndex, Types.BLOB);
+                                        Error(
+                                            String.format(
+                                                "Count not fetch attachments for column '%s' (%s) in table '%s'",
+                                                name, row.getId().hashCode(), tableName
+                                            )
+                                        );
+                                    }
+                                } else {
+                                    ps.setNull(columnIndex, Types.BLOB);
+                                }
+
+                                break;
+                            }
                             default: {
-                                sql.append("NULL");
+                                ps.setNull(columnIndex, Types.BLOB);
                                 break;
                             }
                         }
                     } catch (NullPointerException e) {
-                        sql.append("NULL");
+                        ps.setNull(columnIndex, Types.BLOB);
                     }
                 }
 
-                sql.append(")");
-                
-                try {
-                    statement.executeUpdate(sql.build());
-                    AccessConverter.progressStatus.step();
-                } catch(SQLException e) {
-                    Error(String.format("Could not insert to table '%s'; Continue to next row", table.getName()), e, methodName, sql.build());
+                ps.addBatch();
+
+                if (++batchCount == 500) {
+                    ps.executeBatch();
+                    batchCount = 0;
                 }
-                
-                sql.clear();
-                
-                //if(AccessConverter.progressStatus.currentTableCurrentRow > 10) break;
+
+                AccessConverter.progressStatus.step();
             }
-            
-            //connection.commit();
-            
+
+            if (batchCount != 500) {
+                ps.executeBatch();
+            }
+
             if (hasAutoIncrement) {
-                //System.out.printf("Adding autoIncrement %s", autoIncrement);
                 statement.executeUpdate(String.format("UPDATE SQLITE_SEQUENCE SET seq = %d WHERE name = '%s'", autoIncrement, tableName));
-                //connection.commit();
             }
-            
+
             result = true;
         } catch (SQLException e) {
-            //lastError.add(String.format("Could not create table '%s'", table.getName()));
-            //AccessConverter.Error(String.format("Could not insert to table '%s'", table.getName()));
-            //Error(String.format("Could not insert to table '%s'", table.getName()), e, methodName, sql.build());
             Error(String.format("Could not create statement for table '%s'", table.getName()), e, methodName);
             result = false;
         } finally {
-            if (statement != null) {
-                try {
-                    statement.close();
-                } catch (SQLException e) {
-                    //lastError.add("Could not close connection statement");
-                    //AccessConverter.Error("Could not close connection statement");
-                    Error("Could not close connection statement", e, methodName);
-                    result = false;
-                }
-            }
-            
             try {
                 connection.setAutoCommit(true);
             } catch (SQLException e) {
-                //lastError.add("Could not restore connection auto commit");
-                //AccessConverter.Error("Could not restore connection auto commit");
                 Error("Could not restore connection auto commit", e, methodName);
                 result = false;
             }
         }
-        
+
         return result;
     }
 }

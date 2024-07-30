@@ -56,12 +56,12 @@ public class MySQLConverter extends Converter {
     public final String DefaultCharset = "utf8mb4";
     public final String DefaultEngine = "InnoDB";
     public final int DefaultMaxInsertRows = 100;
-    
+
     public String collate = DefaultCollate;
     public String charset = DefaultCharset;
     public String engine = DefaultEngine;
     public int maxInsertRows = DefaultMaxInsertRows;
-    
+
     public class AutoIncrement {
         public int maxId = 0;
         public String columnName;
@@ -88,25 +88,25 @@ public class MySQLConverter extends Converter {
         public String onDelete = null;
         public String onUpdate = null;
     }
-    
+
     public Database db;
     public Args args;
     public Map<String, AutoIncrement> autoIncrements = new HashMap<>();
     public List<IndexDefinitions> indexes = new ArrayList<>();
     public List<RelationshipDefinitions> relationships = new ArrayList<>();
-    public TextStringBuilder sqlDump;
-    
-    public MySQLConverter(Args args, Database db) {
+    private SqlFileWriter sqlWriter;
+
+    public MySQLConverter(Args args, Database db, SqlFileWriter sqlWriter) {
         this.args = args;
         this.db = db;
+        this.sqlWriter = sqlWriter;
     }
-    
+
     public boolean toMySQLDump() {
         boolean result = false;
         final String methodName = "toMySQLDump";
-        
+
         try {
-            sqlDump = new TextStringBuilder();
             addHeader();
             Set<String> tableNames = db.getTableNames();
 
@@ -123,7 +123,7 @@ public class MySQLConverter extends Converter {
                     Error(String.format("Could not load table '%s'", tableName), e, methodName);
                 }
             });
-            
+
             addRelationships();
             addFooter();
             AccessConverter.progressStatus.resetLine();
@@ -131,68 +131,68 @@ public class MySQLConverter extends Converter {
         } catch (IOException e) {
             Error("Could not fetch tables from the database", e, methodName);
         }
-        
+
         return result;
     }
 
-    private void addHeader() {
-        sqlDump.appendln("-- %s", Application.Title);
-        sqlDump.appendln("-- version %s", Application.Version);
-        sqlDump.appendln("-- author %s", Application.Author);
-        sqlDump.appendln("-- %s", Application.Web);
-        sqlDump.appendln("--");
+    private void addHeader() throws IOException {
+        sqlWriter.writeln("-- %s", Application.Title);
+        sqlWriter.writeln("-- version %s", Application.Version);
+        sqlWriter.writeln("-- author %s", Application.Author);
+        sqlWriter.writeln("-- %s", Application.Web);
+        sqlWriter.writeln("--");
         Locale locale = new Locale("en", "US");
         String generationTime = LocalDateTime.now().format(
             DateTimeFormatter.ofPattern("EEE d, yyyy 'at' hh:mm a", locale)
         );
-        sqlDump.appendln("-- Generation time: %s", generationTime);
-        sqlDump.appendNewLine();
-        
-        sqlDump.appendln("SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";");
-        sqlDump.appendln("SET AUTOCOMMIT = 0;");
-        sqlDump.appendln("START TRANSACTION;");
-        sqlDump.appendln("SET time_zone = \"+00:00\";");
-        
-        sqlDump.appendNewLine();
-        sqlDump.appendNewLine();
-        
-        sqlDump.appendln("/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;");
-        sqlDump.appendln("/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;");
-        sqlDump.appendln("/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;");
-        sqlDump.appendln("/*!40101 SET NAMES %s */;", charset);
-        sqlDump.appendNewLine();
+        sqlWriter.writeln("-- Generation time: %s", generationTime);
+        sqlWriter.writeNewLine();
+
+        sqlWriter.writeln("SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";");
+        sqlWriter.writeln("SET AUTOCOMMIT = 0;");
+        sqlWriter.writeln("START TRANSACTION;");
+        sqlWriter.writeln("SET time_zone = \"+00:00\";");
+
+        sqlWriter.writeNewLine();
+        sqlWriter.writeNewLine();
+
+        sqlWriter.writeln("/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;");
+        sqlWriter.writeln("/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;");
+        sqlWriter.writeln("/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;");
+        sqlWriter.writeln("/*!40101 SET NAMES %s */;", charset);
+        sqlWriter.writeNewLine();
     }
-    
-    private void addFooter() {
-        sqlDump.appendln("COMMIT;");
-        sqlDump.appendNewLine();
-        
-        sqlDump.appendln("/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;");
-        sqlDump.appendln("/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;");
-        sqlDump.appendln("/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;");
-        sqlDump.appendNewLine();
+
+    private void addFooter() throws IOException {
+        sqlWriter.writeln("COMMIT;");
+        sqlWriter.writeNewLine();
+
+        sqlWriter.writeln("/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;");
+        sqlWriter.writeln("/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;");
+        sqlWriter.writeln("/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;");
+        sqlWriter.writeNewLine();
     }
-    
+
     private void addTableCreate(Table table) throws IOException {
-        if(args.HasFlag("mysql-drop-tables")) {
-            sqlDump.appendln("--");
-            sqlDump.appendln("-- Drop table `%s` if exists", table.getName());
-            sqlDump.appendln("--");
-            sqlDump.appendNewLine();
-            sqlDump.appendln("DROP TABLE IF EXISTS `%s`;", table.getName());
-            sqlDump.appendNewLine();
+        if (args.HasFlag("mysql-drop-tables")) {
+            sqlWriter.writeln("--");
+            sqlWriter.writeln("-- Drop table `%s` if exists", table.getName());
+            sqlWriter.writeln("--");
+            sqlWriter.writeNewLine();
+            sqlWriter.writeln("DROP TABLE IF EXISTS `%s`;", table.getName());
+            sqlWriter.writeNewLine();
         }
-        
-        sqlDump.appendln("--");
-        sqlDump.appendln("-- Table structure for table `%s`", table.getName());
-        sqlDump.appendln("--");
-        sqlDump.appendNewLine();
-        
-        sqlDump.appendln("CREATE TABLE IF NOT EXISTS `%s` (", table.getName());
-        
+
+        sqlWriter.writeln("--");
+        sqlWriter.writeln("-- Table structure for table `%s`", table.getName());
+        sqlWriter.writeln("--");
+        sqlWriter.writeNewLine();
+
+        sqlWriter.writeln("CREATE TABLE IF NOT EXISTS `%s` (", table.getName());
+
         boolean isFirst = true;
-        
-        for (Column column: table.getColumns()) {
+
+        for (Column column : table.getColumns()) {
             String name = column.getName();
             String type = column.getType().toString().toUpperCase();
             short length = column.getLength();
@@ -207,19 +207,20 @@ public class MySQLConverter extends Converter {
                     defaultValue = Utils.removeQuotation(defaultColVal.toString());
                 }
 
-                required = ((Boolean)column.getProperties().getValue(PropertyMap.REQUIRED_PROP, false));
+                required = (Boolean) column.getProperties().getValue(PropertyMap.REQUIRED_PROP, false);
             } catch (IOException e) {}
 
             Boolean notNull = required;
             String defVal = defaultValue != null ? defaultValue : "0";
             Boolean isDefaultValueModifier = false;
-            
-            if (!isFirst)
-                sqlDump.appendln(",");
-            else
+
+            if (!isFirst) {
+                sqlWriter.writeln(",");
+            } else {
                 isFirst = false;
-            
-            sqlDump.append("  `%s` ", name);
+            }
+
+            sqlWriter.write("  `%s` ", name);
 
             switch (type) {
                 case "BYTE":
@@ -230,29 +231,29 @@ public class MySQLConverter extends Converter {
                         autoIncrement.tableName = table.getName();
                         autoIncrement.columnName = name;
                         autoIncrements.put(autoIncrement.tableName, autoIncrement);
-                        sqlDump.append("INT(10) UNSIGNED");
+                        sqlWriter.write("INT(10) UNSIGNED");
                         notNull = true;
                         defVal = null;
                     } else {
                         switch (length) {
                             case 1: {
-                                sqlDump.append("TINYINT(3)");
+                                sqlWriter.write("TINYINT(3)");
                                 break;
                             }
                             case 2: {
-                                sqlDump.append("SMALLINT(5)");
+                                sqlWriter.write("SMALLINT(5)");
                                 break;
                             }
                             // case 4:
                             // case 6:
                             default: {
-                                sqlDump.append("INT(10)");
+                                sqlWriter.write("INT(10)");
                             }
                         }
 
                         // If the column has a relationship,
                         // make it unsigned because relationships will fail otherwise
-                        for (Relationship rel: this.db.getRelationships(table)) {
+                        for (Relationship rel : this.db.getRelationships(table)) {
                             if (!rel.getToTable().getName().equals(table.getName())) {
                                 continue;
                             }
@@ -260,7 +261,7 @@ public class MySQLConverter extends Converter {
                             // Related column is auto increment, thus we have to make it unsigned
                             boolean hasAutoIncrementRelationship = false;
 
-                            for (Column relFromCol: rel.getFromColumns()) {
+                            for (Column relFromCol : rel.getFromColumns()) {
                                 if (relFromCol.isAutoNumber()) {
                                     hasAutoIncrementRelationship = true;
                                     break;
@@ -271,9 +272,9 @@ public class MySQLConverter extends Converter {
                                 continue;
                             }
 
-                            for (Column relToCol: rel.getToColumns()) {
+                            for (Column relToCol : rel.getToColumns()) {
                                 if (relToCol.getName().equals(name)) {
-                                    sqlDump.append(" UNSIGNED");
+                                    sqlWriter.write(" UNSIGNED");
                                     break;
                                 }
                             }
@@ -282,24 +283,24 @@ public class MySQLConverter extends Converter {
                     break;
                 }
                 case "FLOAT": {
-                    sqlDump.append("FLOAT");
+                    sqlWriter.write("FLOAT");
                     break;
                 }
                 case "DOUBLE": {
-                    sqlDump.append("DOUBLE");
+                    sqlWriter.write("DOUBLE");
                     break;
                 }
                 case "NUMERIC": {
-                    sqlDump.append("DECIMAL(28,0)");
+                    sqlWriter.write("DECIMAL(28,0)");
                     break;
                 }
                 case "MONEY": {
-                    sqlDump.append("DECIMAL(15,4)");
+                    sqlWriter.write("DECIMAL(15,4)");
                     break;
                 }
                 case "BOOLEAN": {
                     defVal = Utils.booleanDefaultValue(defVal);
-                    sqlDump.append("TINYINT(3)");
+                    sqlWriter.write("TINYINT(3)");
                     break;
                 }
                 case "SHORT_DATE_TIME": {
@@ -310,62 +311,68 @@ public class MySQLConverter extends Converter {
                         isDefaultValueModifier = true;
                     }
 
-                    sqlDump.append("DATETIME");
+                    sqlWriter.write("DATETIME");
                     break;
                 }
                 case "MEMO": {
                     defVal = null;
                     useCollate = true;
-                    sqlDump.append("TEXT");
+                    sqlWriter.write("TEXT");
                     break;
                 }
                 case "GUID": {
                     defVal = defaultValue != null ? defaultValue : "{00000000-0000-0000-0000-000000000000}";
                     useCollate = true;
-                    sqlDump.append("VARCHAR(50)");
+                    sqlWriter.write("VARCHAR(50)");
                     break;
                 }
-                case "BINARY":
-                case "OLE": {
-                    sqlDump.append("BLOB");
+                case "BINARY": {
+                    sqlWriter.write("BLOB");
                     break;
                 }
+                case "OLE":
                 case "COMPLEX_TYPE": {
-                    // We will be storing complex type attachments as JSON data
-                    // with attachment info and binary data
-                    sqlDump.append("LONGTEXT");
+                    // We will be storing complex type attachments and OLE objects as JSON data
+                    // with attachment/content info and binary data or file paths
+                    sqlWriter.write("LONGTEXT");
+
+                    if (notNull) {
+                        defVal = "NULL";
+                        isDefaultValueModifier = true;
+                    }
+
                     break;
                 }
                 case "TEXT":
                 default: {
                     defVal = defaultValue != null ? defaultValue : "";
                     useCollate = true;
-                    sqlDump.append("VARCHAR(255)");
+                    sqlWriter.write("VARCHAR(255)");
                     break;
                 }
             }
 
             if (useCollate) {
-                sqlDump.append(" COLLATE %s", collate);
+                sqlWriter.write(" COLLATE %s", collate);
             }
 
             if (notNull) {
-                sqlDump.append(" NOT NULL");
+                sqlWriter.write(" NOT NULL");
             }
 
             if (defVal != null) {
                 if (isDefaultValueModifier) {
-                    sqlDump.append(" DEFAULT %s", defVal);
+                    sqlWriter.write(" DEFAULT %s", defVal);
                 } else {
                     // Add single quotes if it's not a modifier
-                    sqlDump.append(" DEFAULT '%s'", defVal);
+                    sqlWriter.write(" DEFAULT '%s'", defVal);
                 }
             }
         }
 
         // Make relationship definitions
 
-        for (Relationship rel: this.db.getRelationships(table)) {
+        for (Relationship rel : this.db.getRelationships(table)) {
             if (!table.getName().equals(rel.getToTable().getName())) {
                 continue;
             }
@@ -383,7 +390,7 @@ public class MySQLConverter extends Converter {
 
         // Make indexe definitions
 
-        for (Index idx: table.getIndexes()) {
+        for (Index idx : table.getIndexes()) {
             var index = new IndexDefinitions();
             index.name = idx.getName();
             index.tableName = table.getName();
@@ -392,98 +399,100 @@ public class MySQLConverter extends Converter {
             index.columns = Utils.quoteSqlNames(idx.getColumns().stream().map(c -> c.getName()).collect(Collectors.toList()));
             indexes.add(index);
         }
-        
-        sqlDump.appendNewLine();
-        sqlDump.appendln(") ENGINE=%s DEFAULT CHARSET=%s COLLATE=%s;", engine, charset, collate);
-        sqlDump.appendNewLine();
+
+        sqlWriter.writeNewLine();
+        sqlWriter.writeln(") ENGINE=%s DEFAULT CHARSET=%s COLLATE=%s;", engine, charset, collate);
+        sqlWriter.writeNewLine();
     }
-    
-    private void addTableInsert(Table table) {
-        if (table.getRowCount() == 0)
+
+    private void addTableInsert(Table table) throws IOException {
+        if (table.getRowCount() == 0) {
             return;
-        
-        String tableName = table.getName();
-        
-        sqlDump.appendln("--");
-        sqlDump.appendln(String.format("-- Dumping data for table `%s`", tableName));
-        sqlDump.appendln("--");
-        sqlDump.appendNewLine();
-        
-        TextStringBuilder insertHeader = new TextStringBuilder();
-        insertHeader.append(String.format("INSERT INTO `%s` (", tableName));
-        boolean isFirst = true;
-        
-        for (Column column : table.getColumns()) {
-            if (!isFirst)
-                insertHeader.append(", ");
-            else
-                isFirst = false;
-            insertHeader.append(String.format("`%s`", column.getName()));
         }
-        
-        insertHeader.appendln(") VALUES");
-        sqlDump.append(insertHeader);
+
+        String tableName = table.getName();
+        List<String> columnNames = table.getColumns()
+            .stream()
+            .map(Column::getName)
+            .collect(Collectors.toList());
+
+        sqlWriter.writeln("--");
+        sqlWriter.writeln(String.format("-- Dumping data for table `%s`", tableName));
+        sqlWriter.writeln("--");
+        sqlWriter.writeNewLine();
+
+        TextStringBuilder insertHeader = new TextStringBuilder();
+
+        insertHeader.append(
+            "INSERT INTO `%s` (%s) VALUES",
+            tableName,
+            String.join(", ", Utils.quoteSqlNames(columnNames))
+        );
+
+        sqlWriter.write(insertHeader);
+
         boolean isFirstRow = true;
         boolean isFirstColumn;
         int insertRows = 0;
-        
-        for (Row row : table) {
-            String rowId = row.getString("id");
 
-            if (!isFirstRow)
-                sqlDump.append(", ");
-            else
+        for (Row row : table) {
+            if (!isFirstRow) {
+                sqlWriter.write(", ");
+            } else {
                 isFirstRow = false;
-                
+            }
+
             isFirstColumn = true;
-            sqlDump.append("(");
-            
+            sqlWriter.write("(");
+
             for (Column column : table.getColumns()) {
                 String type = column.getType().toString().toUpperCase();
                 String name = column.getName();
-                
-                if (!isFirstColumn)
-                    sqlDump.append(", ");
-                else
+
+                if (!isFirstColumn) {
+                    sqlWriter.write(", ");
+                } else {
                     isFirstColumn = false;
-                
+                }
+
                 try {
                     switch (type) {
                         case "BYTE": {
-                            sqlDump.append(Utils.valueOrNull(row.getByte(name)));
+                            sqlWriter.write(Utils.valueOrNull(row.getByte(name)));
                             break;
                         }
                         case "INT": {
-                            sqlDump.append(Utils.valueOrNull(row.getShort(name)));
+                            sqlWriter.write(Utils.valueOrNull(row.getShort(name)));
                             break;
                         }
                         case "LONG": {
                             if (column.isAutoNumber() && autoIncrements.containsKey(tableName)) {
                                 autoIncrements.get(tableName).setMaxId(row.getInt(name));
                             }
-                            sqlDump.append(Utils.valueOrNull(row.getInt(name)));
+
+                            sqlWriter.write(Utils.valueOrNull(row.getInt(name)));
                             break;
                         }
                         case "FLOAT": {
-                            sqlDump.append(Utils.valueOrNull(row.getFloat(name)));
+                            sqlWriter.write(Utils.valueOrNull(row.getFloat(name)));
                             break;
                         }
                         case "DOUBLE": {
-                            sqlDump.append(Utils.valueOrNull(row.getDouble(name)));
+                            sqlWriter.write(Utils.valueOrNull(row.getDouble(name)));
                             break;
                         }
                         case "NUMERIC":
                         case "MONEY": {
-                            sqlDump.append(Utils.valueOrNull(row.getBigDecimal(name)));
+                            sqlWriter.write(Utils.valueOrNull(row.getBigDecimal(name)));
                             break;
                         }
                         case "BOOLEAN": {
                             var value = row.getBoolean(name);
 
                             if (value == null) {
-                                sqlDump.append("NULL");
+                                sqlWriter.write("NULL");
                             } else {
-                                sqlDump.append(value ? 1 : 0);
+                                sqlWriter.write(value ? 1 : 0);
                             }
 
                             break;
@@ -492,14 +501,12 @@ public class MySQLConverter extends Converter {
                             LocalDateTime value = row.getLocalDateTime(name);
 
                             if (value == null) {
-                                sqlDump.append("NULL");
+                                sqlWriter.write("NULL");
                             } else {
-                                
-                                // SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                                 DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                                // sqlDump.append("'%s'", format.format(value));
-                                sqlDump.append("'%s'", value.format(format));
+                                sqlWriter.write("'%s'", value.format(format));
                             }
+
                             break;
                         }
                         case "MEMO":
@@ -508,20 +515,44 @@ public class MySQLConverter extends Converter {
                             var value = row.getString(name);
 
                             if (value == null) {
-                                sqlDump.append("NULL");
+                                sqlWriter.write("NULL");
                             } else {
-                                sqlDump.append("'%s'", row.getString(name).replace("'", "''"));
+                                sqlWriter.write("'%s'", Utils.escapeSingleQuotes(row.getString(name)));
                             }
+
                             break;
                         }
-                        case "BINARY":
+                        case "BINARY": {
+                            byte[] data = row.getBytes(name);
+
+                            if (data.length > 0) {
+                                sqlWriter.write("UNHEX('%s')", Hex.encodeHexString(data));
+                            } else {
+                                sqlWriter.write("NULL");
+                            }
+
+                            break;
+                        }
                         case "OLE": {
-                            // byte[] data = row.getBytes(name);
-                            // if (data.length > 0) {
-                            //     sqlDump.append("UNHEX('%s')", Hex.encodeHexString(data));
-                            // } else {
-                                sqlDump.append("NULL");
-                            // }
+                            var fileValue = new FileValue(args, Globals.OUTPUT_MYSQL, this);
+
+                            try {
+                                if (fileValue.handleOle(column, row, row.getBlob(name))) {
+                                    var json = fileValue.getRecordsJson();
+                                    sqlWriter.write("'%s'", Utils.escapeSingleQuotes(json));
+                                } else {
+                                    sqlWriter.write("NULL");
+                                }
+                            } catch (IOException e) {
+                                sqlWriter.write("NULL");
+                                Error(
+                                    String.format(
+                                        "Count not fetch OLE data for column '%s' (%s) in table '%s'",
+                                        name, row.getId().hashCode(), tableName
+                                    )
+                                );
+                            }
+
                             break;
                         }
                         case "COMPLEX_TYPE": {
@@ -532,82 +563,80 @@ public class MySQLConverter extends Converter {
                                     List<Attachment> attachments = valueFk.getAttachments();
 
                                     if (!attachments.isEmpty()) {
-                                        var fileValue = new FileValue(args, Globals.OUTPUT_SQLITE, this);
-                                        
+                                        var fileValue = new FileValue(args, Globals.OUTPUT_MYSQL, this);
+
                                         if (fileValue.handleAttachments(column, row, attachments)) {
                                             var json = fileValue.getRecordsJson();
-                                            sqlDump.append("'%s'", Utils.escapeSingleQuotes(json));
+                                            sqlWriter.write("'%s'", Utils.escapeSingleQuotes(json));
                                         } else {
-                                            sqlDump.append("NULL");
+                                            sqlWriter.write("NULL");
                                         }
-
-                                        // for (Attachment attachment : attachments) {
-                                        //     System.out.println(
-                                        //         String.format(
-                                        //             "Attachment: %s, type %s",
-                                        //             attachment.getFileName(),
-                                        //             attachment.getFileType()
-                                        //         )
-                                        //     );
-                                        // }
-
-                                        // sqlDump.append("NULL");
                                     } else {
-                                        sqlDump.append("NULL");
+                                        sqlWriter.write("NULL");
                                     }
                                 } catch (IOException ex) {
-                                    sqlDump.append("NULL");
+                                    sqlWriter.write("NULL");
+                                    Error(
+                                        String.format(
+                                            "Count not fetch attachments for column '%s' (%s) in table '%s'",
+                                            name, row.getId().hashCode(), tableName
+                                        )
+                                    );
                                 }
-
-                                // sqlDump.append("UNHEX('%s')", Hex.encodeHexString(row.getBytes(name)));
                             } else {
-                                sqlDump.append("NULL");
+                                sqlWriter.write("NULL");
                             }
+
                             break;
                         }
                         default: {
-                            sqlDump.append("NULL");
+                            sqlWriter.write("NULL");
                             break;
                         }
                     }
                 } catch (NullPointerException e) {
-                    sqlDump.append("NULL");
+                    sqlWriter.write("NULL");
                 }
             }
 
-            sqlDump.append(")");
+            sqlWriter.write(")");
 
             if (++insertRows >= maxInsertRows) {
-                sqlDump.appendln(";");
-                sqlDump.append(insertHeader);
+                sqlWriter.writeln(";");
+                sqlWriter.write(insertHeader);
+                sqlWriter.flush();
                 insertRows = 0;
                 isFirstRow = true;
             }
+
+            AccessConverter.progressStatus.step();
         }
 
-        if(!isFirstRow)
-            sqlDump.appendln(";");
+        if (!isFirstRow) {
+            sqlWriter.writeln(";");
+            sqlWriter.flush();
+        }
     }
-    
-    public void addAutoIncrements() {
+
+    public void addAutoIncrements() throws IOException {
         Boolean infoAdded = false;
 
         for (AutoIncrement autoIncrement : autoIncrements.values()) {
             if (!infoAdded) {
-                sqlDump.appendln("--");
-                sqlDump.appendln("-- AUTO_INCREMENT for table `%s`", autoIncrement.tableName);
-                sqlDump.appendln("--");
-                sqlDump.appendNewLine();
+                sqlWriter.writeln("--");
+                sqlWriter.writeln("-- AUTO_INCREMENT for table `%s`", autoIncrement.tableName);
+                sqlWriter.writeln("--");
+                sqlWriter.writeNewLine();
                 infoAdded = true;
             }
 
-            sqlDump.appendln("ALTER TABLE `%s`", autoIncrement.tableName);
-            sqlDump.appendln(
-                "  MODIFY `%s` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=%d;", 
-                autoIncrement.columnName, 
+            sqlWriter.writeln("ALTER TABLE `%s`", autoIncrement.tableName);
+            sqlWriter.writeln(
+                "  MODIFY `%s` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=%d;",
+                autoIncrement.columnName,
                 autoIncrement.maxId + 1
             );
-            sqlDump.appendNewLine();
+            sqlWriter.writeNewLine();
         }
 
         if (!autoIncrements.isEmpty()) {
@@ -615,34 +644,34 @@ public class MySQLConverter extends Converter {
         }
     }
 
-    public void addIndexes() {
+    public void addIndexes() throws IOException {
         Boolean infoAdded = false;
 
         for (IndexDefinitions index : indexes) {
             if (!infoAdded) {
-                sqlDump.appendln("--");
-                sqlDump.appendln("-- Indexes for table `%s`", index.tableName);
-                sqlDump.appendln("--");
-                sqlDump.appendNewLine();
+                sqlWriter.writeln("--");
+                sqlWriter.writeln("-- Indexes for table `%s`", index.tableName);
+                sqlWriter.writeln("--");
+                sqlWriter.writeNewLine();
                 infoAdded = true;
             }
 
             var columns = String.join(", ", index.columns);
 
             if (index.isPrimary) {
-                sqlDump.appendln("ALTER TABLE `%s`", index.tableName);
-                sqlDump.appendln("  ADD PRIMARY KEY (%s);", columns);
+                sqlWriter.writeln("ALTER TABLE `%s`", index.tableName);
+                sqlWriter.writeln("  ADD PRIMARY KEY (%s);", columns);
             } else {
                 if (index.isUnique) {
-                    sqlDump.appendln("CREATE UNIQUE INDEX `%s`", index.name);
+                    sqlWriter.writeln("CREATE UNIQUE INDEX `%s`", index.name);
                 } else {
-                    sqlDump.appendln("CREATE INDEX `%s`", index.name);
+                    sqlWriter.writeln("CREATE INDEX `%s`", index.name);
                 }
 
-                sqlDump.appendln("  ON `%s` (%s);", index.tableName, columns);
+                sqlWriter.writeln("  ON `%s` (%s);", index.tableName, columns);
             }
 
-            sqlDump.appendNewLine();
+            sqlWriter.writeNewLine();
         }
 
         if (!indexes.isEmpty()) {
@@ -650,45 +679,45 @@ public class MySQLConverter extends Converter {
         }
     }
 
-    public void addRelationships() {
+    public void addRelationships() throws IOException {
         List<String> infoAddedForTable = new ArrayList<>();
 
         for (RelationshipDefinitions rel : relationships) {
             if (!infoAddedForTable.contains(rel.tableName)) {
-                sqlDump.appendln("--");
-                sqlDump.appendln("-- Relationships for table `%s`", rel.tableName);
-                sqlDump.appendln("--");
-                sqlDump.appendNewLine();
+                sqlWriter.writeln("--");
+                sqlWriter.writeln("-- Relationships for table `%s`", rel.tableName);
+                sqlWriter.writeln("--");
+                sqlWriter.writeNewLine();
                 infoAddedForTable.add(rel.tableName);
             }
 
-            sqlDump.appendln("ALTER TABLE `%s`", rel.tableName);
+            sqlWriter.writeln("ALTER TABLE `%s`", rel.tableName);
 
             if (rel.name != null) {
-                sqlDump.appendln("  ADD CONSTRAINT `%s` FOREIGN KEY", rel.name);
+                sqlWriter.writeln("  ADD CONSTRAINT `%s` FOREIGN KEY", rel.name);
             } else {
-                sqlDump.appendln("  ADD FOREIGN KEY");
+                sqlWriter.writeln("  ADD FOREIGN KEY");
             }
 
-            sqlDump.appendln("  (%s)", String.join(", ", rel.columns));
-            sqlDump.append(
+            sqlWriter.writeln("  (%s)", String.join(", ", rel.columns));
+            sqlWriter.write(
                 "  REFERENCES `%s` (%s)",
                 rel.refTableName,
                 String.join(", ", rel.refColumns)
             );
 
             if (rel.onDelete != null) {
-                sqlDump.appendNewLine();
-                sqlDump.append("  ON DELETE %s", rel.onDelete);
+                sqlWriter.writeNewLine();
+                sqlWriter.write("  ON DELETE %s", rel.onDelete);
             }
 
             if (rel.onUpdate != null) {
-                sqlDump.appendNewLine();
-                sqlDump.append("  ON UPDATE %s", rel.onUpdate);
+                sqlWriter.writeNewLine();
+                sqlWriter.write("  ON UPDATE %s", rel.onUpdate);
             }
 
-            sqlDump.appendln(";");
-            sqlDump.appendNewLine();
+            sqlWriter.writeln(";");
+            sqlWriter.writeNewLine();
         }
 
         if (!relationships.isEmpty()) {

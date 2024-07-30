@@ -23,40 +23,59 @@
  */
 package com.lytrax.accessconverter;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+
+import org.apache.commons.text.TextStringBuilder;
+
 /**
  *
  * @author Christos Lytras {@literal <christos.lytras@gmail.com>}
  */
-public abstract class Converter {
-    String logSource(String method) {
-        return String.format("%s:%s", this.getClass().getSimpleName(), method);
+public class SqlFileWriter implements AutoCloseable {
+    private FileWriter writer;
+
+    public SqlFileWriter(File file) throws IOException {
+        writer = new FileWriter(file);
     }
 
-    String logSource() {
-        return String.format("%s", this.getClass().getSimpleName());
+    @Override
+    public void close() throws IOException {
+        writer.close();
     }
 
-    void Log(String text) {
-        AccessConverter.Log(text, logSource());
+    public void write(String str) throws IOException {
+        writer.write(str);
     }
 
-    void Log(String text, String source) {
-        AccessConverter.Log(text, logSource(source));
+    public void write(Integer i) throws IOException {
+        writer.write(i.toString());
     }
 
-    void Error(String error) {
-        AccessConverter.Error(error, null, logSource());
+    public void write(TextStringBuilder sb) throws IOException {
+        writer.write(sb.toString());
     }
 
-    void Error(String error, Exception exception) {
-        AccessConverter.Error(error, exception, logSource());
+    public void write(String format, Object... args) throws IOException {
+        writer.write(String.format(format, args));
     }
 
-    void Error(String error, Exception exception, String source) {
-        AccessConverter.Error(error, exception, logSource(source));
+    public void writeln(String str) throws IOException {
+        writer.write(str);
+        writer.write("\n");
     }
 
-    void Error(String error, Exception exception, String source, String sql) {
-        AccessConverter.Error(error, exception, logSource(source), sql);
+    public void writeln(String format, Object... args) throws IOException {
+        writer.write(String.format(format, args));
+        writer.write("\n");
+    }
+
+    public void writeNewLine() throws IOException {
+        writer.write("\n");
+    }
+
+    public void flush() throws IOException {
+        writer.flush();
     }
 }

@@ -6,7 +6,7 @@
 
     <groupId>com.lytrax</groupId>
     <artifactId>accessconverter</artifactId>
-    <version>1.1.1</version>
+    <version>2.0</version>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -25,14 +25,9 @@
             <version>2.5</version>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-            <version>2.6</version>
-        </dependency>
-        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.6</version>
+            <version>3.15.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -69,6 +64,12 @@
             <artifactId>gson</artifactId>
             <version>2.11.0</version>
         </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>1.6.1</version>
+        </dependency>
+
     </dependencies>
 
 </project>

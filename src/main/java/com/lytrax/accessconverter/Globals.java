@@ -24,6 +24,7 @@
 package com.lytrax.accessconverter;
 
 import com.healthmarketscience.jackcess.Column;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
@@ -38,44 +39,52 @@ public class Globals {
 
     public static double floatValue(Object value, Column column) {
         Byte precission = column.getPrecision();
-        if(precission == 0) precission = 2;
+
+        if (precission == 0) {
+            precission = 2;
+        }
+
         Double number = Double.valueOf(value.toString());
         BigDecimal bigDecimal = new BigDecimal(number);
         BigDecimal roundedWithScale = bigDecimal.setScale(precission, RoundingMode.HALF_UP);
+
         return Double.valueOf(roundedWithScale.toString());
     }
-    
+
     public static long defaultIfNullLong(Long l) {
         return defaultIfNullLong(l, 0);
     }
 
     public static long defaultIfNullLong(Long l, long defaultValue) {
-        if(l == null)
+        if (l == null) {
             return defaultValue;
-        else
-            return l;
+        }
+
+        return l;
     }
-    
+
     public static double defaultIfNullInteger(Integer i) {
         return defaultIfNullInteger(i, 0);
     }
 
     public static double defaultIfNullInteger(Integer i, int defaultValue) {
-        if(i == null)
+        if (i == null) {
             return defaultValue;
-        else
-            return i;
+        }
+
+        return i;
     }
-    
-    public static double defaultIfNullFloat(Float f) {
+
+    public static float defaultIfNullFloat(Float f) {
         return defaultIfNullFloat(f, 0.0f);
     }
 
-    public static double defaultIfNullFloat(Float f, float defaultValue) {
-        if(f == null)
+    public static float defaultIfNullFloat(Float f, float defaultValue) {
+        if (f == null) {
             return defaultValue;
-        else
-            return f;
+        }
+
+        return f;
     }
 
     public static double defaultIfNullDouble(Double d) {
@@ -83,20 +92,22 @@ public class Globals {
     }
 
     public static double defaultIfNullDouble(Double d, double defaultValue) {
-        if(d == null)
+        if (d == null) {
             return defaultValue;
-        else
-            return d;
+        }
+
+        return d;
     }
-    
-    public static double defaultIfNullBigDecimal(BigDecimal d) {
+
+    public static BigDecimal defaultIfNullBigDecimal(BigDecimal d) {
         return defaultIfNullBigDecimal(d, 0.0);
     }
 
-    public static double defaultIfNullBigDecimal(BigDecimal d, double defaultValue) {
-        if(d == null)
-            return defaultValue;
-        else
-            return d.doubleValue();
+    public static BigDecimal defaultIfNullBigDecimal(BigDecimal d, double defaultValue) {
+        if (d == null) {
+            return BigDecimal.valueOf(defaultValue);
+        }
+
+        return d;
     }
 }

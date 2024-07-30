@@ -59,7 +59,7 @@ public class Utils {
         if (value.equalsIgnoreCase("No")) {
             return falseValue;
         }
-        
+
         return value;
     }
 
