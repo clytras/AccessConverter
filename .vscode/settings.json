@@ -1,0 +1,6 @@
+{
+  "java.configuration.updateBuildConfiguration": "interactive",
+  "[java]": {
+    "editor.tabSize": 4
+  }
+}

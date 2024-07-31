@@ -23,14 +23,59 @@
  */
 package com.lytrax.accessconverter;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+
+import org.apache.commons.text.TextStringBuilder;
+
 /**
  *
  * @author Christos Lytras {@literal <christos.lytras@gmail.com>}
  */
-public class Application {
-    public static String Version = "1.1.2";
-    public static String Name = "AccessConverter";
-    public static String Title = "Access Converter";
-    public static String Author = "Christos Lytras <christos.lytras@gmail.com>";
-    public static String Web = "https://lytrax.io/blog/tools/access-converter";
+public class SqlFileWriter implements AutoCloseable {
+    private FileWriter writer;
+
+    public SqlFileWriter(File file) throws IOException {
+        writer = new FileWriter(file);
+    }
+
+    @Override
+    public void close() throws IOException {
+        writer.close();
+    }
+
+    public void write(String str) throws IOException {
+        writer.write(str);
+    }
+
+    public void write(Integer i) throws IOException {
+        writer.write(i.toString());
+    }
+
+    public void write(TextStringBuilder sb) throws IOException {
+        writer.write(sb.toString());
+    }
+
+    public void write(String format, Object... args) throws IOException {
+        writer.write(String.format(format, args));
+    }
+
+    public void writeln(String str) throws IOException {
+        writer.write(str);
+        writer.write("\n");
+    }
+
+    public void writeln(String format, Object... args) throws IOException {
+        writer.write(String.format(format, args));
+        writer.write("\n");
+    }
+
+    public void writeNewLine() throws IOException {
+        writer.write("\n");
+    }
+
+    public void flush() throws IOException {
+        writer.flush();
+    }
 }

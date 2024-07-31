@@ -1,0 +1,32 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "AccessConverter",
+            "request": "launch",
+            "mainClass": "com.lytrax.accessconverter.AccessConverter",
+            "projectName": "accessconverter",
+            "args": "-compress --access-file \".\\samples\\Northwind-2007.accdb\" --task convert-sqlite -show-progress"
+            // "args": "-compress --access-file \".\\samples\\allTypes.accdb\" --task convert-sqlite"
+            // "args": "-compress --access-file \".\\samples\\allTypes.accdb\" --task convert-json --files-mode inline -show-progress"
+            // "args": "-compress --access-file \".\\samples\\allTypes.accdb\" --task convert-mysql-dump --files-mode file-relative -overwrite-existing-files "
+            // "args": "-compress --access-file \".\\samples\\Northwind-2007.accdb\" --task convert-mysql-dump"
+        },
+        {
+            "type": "java",
+            "name": "AccessDebugger",
+            "request": "launch",
+            "mainClass": "com.lytrax.accessdebugger.AccessDebugger",
+            "projectName": "accessconverter",
+            "args": "\".\\samples\\allTypes.accdb\" testTable"
+            // "args": "\".\\samples\\Northwind-2007.accdb\" \"Δελτία παραγγελίας\""
+        },
+        {
+            "type": "java",
+            "name": "Current File",
+            "request": "launch",
+            "mainClass": "${file}"
+        },
+    ]
+}

@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2020 Christos Lytras <christos.lytras@gmail.com>.
+ * Copyright 2024 Christos Lytras <christos.lytras@gmail.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,15 +24,21 @@
 package com.lytrax.accessconverter;
 
 import com.healthmarketscience.jackcess.*;
+import com.healthmarketscience.jackcess.complex.Attachment;
+import com.healthmarketscience.jackcess.complex.ComplexValueForeignKey;
+
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.StringWriter;
-import java.text.SimpleDateFormat;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import javax.json.*;
 import javax.json.stream.JsonGenerator;
 
@@ -45,34 +51,30 @@ public class JSONConverter extends Converter {
     public Args args;
     public List<String> lastError = new ArrayList<>();
     public JsonArrayBuilder json;
-    private JsonBuilderFactory factory;
-    
-    public JSONConverter(Args args, Database db) {
+    private FileWriter writer;
+
+    public JSONConverter(Args args, Database db, FileWriter writer) {
         this.args = args;
         this.db = db;
+        this.writer = writer;
     }
-    
-    public String getPrettyPrinted() {
+
+    public void writeJson() {
         Map<String, Object> properties = new HashMap<String, Object>(1);
         properties.put(JsonGenerator.PRETTY_PRINTING, true);
-        factory = Json.createBuilderFactory(properties);
-        StringWriter stringWriter = new StringWriter();
-        JsonWriter jsonWriter = Json.createWriterFactory(properties).createWriter(stringWriter);
+        JsonWriter jsonWriter = Json.createWriterFactory(properties).createWriter(writer);
         jsonWriter.write(json.build());
         jsonWriter.close();
-        return stringWriter.toString();
     }
-    
+
     public boolean toJson() {
         boolean result = false;
         final String methodName = "toJson";
         json = Json.createArrayBuilder();
-        
+
         try {
             Set<String> tableNames = db.getTableNames();
-            //Json.createArrayBuilder().
-            //List<JsonObject> jsonTables;
-            
+
             tableNames.forEach((tableName) -> {
                 try {
                     boolean isDataAssoc = args.GetOption("json-data", "assoc").equals("assoc");
@@ -81,11 +83,11 @@ public class JSONConverter extends Converter {
 
                     JsonObjectBuilder jsonTable = Json.createObjectBuilder();
                     JsonArrayBuilder jsonColumns = Json.createArrayBuilder();
-                    
+
                     jsonTable.add("name", tableName);
-                    
-                    if(args.HasFlag("json-columns")) {
-                        for(Column column : table.getColumns()) {
+
+                    if (args.HasFlag("json-columns")) {
+                        for (Column column : table.getColumns()) {
                             JsonObjectBuilder jsonColumn = Json.createObjectBuilder();
                             jsonColumn.add("name", column.getName());
                             jsonColumn.add("type", column.getType().toString());
@@ -95,164 +97,236 @@ public class JSONConverter extends Converter {
 
                         jsonTable.add("columns", jsonColumns);
                     }
-                    
+
                     JsonArrayBuilder jsonRows = Json.createArrayBuilder();
                     JsonArrayBuilder jsonDataArray = Json.createArrayBuilder();
                     JsonObjectBuilder jsonDataObject = Json.createObjectBuilder();
 
-                    for(Row row : table) {
-                        for(Column column : table.getColumns()) {
-                            //String columnName = column.getName();
-
-                            if(isDataAssoc)
+                    for (Row row : table) {
+                        for (Column column : table.getColumns()) {
+                            if (isDataAssoc) {
                                 addToJson(jsonDataObject, column, row);
-                            else
+                            } else {
                                 addToJson(jsonDataArray, column, row);
+                            }
                         }
 
-                        if(isDataAssoc)
+                        if (isDataAssoc) {
                             jsonRows.add(jsonDataObject);
-                        else
+                        } else {
                             jsonRows.add(jsonDataArray);
+                        }
+
+                        AccessConverter.progressStatus.step();
                     }
 
                     jsonTable.add("data", jsonRows);
                     json.add(jsonTable);
-                    
+
                     AccessConverter.progressStatus.endTable();
-                } catch(IOException e) {
-                    //lastError.add(String.format("Could not load table '%s'", tableName));
+                } catch (IOException e) {
                     Error(String.format("Could not load table '%s'", tableName), e, methodName);
                 }
             });
-            
+
             AccessConverter.progressStatus.resetLine();
             result = true;
-        } catch(IOException e) {
-            //lastError.add("Could not fetch tables from the database");
+        } catch (IOException e) {
             Error("Could not fetch tables from the database", e, methodName);
         }
-        
+
         return result;
     }
-    
-    private void addToJson(JsonArrayBuilder jsonData, Column column, Row row) {
-        String type = column.getType().toString().toUpperCase();
-        String name = column.getName();
-        //Object value = row.get(name);
-        
-        switch(type) {
-            case "INT":
-                //jsonData.add(Short.parseShort(value.toString()));
-                jsonData.add(row.getShort(name));
-            break;
-            case "LONG":
-                //jsonData.add(Integer.parseInt(value.toString()));
-                jsonData.add(row.getInt(name));
-            break;
-            case "BYTE":
-                //jsonData.add(Byte.parseByte(value.toString()));
-                jsonData.add(row.getByte(name));
-            break;
-            case "FLOAT":
-                Object value = row.get(name);
-                jsonData.add(Globals.floatValue(value, column));
-                //jsonData.add(row.getFloat(name));
-            break;
-            case "DOUBLE":
-                //jsonData.add(Double.parseDouble(value.toString()));
-                jsonData.add(row.getDouble(name));
-            break;
-            case "NUMERIC":
-            case "MONEY":
-                //jsonData.add(new BigDecimal(value.toString()));
-                jsonData.add(row.getBigDecimal(name));
-            break;
-            case "BOOLEAN":
-                //jsonData.add(Boolean.parseBoolean(value.toString()));
-                jsonData.add(row.getBoolean(name));
-            break;
-            case "SHORT_DATE_TIME":
-                try {
-                    Date d = row.getDate(name);
-                    SimpleDateFormat format = new SimpleDateFormat("yyyy-mm-dd kk:mm:ss");
-                    jsonData.add(format.format(d));
-                } catch(Exception e) {
-                    jsonData.add("");
+
+    private <T, U> void addData(T json, String name, U data) {
+        if (json instanceof JsonArrayBuilder) {
+            if (data == null) {
+                ((JsonArrayBuilder)json).addNull();
+            } else {
+                if (data instanceof JsonArrayBuilder) {
+                    ((JsonArrayBuilder)json).add((JsonArrayBuilder)data);
+                } else if (data instanceof JsonObjectBuilder) {
+                    ((JsonArrayBuilder)json).add((JsonObjectBuilder)data);
+                } else if (data instanceof Boolean) {
+                    ((JsonArrayBuilder)json).add((Boolean)data);
+                } else if (data instanceof Integer) {
+                    ((JsonArrayBuilder)json).add((Integer)data);
+                } else if (data instanceof Long) {
+                    ((JsonArrayBuilder)json).add((Long)data);
+                } else if (data instanceof Float) {
+                    ((JsonArrayBuilder)json).add((Float)data);
+                } else if (data instanceof Short) {
+                    ((JsonArrayBuilder)json).add((Short)data);
+                } else if (data instanceof Byte) {
+                    ((JsonArrayBuilder)json).add((Byte)data);
+                } else if (data instanceof Double) {
+                    ((JsonArrayBuilder)json).add((Double)data);
+                } else if (data instanceof BigDecimal) {
+                    ((JsonArrayBuilder)json).add((BigDecimal)data);
+                } else {
+                    ((JsonArrayBuilder)json).add((String)data);
                 }
-            break;
-            case "TEXT":
-            case "MEMO":
-            case "GUID":
-                //jsonData.add(value.toString());
-                try {
-                    jsonData.add(row.getString(name));
-                } catch(Exception e) {
-                    jsonData.add("");
+            }
+        } else if (json instanceof JsonObjectBuilder) {
+            if (data == null) {
+                ((JsonObjectBuilder)json).addNull(name);
+            } else {
+                if (data instanceof JsonArrayBuilder) {
+                    ((JsonObjectBuilder)json).add(name, (JsonArrayBuilder)data);
+                } else if (data instanceof JsonObjectBuilder) {
+                    ((JsonObjectBuilder)json).add(name, (JsonObjectBuilder)data);
+                } else if (data instanceof Boolean) {
+                    ((JsonObjectBuilder)json).add(name, (Boolean)data);
+                } else if (data instanceof Integer) {
+                    ((JsonObjectBuilder)json).add(name, (Integer)data);
+                } else if (data instanceof Long) {
+                    ((JsonObjectBuilder)json).add(name, (Long)data);
+                } else if (data instanceof Float) {
+                    ((JsonObjectBuilder)json).add(name, (Float)data);
+                } else if (data instanceof Short) {
+                    ((JsonObjectBuilder)json).add(name, (Short)data);
+                } else if (data instanceof Byte) {
+                    ((JsonObjectBuilder)json).add(name, (Byte)data);
+                } else if (data instanceof Double) {
+                    ((JsonObjectBuilder)json).add(name, (Double)data);
+                } else if (data instanceof BigDecimal) {
+                    ((JsonObjectBuilder)json).add(name, (BigDecimal)data);
+                } else {
+                    ((JsonObjectBuilder)json).add(name, (String)data);
                 }
-            break;
-            default:
-                jsonData.addNull();
+            }
         }
     }
-    
-    private void addToJson(JsonObjectBuilder jsonData, Column column, Row row) {
-        String type = column.getType().toString().toUpperCase();
-        String name = column.getName();
-        //Object value = row.get(name);
-        
-        if(name == null) return;
-        
-        try {
-        
-            switch(type) {
-                case "INT":
-                    //jsonData.add(name, Short.parseShort(value.toString()));
-                    jsonData.add(name, row.getShort(name));
-                    break;
-                case "LONG":
-                    //jsonData.add(name, Integer.parseInt(value.toString()));
-                    jsonData.add(name, row.getInt(name));
-                    break;
-                case "BYTE":
-                    //jsonData.add(name, Byte.parseByte(value.toString()));
-                    jsonData.add(name, row.getByte(name));
-                    break;
-                case "FLOAT":
-                    Object objectValue = row.get(name);
-                    jsonData.add(name, Globals.floatValue(objectValue, column));
-                    //jsonData.add(name, row.getFloat(name));
-                    break;
-                case "DOUBLE":
-                    //jsonData.add(name, Double.parseDouble(value.toString()));
-                    jsonData.add(name, row.getDouble(name));
-                    break;
-                case "NUMERIC":
-                case "MONEY":
-                    //jsonData.add(name, new BigDecimal(value.toString()));
-                    jsonData.add(name, row.getBigDecimal(name));
-                    break;
-                case "BOOLEAN":
-                    //jsonData.add(name, Boolean.parseBoolean(value.toString()));
-                    jsonData.add(name, row.getBoolean(name));
-                    break;
-                case "SHORT_DATE_TIME":
-                    Date d = row.getDate(name);
-                    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                    jsonData.add(name, format.format(d));
-                    break;
-                case "TEXT":
-                case "MEMO":
-                case "GUID":
-                    //jsonData.add(name, value.toString());
-                    jsonData.add(name, row.getString(name));
-                    break;
-                default:
-                    jsonData.addNull(name);
-                    break;
+
+    private void addToJson(Object json, Column column, Row row) {
+        var type = column.getType().toString().toUpperCase();
+        var name = column.getName();
+        var tableName = column.getTable().getName();
+
+        switch (type) {
+            case "INT": {
+                addData(json, name, row.getShort(name));
+                break;
             }
-        } catch(NullPointerException e) {
-            jsonData.addNull(name);
+            case "LONG": {
+                addData(json, name, row.getInt(name));
+                break;
+            }
+            case "BYTE": {
+                addData(json, name, row.getByte(name));
+                break;
+            }
+            case "FLOAT": {
+                Object value = row.get(name);
+                addData(json, name, Globals.floatValue(value, column));
+                break;
+            }
+            case "DOUBLE": {
+                addData(json, name, row.getDouble(name));
+                break;
+            }
+            case "NUMERIC":
+            case "MONEY": {
+                addData(json, name, row.getBigDecimal(name));
+                break;
+            }
+            case "BOOLEAN": {
+                addData(json, name, row.getBoolean(name));
+                break;
+            }
+            case "SHORT_DATE_TIME": {
+                LocalDateTime value = row.getLocalDateTime(name);
+
+                if (value == null) {
+                    addData(json, name, null);
+                } else {
+                    DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                    addData(json, name, value.format(format));
+                }
+
+                break;
+            }
+            case "BINARY": {
+                byte[] data = row.getBytes(name);
+
+                if (data.length > 0) {
+                    addData(json, name, Base64.getEncoder().encodeToString(data));
+                } else {
+                    addData(json, name, null);
+                }
+
+                break;
+            }
+            case "OLE": {
+                var fileValue = new FileValue(args, Globals.OUTPUT_MYSQL, this);
+
+                try {
+                    if (fileValue.handleOle(column, row, row.getBlob(name))) {
+                        var jsonArrayBuilder = fileValue.getRecordsJsonArrayBuilder();
+                        addData(json, name, jsonArrayBuilder);
+                    } else {
+                        addData(json, name, null);
+                    }
+                } catch (IOException e) {
+                    addData(json, name, null);
+                    Error(
+                        String.format(
+                            "Count not fetch OLE data for column '%s' (%s) in table '%s'",
+                            name, row.getId().hashCode(), tableName
+                        )
+                    );
+                }
+
+                break;
+            }
+            case "COMPLEX_TYPE": {
+                if (column.getComplexInfo().getType().name() == "ATTACHMENT") {
+                    try {
+                        ComplexValueForeignKey valueFk =
+                            (ComplexValueForeignKey)column.getRowValue(row);
+                        List<Attachment> attachments = valueFk.getAttachments();
+
+                        if (!attachments.isEmpty()) {
+                            var fileValue = new FileValue(args, Globals.OUTPUT_MYSQL, this);
+
+                            if (fileValue.handleAttachments(column, row, attachments)) {
+                                var jsonArrayBuilder = fileValue.getRecordsJsonArrayBuilder();
+                                addData(json, name, jsonArrayBuilder);
+                            } else {
+                                addData(json, name, null);
+                            }
+                        } else {
+                            addData(json, name, null);
+                        }
+                    } catch (IOException ex) {
+                        addData(json, name, null);
+                        Error(
+                            String.format(
+                                "Count not fetch attachments for column '%s' (%s) in table '%s'",
+                                name, row.getId().hashCode(), tableName
+                            )
+                        );
+                    }
+                } else {
+                    addData(json, name, null);
+                }
+
+                break;
+            }
+            case "TEXT":
+            case "MEMO":
+            case "GUID": {
+                try {
+                    addData(json, name, row.getString(name));
+                } catch (Exception e) {
+                    addData(json, name, null);
+                }
+
+                break;
+            }
+            default: {
+                addData(json, name, null);
+            }
         }
     }
 }
