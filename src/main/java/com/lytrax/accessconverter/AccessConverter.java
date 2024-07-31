@@ -78,7 +78,7 @@ public class AccessConverter {
     public static void main(String[] cmdArgs) throws InterruptedException {
         args = new Args(cmdArgs);
 
-        if(CheckCommandArguments()) {
+        if (CheckCommandArguments()) {
             Run();
         }
 
@@ -155,9 +155,7 @@ public class AccessConverter {
                     File tempFile = getTempFile(Globals.OUTPUT_MYSQL);
                     outputFile = getOutputFile("json");
 
-                    try (
-                        FileWriter writer = new FileWriter(tempFile)
-                    ) {
+                    try (FileWriter writer = new FileWriter(tempFile)) {
                         JSONConverter jsonConverter = new JSONConverter(args, db, writer);
 
                         if (jsonConverter.toJson()) {
@@ -185,9 +183,7 @@ public class AccessConverter {
                     File tempFile = getTempFile(Globals.OUTPUT_MYSQL);
                     outputFile = getOutputFile("sql");
 
-                    try (
-                        SqlFileWriter writer = new SqlFileWriter(tempFile)
-                    ) {
+                    try (SqlFileWriter writer = new SqlFileWriter(tempFile)) {
                         MySQLConverter mysqlConverter = new MySQLConverter(args, db, writer);
 
                         if (mysqlConverter.toMySQLDump()) {

@@ -97,7 +97,7 @@ public class AccessDebugger {
                         );
                     }
 
-                    for (Property prop: column.getProperties()) {
+                    for (Property prop : column.getProperties()) {
                         Log(
                             "  prop: " + prop.getName() +
                             ", type: " + prop.getType().toString() +
@@ -109,7 +109,7 @@ public class AccessDebugger {
                     );
                 }
 
-                for (Index idx: table.getIndexes()) {
+                for (Index idx : table.getIndexes()) {
                     Log(
                         "Index: " + idx.getName() +
                         "  PK: " + (idx.isPrimaryKey() ? 'Y' : 'N') +
@@ -126,7 +126,7 @@ public class AccessDebugger {
 
                 }
 
-                for (Relationship rel: db.getRelationships(table)) {
+                for (Relationship rel : db.getRelationships(table)) {
                     Log(
                         "Relationship: " + rel.getName() +
                         "  from table: " + rel.getFromTable().getName() +
@@ -144,7 +144,7 @@ public class AccessDebugger {
                         String cls = "";
                         try {
                             cls = value.getClass().toString();
-                        } catch(NullPointerException e) {
+                        } catch (NullPointerException e) {
 
                         }
 

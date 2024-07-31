@@ -33,10 +33,11 @@ import java.util.stream.Collectors;
 
 public class Utils {
     public static String removeQuotation(String s, char c) {
-        if(s.charAt(0) == c && s.charAt(s.length() - 1) == c)
+        if (s.charAt(0) == c && s.charAt(s.length() - 1) == c) {
             return s.substring(1, s.length() - 1);
-        else
+        } else {
             return s;
+        }
     }
 
     public static String removeQuotation(String s) {
@@ -52,7 +53,7 @@ public class Utils {
     }
 
     public static String booleanDefaultValue(String value, String trueValue, String falseValue) {
-        if(value.equalsIgnoreCase("Yes")) {
+        if (value.equalsIgnoreCase("Yes")) {
             return trueValue;
         }
 
@@ -80,7 +81,7 @@ public class Utils {
     }
 
     public static <T> String valueOrNull(T value) {
-        if(value == null) {
+        if (value == null) {
             return "NULL";
         }
 

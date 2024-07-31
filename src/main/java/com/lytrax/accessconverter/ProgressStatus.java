@@ -74,7 +74,7 @@ public class ProgressStatus {
     }
 
     public void resetLine() {
-        if (!this.enabled) {
+        if (!enabled) {
             return;
         }
 
@@ -84,7 +84,7 @@ public class ProgressStatus {
     }
 
     public void startTable(Table tbl) {
-        if (!this.enabled) {
+        if (!enabled) {
             return;
         }
 
@@ -95,7 +95,7 @@ public class ProgressStatus {
     }
 
     public void endTable() {
-        if (!this.enabled) {
+        if (!enabled) {
             return;
         }
 
@@ -111,17 +111,13 @@ public class ProgressStatus {
     }
 
     public void step(int steps) {
-        if (!this.enabled) {
+        if (!enabled) {
             return;
         }
 
         currentTableCurrentRow += steps;
         currentRow += steps;
         progress(true);
-    }
-
-    private void progress() {
-        progress(false);
     }
 
     private void progress(boolean doUpdate) {
@@ -140,7 +136,7 @@ public class ProgressStatus {
 
     // Calculate the working dots and print the status
     public void update() {
-        if (!this.enabled) {
+        if (!enabled) {
             return;
         }
 
@@ -169,33 +165,32 @@ public class ProgressStatus {
     }
 
     public boolean calculateAllRows() {
-        if(!this.enabled) return false;
+        if (!enabled) {
+            return false;
+        }
 
-        this.update();
-        this.totalRows = 0;
-        boolean result = false;
         final String methodName = "calculateAllRows";
+        boolean result = false;
+        totalRows = 0;
+
+        update();
+
         try {
             Set<String> tableNames = db.getTableNames();
-            //Json.createArrayBuilder().
-            //List<JsonObject> jsonTables;
 
             tableNames.forEach((tableName) -> {
                 try {
                     Table table = db.getTable(tableName);
-                    this.totalRows += table.getRowCount();
-
-                } catch(IOException e) {
-                    //lastError.add(String.format("Could not load table '%s'", tableName));
+                    totalRows += table.getRowCount();
+                } catch (IOException e) {
                     AccessConverter.Error(String.format("Could not load table '%s'", tableName), e, methodName);
                 }
 
-                this.update();
+                update();
             });
 
             result = true;
-        } catch(IOException e) {
-            //lastError.add("Could not fetch tables from the database");
+        } catch (IOException e) {
             AccessConverter.Error("Could not fetch tables from the database", e, methodName);
         }
 
