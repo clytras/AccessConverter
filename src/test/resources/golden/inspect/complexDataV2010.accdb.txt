@@ -1,0 +1,25 @@
+Source: complexDataV2010.accdb (V2010)
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Table1 (4 rows)
+  columns:
+    id                                                   TEXT(255)
+    VersionHistory_F5F8918F-0A3F-4DA9-AE71-184EE5012880  VERSION_HISTORY
+    memo-data                                            MEMO
+    append-memo-data                                     MEMO  append-only
+    multi-value-data                                     MULTI_VALUE
+    attach-data                                          ATTACHMENT
+  primary key: PrimaryKey (id)
+  indexes:
+    attach-data_071D71EDD53D45A1A9089929F06857D9 (attach-data) unique required
+    multi-value-data_F4C67B0F60124C1989D5583C00CF76E2 (multi-value-data) unique required
+    VersionHistory_F5F8918F-0A3F-4D_6E54CCBB170741DD8FD837271ED8B90C (VersionHistory_F5F8918F-0A3F-4DA9-AE71-184EE5012880) unique required
+
+Profile:
+  Table1: 4 rows scanned
+    id: nulls 0
+    VersionHistory_F5F8918F-0A3F-4DA9-AE71-184EE5012880: nulls 0
+    multi-value-data: nulls 0
+    attach-data: nulls 0
+
+Issues: 0

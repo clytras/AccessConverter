@@ -28,6 +28,9 @@ public final class Fixtures {
                 .setFileFormat(Database.FileFormat.V2010)
                 .create();
         db.setDateTimeType(DateTimeType.LOCAL_DATE_TIME);
+        // Jackcess would otherwise evaluate DefaultValue on insert: a NULL Created would become Now(), a different
+        // value on every build
+        db.setEvaluateExpressions(false);
         return db;
     }
 }

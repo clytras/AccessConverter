@@ -31,6 +31,8 @@
         <!-- Reproducible builds: fixed entry timestamps in every jar -->
         <project.build.outputTimestamp>2026-09-22T00:00:00Z</project.build.outputTimestamp>
 
+        <main.class>com.lytrax.accessconverter.cli.Main</main.class>
+
         <!-- Runtime -->
         <jackcess.version>5.0.1</jackcess.version>
         <sqlite-jdbc.version>3.53.4.0</sqlite-jdbc.version>
@@ -359,6 +361,7 @@
                 <configuration>
                     <archive>
                         <manifest>
+                            <mainClass>${main.class}</mainClass>
                             <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
                         </manifest>
                     </archive>
@@ -395,6 +398,7 @@
                                     <addHeader>false</addHeader>
                                 </transformer>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>${main.class}</mainClass>
                                     <manifestEntries>
                                         <Multi-Release>true</Multi-Release>
                                     </manifestEntries>

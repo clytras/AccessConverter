@@ -1,0 +1,38 @@
+Source: uniqueProbe.accdb (V2010)
+Tables: 4 local, 0 linked; relationships: 0
+
+Table T_accent_variants (2 rows)
+  columns:
+    v  TEXT(20)
+  primary key: none
+  indexes:
+    u (v) unique
+
+Table T_case_variants (1 rows)
+  columns:
+    v  TEXT(20)
+  primary key: none
+  indexes:
+    u (v) unique
+
+Table T_eszett_ss (1 rows)
+  columns:
+    v  TEXT(20)
+  primary key: none
+  indexes:
+    u (v) unique
+
+Table T_trailing_space (1 rows)
+  columns:
+    v  TEXT(20)
+  primary key: none
+  indexes:
+    u (v) unique
+
+Profile:
+
+Issues: 4
+  info NO_PRIMARY_KEY T_accent_variants: table has no primary key; targets create none
+  info NO_PRIMARY_KEY T_case_variants: table has no primary key; targets create none
+  info NO_PRIMARY_KEY T_eszett_ss: table has no primary key; targets create none
+  info NO_PRIMARY_KEY T_trailing_space: table has no primary key; targets create none

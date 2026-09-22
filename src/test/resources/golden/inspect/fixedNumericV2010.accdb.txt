@@ -1,0 +1,25 @@
+Source: fixedNumericV2010.accdb (V2010)
+Tables: 1 local, 0 linked; relationships: 0
+
+Table test (1 rows)
+  columns:
+    col1  MEMO
+    col2  NUMERIC(18,0)  decimal-places auto
+    col3  NUMERIC(18,0)  decimal-places auto
+    col4  NUMERIC(18,0)  decimal-places auto
+    col5  NUMERIC(18,0)  decimal-places auto
+    col6  NUMERIC(18,0)  decimal-places auto
+    col7  NUMERIC(18,0)  decimal-places auto
+  primary key: none
+
+Profile:
+  test: 1 rows scanned
+    col2: max-digits 1 max-scale 0
+    col3: max-digits 1 max-scale 0
+    col4: max-digits 1 max-scale 0
+    col5: max-digits 1 max-scale 0
+    col6: max-digits 1 max-scale 0
+    col7: max-digits 1 max-scale 0
+
+Issues: 1
+  info NO_PRIMARY_KEY test: table has no primary key; targets create none

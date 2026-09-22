@@ -1,0 +1,59 @@
+package com.lytrax.accessconverter.report;
+
+import static com.lytrax.accessconverter.report.Severity.ERROR;
+import static com.lytrax.accessconverter.report.Severity.INFO;
+import static com.lytrax.accessconverter.report.Severity.WARNING;
+
+/** The catalogue of report issues (03). Every data decision that isn't an exact copy raises one of these. */
+public enum IssueCode {
+    // Tables
+    LINKED_TABLE_SKIPPED(WARNING),
+    TABLE_EXCLUDED(INFO),
+    TABLE_READ_FAILED(ERROR),
+
+    // Keys and indexes
+    INDEX_MERGED_DUPLICATE(INFO),
+    INDEX_BACKING_DROPPED(INFO),
+    UNIQUE_DOWNGRADED_KEY_TOO_LONG(WARNING),
+    AUTOINCREMENT_NOT_PRESERVED(WARNING),
+    NO_PRIMARY_KEY(INFO),
+
+    // Relationships
+    FK_SKIPPED_NOT_ENFORCED(INFO),
+    FK_SKIPPED_ORPHANS(WARNING),
+    FK_SKIPPED_PARENT_KEY_MISSING(WARNING),
+    FK_SKIPPED_LINKED_TABLE(WARNING),
+    FK_SKIPPED_TABLE_EXCLUDED(INFO),
+    FK_SET_NULL_ON_REQUIRED(WARNING),
+    RELATIONSHIP_MALFORMED(WARNING),
+
+    // Columns
+    PROPERTIES_UNREADABLE(WARNING),
+    UNSUPPORTED_COLUMN_TYPE(WARNING),
+    NOT_NULL_DROPPED_NULLS_PRESENT(WARNING),
+    DEFAULT_UNTRANSLATABLE(WARNING),
+    CHECK_UNTRANSLATABLE(WARNING),
+    CHECK_VIOLATED_BY_DATA(WARNING),
+    TEXT_WIDENED_ROW_SIZE(INFO),
+    CALCULATED_AS_VALUE(INFO),
+    IDENTIFIER_RENAMED(INFO),
+
+    // Values
+    VALUE_PRECISION_REDUCED(WARNING),
+    DECIMAL_STORED_AS_TEXT(INFO),
+    DOUBLE_NON_FINITE(WARNING),
+    OLE_UNDECODABLE(WARNING),
+    STATEMENT_EXCEEDS_PACKET(WARNING),
+    VERSION_HISTORY_SKIPPED(WARNING),
+    BINARY_OMITTED(WARNING);
+
+    private final Severity severity;
+
+    IssueCode(Severity severity) {
+        this.severity = severity;
+    }
+
+    public Severity severity() {
+        return severity;
+    }
+}

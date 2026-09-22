@@ -1,0 +1,22 @@
+Source: linkeeTest.accdb (V2007)
+Tables: 2 local, 0 linked; relationships: 0
+
+Table Table1 (1 rows)
+  columns:
+    ID      AUTONUMBER_LONG
+    Field1  TEXT(255)
+  primary key: PrimaryKey (ID)
+
+Table Table2 (1 rows)
+  columns:
+    ID      AUTONUMBER_LONG
+    Field1  TEXT(255)
+  primary key: PrimaryKey (ID)
+
+Profile:
+  Table1: 1 rows scanned
+    ID: nulls 0, max-autonumber 1
+  Table2: 1 rows scanned
+    ID: nulls 0, max-autonumber 1
+
+Issues: 0

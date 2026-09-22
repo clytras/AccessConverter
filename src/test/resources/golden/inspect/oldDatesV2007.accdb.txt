@@ -1,0 +1,15 @@
+Source: oldDatesV2007.accdb (V2007)
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Table1 (4 rows)
+  columns:
+    ID         AUTONUMBER_LONG
+    DateField  SHORT_DATE_TIME
+  primary key: PrimaryKey (ID)
+
+Profile:
+  Table1: 4 rows scanned
+    ID: nulls 0, max-autonumber 4
+    DateField: fraction-digits 0
+
+Issues: 0

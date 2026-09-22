@@ -1,0 +1,230 @@
+Source: schemaFidelity.accdb (V2010)
+Tables: 11 local, 0 linked; relationships: 6
+
+Table CustomerLoyaltyProgramMembershipHistory (0 rows)
+  columns:
+    HistID  AUTONUMBER_LONG
+    TierID  LONG
+  primary key: PrimaryKey (HistID)
+  indexes:
+    CustomerLoyaltyProgramMembersCustomerLoyaltyProgramMembership (TierID) relationship
+
+Table CustomerLoyaltyProgramMembershipTiers (1 rows)
+  columns:
+    TierID  AUTONUMBER_LONG
+  primary key: PrimaryKey (TierID)
+
+Table Customers (3 rows)
+  columns:
+    CustomerID  AUTONUMBER_LONG
+    Code        TEXT(10)  required
+    Name        TEXT(100)  required  description "Customer display name"
+    Email       TEXT(120)
+    Notes       MEMO
+    Rating      BYTE
+    Balance     MONEY(19,4)
+    Discount    NUMERIC(10,4)
+    Created     SHORT_DATE_TIME  default Now()
+    Active      BOOLEAN  default True from "Yes"
+    RowGuid     GUID
+    Visits      LONG
+    Country     TEXT(50)  default "Greece"
+  primary key: PrimaryKey (CustomerID)
+  indexes:
+    IX_Name (Name DESC)
+    UX_Code (Code) unique
+    UX_Email (Email) unique ignore-nulls
+
+Table Files (2 rows)
+  columns:
+    FileID  AUTONUMBER_LONG
+    Raw     BINARY(16)
+    Doc     OLE
+    Img     OLE
+  primary key: PrimaryKey (FileID)
+
+Table Order Details (3 rows)
+  columns:
+    OrderID    LONG  required
+    ProductID  LONG  required
+    Qty        INT  check [Qty] > 0 from ">0"
+    UnitPrice  MONEY(19,4)
+  primary key: PrimaryKey (OrderID, ProductID) [merged: OrdersOrder Details]
+  indexes:
+    ProductsOrder Details (ProductID) relationship
+
+Table Orders (2 rows)
+  columns:
+    OrderID      AUTONUMBER_LONG
+    CustomerID   LONG  required
+    ShipperCode  TEXT(10)
+    OrderDate    SHORT_DATE_TIME
+    Order        TEXT(20)
+  primary key: PrimaryKey (OrderID)
+  indexes:
+    CustomerID (CustomerID) [merged: CustomersOrders]
+    ShippersOrders (ShipperCode) relationship
+
+Table Products (2 rows)
+  columns:
+    ProductID        AUTONUMBER_LONG
+    Name             TEXT(50)
+    ParentProductID  LONG
+    SupplierID       LONG
+    Price            MONEY(19,4)
+  primary key: PrimaryKey (ProductID)
+  indexes:
+    Name (Name)
+
+Table Shippers (2 rows)
+  columns:
+    ShipperID  AUTONUMBER_LONG
+    Code       TEXT(10)
+    Name       TEXT(50)
+  primary key: PrimaryKey (Code)
+
+Table Suppliers (1 rows)
+  columns:
+    SupplierID  AUTONUMBER_LONG
+    Name        TEXT(50)
+  primary key: PrimaryKey (SupplierID)
+
+Table WideTable (1 rows)
+  columns:
+    ID   AUTONUMBER_LONG
+    T1   TEXT(255)
+    T2   TEXT(255)
+    T3   TEXT(255)
+    T4   TEXT(255)
+    T5   TEXT(255)
+    T6   TEXT(255)
+    T7   TEXT(255)
+    T8   TEXT(255)
+    T9   TEXT(255)
+    T10  TEXT(255)
+    T11  TEXT(255)
+    T12  TEXT(255)
+    T13  TEXT(255)
+    T14  TEXT(255)
+    T15  TEXT(255)
+    T16  TEXT(255)
+    T17  TEXT(255)
+    T18  TEXT(255)
+    T19  TEXT(255)
+    T20  TEXT(255)
+    T21  TEXT(255)
+    T22  TEXT(255)
+    T23  TEXT(255)
+    T24  TEXT(255)
+    T25  TEXT(255)
+    T26  TEXT(255)
+    T27  TEXT(255)
+    T28  TEXT(255)
+    T29  TEXT(255)
+    T30  TEXT(255)
+    T31  TEXT(255)
+    T32  TEXT(255)
+    T33  TEXT(255)
+    T34  TEXT(255)
+    T35  TEXT(255)
+    T36  TEXT(255)
+    T37  TEXT(255)
+    T38  TEXT(255)
+    T39  TEXT(255)
+    T40  TEXT(255)
+    T41  TEXT(255)
+    T42  TEXT(255)
+    T43  TEXT(255)
+    T44  TEXT(255)
+    T45  TEXT(255)
+    T46  TEXT(255)
+    T47  TEXT(255)
+    T48  TEXT(255)
+    T49  TEXT(255)
+    T50  TEXT(255)
+    T51  TEXT(255)
+    T52  TEXT(255)
+    T53  TEXT(255)
+    T54  TEXT(255)
+    T55  TEXT(255)
+    T56  TEXT(255)
+    T57  TEXT(255)
+    T58  TEXT(255)
+    T59  TEXT(255)
+    T60  TEXT(255)
+    T61  TEXT(255)
+    T62  TEXT(255)
+    T63  TEXT(255)
+    T64  TEXT(255)
+    T65  TEXT(255)
+    T66  TEXT(255)
+    T67  TEXT(255)
+    T68  TEXT(255)
+    T69  TEXT(255)
+    T70  TEXT(255)
+  primary key: PrimaryKey (ID)
+
+Table Πελάτες (1 rows)
+  columns:
+    Κωδικός  AUTONUMBER_LONG
+    Όνομα    TEXT(50)
+  primary key: PrimaryKey (Κωδικός)
+
+Relationships:
+  CustomerLoyaltyProgramMembersCustomerLoyaltyProgramMembership: CustomerLoyaltyProgramMembershipTiers (TierID) -> CustomerLoyaltyProgramMembershipHistory (TierID); enforced [EMIT via PrimaryKey]
+  CustomersOrders: Customers (CustomerID) -> Orders (CustomerID); enforced, on update cascade, on delete cascade [EMIT via PrimaryKey]
+  OrdersOrder Details: Orders (OrderID) -> Order Details (OrderID); enforced, on delete cascade [EMIT via PrimaryKey]
+  ProductsOrder Details: Products (ProductID) -> Order Details (ProductID); enforced [EMIT via PrimaryKey]
+  ShippersOrders: Shippers (Code) -> Orders (ShipperCode); enforced, on delete set null [EMIT via PrimaryKey]
+  SuppliersProducts: Suppliers (SupplierID) -> Products (SupplierID); not enforced [NOT_ENFORCED]
+
+Profile:
+  CustomerLoyaltyProgramMembershipHistory: 0 rows scanned
+    HistID: nulls 0
+  CustomerLoyaltyProgramMembershipTiers: 1 rows scanned
+    TierID: nulls 0, max-autonumber 1
+  Customers: 3 rows scanned
+    CustomerID: nulls 0, max-autonumber 2
+    Code: nulls 0
+    Name: nulls 0
+    Balance: max-digits 19 max-scale 4
+    Discount: max-digits 6 max-scale 4
+    Created: fraction-digits 0
+  Files: 2 rows scanned
+    FileID: nulls 0, max-autonumber 2
+  Order Details: 3 rows scanned
+    OrderID: nulls 0
+    ProductID: nulls 0
+    Qty: check 0 violations
+    UnitPrice: max-digits 3 max-scale 2
+  Orders: 2 rows scanned
+    OrderID: nulls 0, max-autonumber 2
+    CustomerID: nulls 0
+    OrderDate: fraction-digits 0
+  Products: 2 rows scanned
+    ProductID: nulls 0, max-autonumber 2
+    Price: max-digits 3 max-scale 2
+  Shippers: 2 rows scanned
+    ShipperID: max-autonumber 2
+    Code: nulls 0
+  Suppliers: 1 rows scanned
+    SupplierID: nulls 0, max-autonumber 1
+  WideTable: 1 rows scanned
+    ID: nulls 0, max-autonumber 1
+  Πελάτες: 1 rows scanned
+    Κωδικός: nulls 0, max-autonumber 1
+  CustomerLoyaltyProgramMembersCustomerLoyaltyProgramMembership: 0 keys checked, 0 orphans
+  CustomersOrders: 2 keys checked, 0 orphans
+  OrdersOrder Details: 3 keys checked, 0 orphans
+  ProductsOrder Details: 3 keys checked, 0 orphans
+  ShippersOrders: 1 keys checked, 0 orphans
+
+Issues: 8
+  info INDEX_BACKING_DROPPED CustomerLoyaltyProgramMembershipTiers / .rB: hidden relationship index on (TierID) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED Customers / .rB: hidden relationship index on (CustomerID) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE Order Details / OrdersOrder Details: hidden relationship index on (OrderID) is covered by index PrimaryKey; merged
+  info INDEX_MERGED_DUPLICATE Orders / CustomersOrders: hidden relationship index on (CustomerID) is covered by index CustomerID; merged
+  info INDEX_BACKING_DROPPED Orders / .rB: hidden relationship index on (OrderID) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED Products / .rB: hidden relationship index on (ProductID) repeats the primary key PrimaryKey; dropped
+  info FK_SKIPPED_NOT_ENFORCED Products / SuppliersProducts: join line only (no referential integrity in Access, so orphans are allowed): not a foreign key
+  info INDEX_BACKING_DROPPED Shippers / .rB: hidden relationship index on (Code) repeats the primary key PrimaryKey; dropped

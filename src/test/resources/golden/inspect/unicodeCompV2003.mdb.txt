@@ -1,0 +1,16 @@
+Source: unicodeCompV2003.mdb (V2003)
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Table (8 rows)
+  columns:
+    ID       AUTONUMBER_LONG
+    Unicode  TEXT(255)
+  primary key: PrimaryKey (ID)
+  indexes:
+    Unicode (Unicode)
+
+Profile:
+  Table: 8 rows scanned
+    ID: nulls 0, max-autonumber 8
+
+Issues: 0
