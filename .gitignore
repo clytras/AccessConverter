@@ -8,9 +8,18 @@
 dist/
 build/
 target/
+target-ide/
 releases/
-test/
+/test/
 samples/
 /*.jar
 /*.json
-nbproject/private/private.properties
+docs/
+
+# IDE metadata: IDEs import pom.xml, nothing IDE-specific is committed
+.classpath
+.project
+.factorypath
+nbproject/
+nb-configuration.xml
+*.iml

@@ -1,0 +1,10 @@
+# LF everywhere (matches .editorconfig), so golden files and mvnw are byte-identical on every OS
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+*.accdb binary
+*.mdb binary
+*.sqlite3 binary
+*.jar binary
+*.zip binary

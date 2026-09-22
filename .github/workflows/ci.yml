@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [master, v3]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    # Git Bash on Windows, so ./mvnw runs the same script everywhere
+    shell: bash
+
+jobs:
+  build:
+    name: build (${{ matrix.os }}, Java ${{ matrix.java }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        java: [21, 25]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+      # Tier B fixtures (Jackcess test databases), keyed on the pinned commit and checksums
+      - uses: actions/cache@v6
+        with:
+          path: target/fixtures/jackcess
+          key: jackcess-corpus-${{ hashFiles('src/test/java/**/fixtures/JackcessCorpus.java') }}
+      - run: ./mvnw -B -ntp verify
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-${{ matrix.os }}-java${{ matrix.java }}
+          path: target/surefire-reports*/
+          if-no-files-found: ignore
+
+  integration:
+    name: integration (${{ matrix.db }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        db: ['mysql:8.0', 'mysql:8.4', 'mariadb:10.11', 'mariadb:11.4', 'mariadb:11.8']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - uses: actions/cache@v6
+        with:
+          path: target/fixtures/jackcess
+          key: jackcess-corpus-${{ hashFiles('src/test/java/**/fixtures/JackcessCorpus.java') }}
+      - run: ./mvnw -B -ntp verify -Pintegration -Dit.db.images=${{ matrix.db }}
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: it-reports-${{ strategy.job-index }}
+          path: target/failsafe-reports/
+          if-no-files-found: ignore

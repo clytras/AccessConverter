@@ -1,0 +1,33 @@
+package com.lytrax.accessconverter.fixtures;
+
+import com.healthmarketscience.jackcess.Database;
+import com.healthmarketscience.jackcess.DatabaseBuilder;
+import com.healthmarketscience.jackcess.DateTimeType;
+import java.io.IOException;
+import java.nio.file.Path;
+
+/** Shared helpers for the fixture tiers of 09: A (generated), B (Jackcess corpus), C (local samples). */
+public final class Fixtures {
+    private Fixtures() {}
+
+    /** {@code target/fixtures} when run by Maven ({@code -Dfixtures.dir}), else relative to the working directory. */
+    public static Path root() {
+        String dir = System.getProperty("fixtures.dir");
+        return (dir != null ? Path.of(dir) : Path.of("target", "fixtures")).toAbsolutePath();
+    }
+
+    /** Opens an Access file read-only with {@link java.time.LocalDateTime} values (no time zone involved). */
+    public static Database openReadOnly(Path file) throws IOException {
+        Database db = new DatabaseBuilder(file).setReadOnly(true).open();
+        db.setDateTimeType(DateTimeType.LOCAL_DATE_TIME);
+        return db;
+    }
+
+    static Database create(Path file) throws IOException {
+        Database db = new DatabaseBuilder(file)
+                .setFileFormat(Database.FileFormat.V2010)
+                .create();
+        db.setDateTimeType(DateTimeType.LOCAL_DATE_TIME);
+        return db;
+    }
+}
