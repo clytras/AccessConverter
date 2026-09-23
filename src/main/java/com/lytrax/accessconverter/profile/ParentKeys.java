@@ -23,13 +23,24 @@ import java.util.Optional;
  * apart. Normally this is a seek through the parent's Access index (04). If Jackcess can't seek it, typically for a
  * text collation it has no index codes for, the parent's keys are read once into a hash set instead. Matching then
  * follows Access's text comparison: case-insensitive, accent-sensitive, trailing spaces ignored.
+ *
+ * <p>A seek that finds nothing is never trusted on its own: the parent's keys are scanned to confirm the row really
+ * isn't there. Jackcess's seek misses existing rows in some databases (measured on a Greek Access 97 Northwind,
+ * where 512 of 830 primary-key seeks failed while the same index iterated all 830 rows), and an orphan that isn't
+ * one would cost the output a foreign key.
  */
 final class ParentKeys {
+
+    /** Looks a key up, as {@link KeyLookup} does; replaceable in tests. */
+    interface Seeker {
+        Optional<Object[]> find(Object[] key) throws IOException;
+    }
+
     private final AccessSource source;
     private final TableModel parent;
     private final IndexModel key;
     private final Collator text;
-    private KeyLookup seek;
+    private Seeker seek;
     private Map<List<Object>, Object[]> scanned;
     private String fallbackReason;
 
@@ -44,10 +55,19 @@ final class ParentKeys {
     static ParentKeys of(AccessSource source, TableModel parent, IndexModel key) throws IOException {
         ParentKeys keys = new ParentKeys(source, parent, key);
         try {
-            keys.seek = source.keyLookup(parent, key);
+            KeyLookup lookup = source.keyLookup(parent, key);
+            keys.seek = lookup::find;
         } catch (RuntimeException e) {
-            keys.fallBack(e);
+            keys.fallbackReason = AccessSource.indexFailure(e);
+            keys.scan();
         }
+        return keys;
+    }
+
+    /** As {@link #of}, with the index seek replaced: lets a test make a seek miss rows that are there. */
+    static ParentKeys withSeek(AccessSource source, TableModel parent, IndexModel key, Seeker seek) {
+        ParentKeys keys = new ParentKeys(source, parent, key);
+        keys.seek = seek;
         return keys;
     }
 
@@ -55,12 +75,25 @@ final class ParentKeys {
     Optional<Object[]> find(Object[] childKey) throws IOException {
         if (seek != null) {
             try {
-                return seek.find(childKey);
+                Optional<Object[]> found = seek.find(childKey);
+                if (found.isPresent()) {
+                    return found;
+                }
             } catch (RuntimeException e) {
-                fallBack(e);
+                fallbackReason = AccessSource.indexFailure(e);
+                seek = null;
             }
         }
-        return Optional.ofNullable(scanned.get(normalize(childKey)));
+        if (scanned == null) {
+            scan();
+        }
+        Optional<Object[]> found = Optional.ofNullable(scanned.get(normalize(childKey)));
+        if (found.isPresent() && seek != null) {
+            // The index said there is no such row, and the table says there is: stop believing the index
+            seek = null;
+            fallbackReason = "the index seek missed rows the table holds";
+        }
+        return found;
     }
 
     /** Why the index wasn't used, or null when it was. */
@@ -68,9 +101,8 @@ final class ParentKeys {
         return fallbackReason;
     }
 
-    private void fallBack(RuntimeException e) throws IOException {
-        seek = null;
-        fallbackReason = AccessSource.indexFailure(e);
+    /** Reads the parent's key columns once into a hash set keyed the way Access compares keys. */
+    private void scan() throws IOException {
         List<ColumnModel> columns = key.columnNames().stream()
                 .map(name -> parent.column(name).orElseThrow())
                 .toList();

@@ -1,6 +1,7 @@
 package com.lytrax.accessconverter.value;
 
 import com.lytrax.accessconverter.model.AccessType;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Locale;
@@ -45,7 +46,7 @@ public final class AccessValues {
             case SHORT_DATE_TIME, EXT_DATE_TIME -> expect(type, raw, LocalDateTime.class);
             case TEXT, MEMO, HYPERLINK -> expect(type, raw, String.class);
             case GUID, AUTONUMBER_GUID -> guid(expect(type, raw, String.class));
-            case BINARY, UNSUPPORTED -> expect(type, raw, byte[].class);
+            case BINARY, UNSUPPORTED -> rawBytes(type, raw);
             case OLE -> new OleValue(expect(type, raw, byte[].class));
             // Jackcess's ComplexValueForeignKey is a Number holding the complex id
             case ATTACHMENT, MULTI_VALUE, VERSION_HISTORY, COMPLEX_UNSUPPORTED ->
@@ -64,6 +65,32 @@ public final class AccessValues {
             case ComplexRef ref -> ref.complexId();
             default -> canonical;
         };
+    }
+
+    /**
+     * The stored bytes of a value. A column type Jackcess can't decode comes back wrapped in its package-private
+     * {@code ColumnImpl.RawData} holder instead of as a {@code byte[]}; the wrapper's {@code getBytes()} is public,
+     * and reading it keeps such columns lossless ({@code unsupportedFieldsV2007}) instead of failing the table.
+     */
+    private static byte[] rawBytes(AccessType type, Object raw) {
+        if (raw instanceof byte[] bytes) {
+            return bytes;
+        }
+        try {
+            Method getBytes = raw.getClass().getMethod("getBytes");
+            getBytes.setAccessible(true);
+            Object bytes = getBytes.invoke(raw);
+            if (bytes instanceof byte[] result) {
+                return result;
+            }
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            throw new IllegalStateException(
+                    "column type " + type + " expects bytes from Jackcess, got "
+                            + raw.getClass().getName() + ", which doesn't give them up",
+                    e);
+        }
+        throw new IllegalStateException("column type " + type + " expects bytes from Jackcess, got "
+                + raw.getClass().getName());
     }
 
     /** The Access form of a GUID: braces and uppercase hex. */

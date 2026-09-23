@@ -120,12 +120,12 @@ class MainTest {
     }
 
     @Test
-    void verifyAgainstAnOutputIsNotAvailableYet(@TempDir Path dir) {
+    void verifyNeedsAnOutputThatIsThere(@TempDir Path dir) {
         Cli cli = Cli.run(
                 "verify",
                 GeneratedFixture.HUNDRED_ROWS.path().toString(),
                 dir.resolve("out.sqlite3").toString());
-        assertThat(cli.exitCode()).isEqualTo(ExitCodes.USAGE);
-        assertThat(cli.err()).contains("isn't implemented yet");
+        assertThat(cli.exitCode()).isEqualTo(ExitCodes.FAILED);
+        assertThat(cli.err()).contains("no such file");
     }
 }

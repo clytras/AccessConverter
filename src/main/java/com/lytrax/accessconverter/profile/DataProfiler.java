@@ -8,6 +8,7 @@ import com.lytrax.accessconverter.model.IndexModel;
 import com.lytrax.accessconverter.model.SchemaModel;
 import com.lytrax.accessconverter.model.TableModel;
 import com.lytrax.accessconverter.model.expr.Expr;
+import com.lytrax.accessconverter.model.expr.ExprColumns;
 import com.lytrax.accessconverter.profile.DataProfile.ColumnStats;
 import com.lytrax.accessconverter.profile.DataProfile.RelationshipProfile;
 import com.lytrax.accessconverter.profile.DataProfile.RuleStats;
@@ -138,7 +139,7 @@ public final class DataProfiler {
                 acc.autoNumber = column.type() == AccessType.AUTONUMBER_LONG;
                 if (translated(column.validation())) {
                     acc.rule = new RuleAccumulator(column.validation().expr());
-                    referenced(column.validation().expr()).forEach(this::scan);
+                    ExprColumns.referenced(column.validation().expr()).forEach(this::scan);
                     needsKeys = true;
                 }
                 if (acc.collects()) {
@@ -148,7 +149,7 @@ public final class DataProfiler {
             }
             if (translated(table.validation())) {
                 tableRule = new RuleAccumulator(table.validation().expr());
-                referenced(table.validation().expr()).forEach(this::scan);
+                ExprColumns.referenced(table.validation().expr()).forEach(this::scan);
                 needsKeys = true;
             }
             for (ForeignKeyModel fk : model.relationships()) {
@@ -365,44 +366,6 @@ public final class DataProfiler {
 
     private static boolean translated(CheckRule rule) {
         return rule != null && rule.isTranslated();
-    }
-
-    /** Column names an expression refers to. */
-    static Set<String> referenced(Expr expr) {
-        Set<String> names = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        collect(expr, names);
-        return names;
-    }
-
-    private static void collect(Expr expr, Set<String> names) {
-        switch (expr) {
-            case Expr.ColumnRef c -> names.add(c.name());
-            case Expr.And a -> {
-                collect(a.left(), names);
-                collect(a.right(), names);
-            }
-            case Expr.Or o -> {
-                collect(o.left(), names);
-                collect(o.right(), names);
-            }
-            case Expr.Not n -> collect(n.operand(), names);
-            case Expr.Comparison c -> {
-                collect(c.left(), names);
-                collect(c.right(), names);
-            }
-            case Expr.Between b -> {
-                collect(b.operand(), names);
-                collect(b.low(), names);
-                collect(b.high(), names);
-            }
-            case Expr.In in -> {
-                collect(in.operand(), names);
-                in.values().forEach(v -> collect(v, names));
-            }
-            case Expr.IsNull n -> collect(n.operand(), names);
-            case Expr.Like l -> collect(l.operand(), names);
-            default -> {}
-        }
     }
 
     /** 0 for whole seconds, else the fractional digits used, up to 9 (Access stores at most 7). */

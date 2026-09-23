@@ -5,14 +5,18 @@
 !/src/test/resources/fixtures/**/*.accdb
 *.zip
 *.sql
+# except the golden files the target tests compare against
+!/src/test/resources/golden/**/*.sql
 *.sqlite3
 .idea/
 .settings/
-dist/
-build/
-target/
-target-ide/
-releases/
+# Build output at the repository root only: unanchored, these would also hide source packages named
+# build/ or target/ (src/main/java/.../target/ is the target-writer package)
+/dist/
+/build/
+/target/
+/target-ide/
+/releases/
 /test/
 samples/
 /*.jar

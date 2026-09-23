@@ -3,6 +3,10 @@
 *.cmd text eol=crlf
 *.bat text eol=crlf
 
+# Golden files are compared byte for byte and hold data verbatim, a CR inside an Access memo included, so
+# Git must not touch their line endings
+/src/test/resources/golden/** -text
+
 *.accdb binary
 *.mdb binary
 *.sqlite3 binary

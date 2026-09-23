@@ -239,7 +239,7 @@ final class ModelText {
                         + (r.inexactAsciiCaseOnly() ? " (ASCII case only)" : "");
             }
             if (r.scanFallback() != null) {
-                text += "; parent keys scanned, the index couldn't be used (" + r.scanFallback() + ")";
+                text += "; parent keys scanned instead of the index (" + r.scanFallback() + ")";
             }
             line(text + samples(r.orphanSamples()) + samples(r.inexactSamples()));
         }

@@ -29,7 +29,7 @@ import picocli.CommandLine.Spec;
         name = "accessconverter",
         mixinStandardHelpOptions = true,
         versionProvider = Main.Version.class,
-        subcommands = {InspectCommand.class, VerifyCommand.class},
+        subcommands = {ConvertCommand.class, InspectCommand.class, VerifyCommand.class},
         description = "Converts Microsoft Access databases (.mdb, .accdb) to MySQL/MariaDB dumps, SQLite and JSON.",
         exitCodeListHeading = "%nExit codes:%n",
         exitCodeList = {"0:success", "1:success with warnings (see the issues)", "2:failed", "64:usage error"})

@@ -70,7 +70,7 @@
         <!-- Test runs -->
         <argLine/>
         <fixtures.dir>${project.build.directory}/fixtures</fixtures.dir>
-        <test.excludedGroups>local-samples</test.excludedGroups>
+        <test.excludedGroups>local-samples,perf</test.excludedGroups>
         <skipITs>true</skipITs>
         <it.db.images>mysql:8.0,mysql:8.4,mariadb:10.11,mariadb:11.4,mariadb:11.8</it.db.images>
     </properties>
@@ -506,7 +506,15 @@
         <profile>
             <id>local-samples</id>
             <properties>
-                <test.excludedGroups/>
+                <test.excludedGroups>perf</test.excludedGroups>
+            </properties>
+        </profile>
+
+        <!-- 09: the speed and memory budgets, which are too slow for every build: ./mvnw test -Pperf -->
+        <profile>
+            <id>perf</id>
+            <properties>
+                <test.excludedGroups>local-samples</test.excludedGroups>
             </properties>
         </profile>
     </profiles>
