@@ -17,7 +17,7 @@ public record CorpusCase(String id, Path file, OpenOptions options) {
                         CorpusFile.databases().stream().map(f -> new CorpusCase(f.id(), f.file(), f.openOptions())),
                         Stream.of(Access97Fixture.values())
                                 .map(f -> new CorpusCase(
-                                        "access97/" + f.file().getFileName(), f.file(), OpenOptions.DEFAULT)))
+                                        "access97/" + f.file().getFileName(), f.file(), f.openOptions())))
                 .flatMap(s -> s);
     }
 

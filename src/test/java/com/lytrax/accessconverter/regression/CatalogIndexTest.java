@@ -13,6 +13,10 @@ import com.lytrax.accessconverter.model.ForeignKeyModel.Action;
 import com.lytrax.accessconverter.model.TableModel;
 import com.lytrax.accessconverter.report.Issue;
 import com.lytrax.accessconverter.report.IssueCode;
+import com.lytrax.accessconverter.report.Issues;
+import com.lytrax.accessconverter.source.AccessSource;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -46,6 +50,40 @@ class CatalogIndexTest {
                         .contains("scanning"));
         // Nothing was left out, so nothing is reported as lost
         assertThat(extraction.issues()).extracting(Issue::code).doesNotContain(IssueCode.TABLE_NOT_IN_CATALOG);
+    }
+
+    /**
+     * The fallback opens the database a second time, so it has to carry everything the first open had: an encoded
+     * Access 97 database (readable only through the codec provider) whose catalog index is unusable and which also
+     * has a database password. Dropping either on the way would fail the open or lose the tables again.
+     */
+    @Test
+    void anEncodedAndPasswordProtectedDatabaseSurvivesTheFallback() {
+        Access97Fixture fixture = Access97Fixture.GR97_ENC;
+        Extraction extraction = Extraction.of(fixture.file(), fixture.openOptions());
+        assertThat(extraction.model().tables())
+                .extracting(TableModel::name)
+                .containsExactly("AllTypes", "Customers", "Orders");
+        assertThat(extraction.model().relationships()).hasSize(1);
+        assertThat(extraction.issues())
+                .extracting(Issue::code)
+                .contains(IssueCode.CATALOG_INDEX_UNUSABLE, IssueCode.PASSWORD_NOT_REQUIRED)
+                .doesNotContain(IssueCode.TABLE_NOT_IN_CATALOG, IssueCode.RELATIONSHIPS_UNREADABLE);
+    }
+
+    /** Its data is the data of the plain fixture, so the encoded pages decoded correctly after the second open. */
+    @Test
+    void theEncodedDatabaseHoldsTheSameRowsAsThePlainOne() throws IOException {
+        Access97Fixture fixture = Access97Fixture.GR97_ENC;
+        TableModel table = Extraction.of(fixture.file(), fixture.openOptions()).table("Customers");
+        List<Object[]> rows = new ArrayList<>();
+        try (AccessSource source = AccessSource.open(fixture.file(), fixture.openOptions(), new Issues())) {
+            source.scan(table, table.columns()).forEachRemaining(rows::add);
+        }
+        List<String> names = rows.stream().map(row -> (String) row[1]).toList();
+        assertThat(names)
+                .containsExactlyElementsOf(fixture.dump().table("Customers").column("CompanyName"));
+        assertThat(names).contains("Αφοι Παπαδοπούλου ΑΕ");
     }
 
     /** Tiers A and B: no other file's catalog needs the fallback, and none hides a table. */

@@ -1,0 +1,64 @@
+Source: gr97enc.mdb (V1997)
+Text: code page 1253, charset windows-1253
+Tables: 3 local, 0 linked; relationships: 1
+
+Table AllTypes (5 rows)
+  columns:
+    RowID        LONG
+    AByte        BYTE
+    AnInteger    INT
+    ALong        LONG
+    ASingle      FLOAT
+    ADouble      DOUBLE
+    ACurrency    MONEY(19,4)
+    ADate        SHORT_DATE_TIME
+    ABoolean     BOOLEAN
+    AText        TEXT(255)
+    AMemo        MEMO
+    AnOleObject  OLE
+  primary key: none
+
+Table Customers (8 rows)
+  columns:
+    CustomerID   LONG
+    CompanyName  TEXT(60)
+    City         TEXT(40)
+    Credit       MONEY(19,4)
+    Since        SHORT_DATE_TIME
+    Active       BOOLEAN
+    Notes        MEMO
+  primary key: PrimaryKey (CustomerID)
+
+Table Orders (40 rows)
+  columns:
+    OrderID     LONG
+    CustomerID  LONG
+    Placed      SHORT_DATE_TIME
+    Total       MONEY(19,4)
+    Shipped     BOOLEAN
+  primary key: none
+  indexes:
+    CustomersOrders (CustomerID) relationship
+
+Relationships:
+  CustomersOrders: Customers (CustomerID) -> Orders (CustomerID); enforced [EMIT via PrimaryKey]
+
+Profile:
+  AllTypes: 5 rows scanned
+    ACurrency: max-digits 19 max-scale 4
+    ADate: fraction-digits 0
+  Customers: 8 rows scanned
+    CustomerID: nulls 0
+    Credit: max-digits 6 max-scale 2
+    Since: fraction-digits 0
+  Orders: 40 rows scanned
+    Placed: fraction-digits 0
+    Total: max-digits 6 max-scale 2
+  CustomersOrders: 40 keys checked, 0 orphans
+
+Issues: 5
+  info PASSWORD_NOT_REQUIRED: Access asks for a database password, but a V1997 password doesn't encrypt the data: it was read without one
+  warning CATALOG_INDEX_UNUSABLE: Jackcess can't use this database's catalog index (MSysRelationships is invisible); the catalog was read by scanning it instead
+  info NO_PRIMARY_KEY AllTypes: table has no primary key; targets create none
+  info INDEX_BACKING_DROPPED Customers / .rB: hidden relationship index on (CustomerID) repeats the primary key PrimaryKey; dropped
+  info NO_PRIMARY_KEY Orders: table has no primary key; targets create none

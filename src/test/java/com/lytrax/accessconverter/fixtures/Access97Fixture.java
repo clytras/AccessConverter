@@ -1,5 +1,6 @@
 package com.lytrax.accessconverter.fixtures;
 
+import com.lytrax.accessconverter.source.OpenOptions;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -11,21 +12,39 @@ import java.util.Objects;
  */
 public enum Access97Fixture {
     /** Three tables: every column type, Greek and ASCII text, numeric extremes, NULL against "", one relationship. */
-    GR97("gr97");
+    GR97("gr97", "gr97", null),
+    /**
+     * The same database, encoded (DAO's {@code dbEncrypt}, so it can only be read through a codec provider) and
+     * given a database password, keeping the Greek collation whose catalog index Jackcess can't use. It is what a
+     * protected database from a non-English Access 97 looks like: every part of opening it at once.
+     */
+    GR97_ENC("gr97enc", "gr97", "gr97pass");
 
     private final String name;
+    private final String dumpName;
+    private final String password;
 
-    Access97Fixture(String name) {
+    Access97Fixture(String name, String dumpName, String password) {
         this.name = name;
+        this.dumpName = dumpName;
+        this.password = password;
     }
 
     public Path file() {
         return resource(name + ".mdb");
     }
 
-    /** What Access itself printed for this database. */
+    public String password() {
+        return password;
+    }
+
+    public OpenOptions openOptions() {
+        return new OpenOptions(password, null);
+    }
+
+    /** What Access itself printed for this database; the encoded copy holds the same rows as the plain one. */
     public GuestDump dump() {
-        return GuestDump.read(resource(name + ".dump.txt"));
+        return GuestDump.read(resource(dumpName + ".dump.txt"));
     }
 
     private static Path resource(String fileName) {
