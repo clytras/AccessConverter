@@ -211,6 +211,7 @@ public final class ModelJson {
                 optional(g, "maxScale", c.maxScale());
                 optional(g, "maxFractionDigits", c.maxFractionDigits());
                 optional(g, "maxAutoNumber", c.maxAutoNumber());
+                optional(g, "unsafeKeyText", c.unsafeKeyText());
                 ruleStats(g, "validationRule", c.rule());
                 g.writeEndObject();
             }

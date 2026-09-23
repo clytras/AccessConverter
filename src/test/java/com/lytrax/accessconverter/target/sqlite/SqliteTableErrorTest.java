@@ -18,6 +18,8 @@ import com.lytrax.accessconverter.source.RowStream;
 import com.lytrax.accessconverter.source.SourceException;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.ConvertOptions.OnTableError;
+import com.lytrax.accessconverter.target.RowSource;
+import com.lytrax.accessconverter.target.WriteOutcome;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,7 +40,7 @@ class SqliteTableErrorTest {
     Path dir;
 
     /** A row source that reads everything from the real database except one table, which fails as a damaged one. */
-    private record FailingTable(AccessSource source, String table) implements SqliteWriter.Rows {
+    private record FailingTable(AccessSource source, String table) implements RowSource {
         @Override
         public RowStream of(TableModel model) throws IOException {
             if (model.name().equalsIgnoreCase(table)) {
@@ -53,7 +55,7 @@ class SqliteTableErrorTest {
     void continueFinishesTheOtherTablesAndKeepsTheOutput() throws IOException {
         Path output = dir.resolve("continue.sqlite3");
         Issues issues = new Issues();
-        SqliteWriter.Outcome outcome = convert(output, OnTableError.CONTINUE, "Customers", issues);
+        WriteOutcome outcome = convert(output, OnTableError.CONTINUE, "Customers", issues);
 
         assertThat(output).exists();
         assertThat(outcome.tableFailed()).isTrue();
@@ -105,15 +107,14 @@ class SqliteTableErrorTest {
         Path output = dir.resolve("ok.sqlite3");
         Issues issues = new Issues();
         // The same path with nothing failing: the seam itself changes nothing
-        SqliteWriter.Outcome outcome = convert(output, OnTableError.FAIL, "no such table", issues);
+        WriteOutcome outcome = convert(output, OnTableError.FAIL, "no such table", issues);
 
         assertThat(outcome.tableFailed()).isFalse();
         assertThat(outcome.rowsWritten()).isEqualTo(18);
         assertThat(issues.list()).noneMatch(i -> i.severity() == Severity.ERROR);
     }
 
-    private SqliteWriter.Outcome convert(Path output, OnTableError onError, String failing, Issues issues)
-            throws IOException {
+    private WriteOutcome convert(Path output, OnTableError onError, String failing, Issues issues) throws IOException {
         ConvertOptions options = new ConvertOptions(true, false, onError, ConvertOptions.DEFAULT_BATCH_ROWS);
         try (AccessSource db = AccessSource.open(GeneratedFixture.SCHEMA_FIDELITY.path())) {
             SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);

@@ -6,6 +6,7 @@ import com.lytrax.accessconverter.fixtures.LocalSample;
 import com.lytrax.accessconverter.fixtures.LocalSamples;
 import com.lytrax.accessconverter.report.Severity;
 import com.lytrax.accessconverter.target.sqlite.SqliteFixture.Converted;
+import com.lytrax.accessconverter.verify.VerifyResult;
 import java.nio.file.Path;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
@@ -56,7 +57,7 @@ class SqliteLocalSamplesTest {
         Duration took = Duration.ofNanos(System.nanoTime() - started);
 
         long rows = converted.verified().tables().stream()
-                .mapToLong(SqliteVerifier.TableRows::actual)
+                .mapToLong(VerifyResult.TableRows::actual)
                 .sum();
         assertThat(rows).isEqualTo(262_704);
         // 06's budget is ten seconds for the conversion; this also verifies every value, a second full read

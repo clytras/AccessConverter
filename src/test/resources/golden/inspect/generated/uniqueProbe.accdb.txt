@@ -31,6 +31,11 @@ Table T_trailing_space (1 rows)
     u (v) unique
 
 Profile:
+  T_accent_variants: 2 rows scanned
+  T_case_variants: 1 rows scanned
+  T_eszett_ss: 1 rows scanned
+    v: unsafe-key-text 1 (characters the default MySQL collations compare unlike Access)
+  T_trailing_space: 1 rows scanned
 
 Issues: 4
   info NO_PRIMARY_KEY T_accent_variants: table has no primary key; targets create none

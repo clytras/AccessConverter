@@ -3,6 +3,8 @@ package com.lytrax.accessconverter.cli;
 import com.lytrax.accessconverter.extract.ExtractOptions;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.ConvertOptions.OnTableError;
+import com.lytrax.accessconverter.target.mysql.MySqlDialect;
+import com.lytrax.accessconverter.target.mysql.MySqlOptions;
 import com.lytrax.accessconverter.target.sqlite.SqliteOptions;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,7 +12,9 @@ import java.util.Locale;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
+import picocli.CommandLine;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.ParameterException;
 
 /**
  * The options that decide what the output contains, shared by {@code convert} and {@code verify}: {@code verify}
@@ -55,8 +59,40 @@ final class PlanOptions {
                     + " metadata.")
     boolean sqliteMetadata;
 
+    @Option(
+            names = "--collation",
+            paramLabel = "<name>",
+            description = "MySQL/MariaDB: the collation of every table (default: utf8mb4_0900_as_ci for MySQL,"
+                    + " utf8mb4_uca1400_as_ci for MariaDB; both are case-insensitive like Access and never stricter"
+                    + " than it). utf8mb4_bin is also safe, but compares case.")
+    String collation;
+
     ConvertOptions convertOptions(OnTableError onTableError, int batchRows) {
         return new ConvertOptions(!noProfile, includeHidden, onTableError, batchRows);
+    }
+
+    /** The MySQL options the plan depends on, with the ones that only shape the dump. */
+    MySqlOptions mysqlOptions(
+            MySqlDialect dialect, boolean dropExisting, String database, int batchBytes, boolean stamp) {
+        return new MySqlOptions(dialect, collation, dropExisting, database, batchBytes, stamp);
+    }
+
+    /** Rejects the options that don't apply to the target, so none is silently ignored. */
+    void check(Target target, CommandLine cli) {
+        if (target == Target.sqlite) {
+            if (collation != null) {
+                throw new ParameterException(cli, "--collation applies to --to mysql and --to mariadb");
+            }
+            return;
+        }
+        if (sqliteStrict || sqliteNocase || sqliteMetadata) {
+            throw new ParameterException(
+                    cli, "--sqlite-strict, --sqlite-nocase and --sqlite-metadata apply to --to sqlite");
+        }
+        if (collation != null && !collation.toLowerCase(Locale.ROOT).startsWith("utf8mb4_")) {
+            throw new ParameterException(
+                    cli, "--collation must be a utf8mb4 collation, since every table is utf8mb4: " + collation);
+        }
     }
 
     SqliteOptions sqliteOptions(boolean analyze) {
@@ -82,6 +118,9 @@ final class PlanOptions {
         described.put("sqliteStrict", String.valueOf(sqliteStrict));
         described.put("sqliteNocase", String.valueOf(sqliteNocase));
         described.put("sqliteMetadata", String.valueOf(sqliteMetadata));
+        if (collation != null) {
+            described.put("collation", collation);
+        }
         if (tables != null) {
             described.put("tables", String.join(",", tables));
         }

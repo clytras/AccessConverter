@@ -122,9 +122,13 @@ public final class DataProfiler {
 
         private void plan() throws IOException {
             Set<String> requiredByIndex = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+            Set<String> uniqueKeys = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
             for (IndexModel index : table.allIndexes()) {
                 if (index.required()) {
                     requiredByIndex.addAll(index.columnNames());
+                }
+                if (index.unique()) {
+                    uniqueKeys.addAll(index.columnNames());
                 }
             }
             boolean needsKeys = false;
@@ -137,6 +141,8 @@ public final class DataProfiler {
                 acc.digits = column.type().isExactNumeric();
                 acc.fraction = column.type().isDateTime();
                 acc.autoNumber = column.type() == AccessType.AUTONUMBER_LONG;
+                // Whether a target's collation can keep a key Access holds unique (05, Collation)
+                acc.keyText = column.type().isText() && uniqueKeys.contains(column.name());
                 if (translated(column.validation())) {
                     acc.rule = new RuleAccumulator(column.validation().expr());
                     ExprColumns.referenced(column.validation().expr()).forEach(this::scan);
@@ -294,11 +300,13 @@ public final class DataProfiler {
             boolean digits;
             boolean fraction;
             boolean autoNumber;
+            boolean keyText;
             RuleAccumulator rule;
             Integer at;
             long nullCount;
             long emptyCount;
             long undecodableCount;
+            long unsafeKeyTextCount;
             int maxDigits;
             int maxScale;
             int maxFraction;
@@ -309,7 +317,14 @@ public final class DataProfiler {
             }
 
             boolean collects() {
-                return nulls || emptyStrings || undecodable || digits || fraction || autoNumber || rule != null;
+                return nulls
+                        || emptyStrings
+                        || undecodable
+                        || digits
+                        || fraction
+                        || autoNumber
+                        || keyText
+                        || rule != null;
             }
 
             /** Whether there is a statistic to show: undecodable text is only reported when there is some. */
@@ -317,6 +332,7 @@ public final class DataProfiler {
                 return nulls
                         || emptyStrings
                         || undecodableCount > 0
+                        || unsafeKeyTextCount > 0
                         || digits
                         || fraction
                         || autoNumber
@@ -330,6 +346,9 @@ public final class DataProfiler {
                 } else {
                     if (undecodable && ((String) value).indexOf(REPLACEMENT) >= 0) {
                         undecodableCount++;
+                    }
+                    if (keyText && !KeyText.isSafe((String) value)) {
+                        unsafeKeyTextCount++;
                     }
                     switch (value) {
                         case String s when emptyStrings && s.isEmpty() -> emptyCount++;
@@ -359,7 +378,8 @@ public final class DataProfiler {
                         digits ? maxScale : null,
                         fraction ? maxFraction : null,
                         autoNumber ? maxAuto : null,
-                        rule == null ? null : rule.stats());
+                        rule == null ? null : rule.stats(),
+                        unsafeKeyTextCount > 0 ? unsafeKeyTextCount : null);
             }
         }
     }

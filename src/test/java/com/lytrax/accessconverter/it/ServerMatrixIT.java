@@ -8,7 +8,6 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.Arrays;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.io.TempDir;
@@ -17,9 +16,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Skeleton of the 09 server matrix: each image in {@code -Dit.db.images} (all five by default, see pom.xml) starts,
- * imports a dump through its own client, and is read back over JDBC. Phase 3 replaces the hand-written dump with
- * converter output and the checks with the verifier.
+ * The 09 server matrix's own check: each image in {@code -Dit.db.images} (all five by default, see pom.xml) starts,
+ * imports a dump through its own client with no flags, reports a broken one as an error, and is read back over JDBC.
+ * The converter's dumps are {@code MySqlCorpusIT}'s.
  */
 class ServerMatrixIT {
     private static final String TEXT = "Γιώργος 😀";
@@ -32,9 +31,7 @@ class ServerMatrixIT {
             """.formatted(TEXT);
 
     static Stream<String> images() {
-        return Arrays.stream(System.getProperty("it.db.images", "").split(","))
-                .map(String::strip)
-                .filter(image -> !image.isEmpty());
+        return DatabaseServer.images().stream();
     }
 
     @ParameterizedTest(name = "{0}")
@@ -43,13 +40,14 @@ class ServerMatrixIT {
         Path good = Files.writeString(tmp.resolve("good.sql"), DUMP);
         Path broken = Files.writeString(tmp.resolve("broken.sql"), "CREATE TABLE broken (;\n");
 
-        try (DatabaseServer server = DatabaseServer.start(image)) {
-            server.importDump(good);
-            assertThatThrownBy(() -> server.importDump(broken))
-                    .isInstanceOf(DatabaseServer.DumpImportException.class)
-                    .hasMessageContaining("ERROR 1064");
-
-            try (Connection c = server.connect();
+        DatabaseServer server = DatabaseServer.of(image);
+        server.recreate("smoke");
+        server.importDump(good, "smoke");
+        assertThatThrownBy(() -> server.importDump(broken, "smoke"))
+                .isInstanceOf(DatabaseServer.DumpImportException.class)
+                .hasMessageContaining("ERROR 1064");
+        {
+            try (Connection c = server.connect("smoke");
                     Statement s = c.createStatement();
                     ResultSet rs = s.executeQuery("SELECT VERSION(), label FROM smoke WHERE id = 1")) {
                 assertThat(rs.next()).isTrue();

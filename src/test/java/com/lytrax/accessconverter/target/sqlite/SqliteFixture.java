@@ -11,6 +11,7 @@ import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.OpenOptions;
 import com.lytrax.accessconverter.target.ConvertOptions;
+import com.lytrax.accessconverter.verify.VerifyResult;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
@@ -37,7 +38,7 @@ public final class SqliteFixture {
             DataProfile profile = options.profile() ? DataProfiler.profile(db, model) : null;
             SqlitePlan plan = SqlitePlanner.plan(model, profile, options, sqlite, issues);
             SqliteWriter.write(db, plan, output, options, sqlite, true, issues);
-            SqliteVerifier.Result verified = SqliteVerifier.verify(db, plan, output);
+            VerifyResult verified = SqliteVerifier.verify(db, plan, output);
             return new Converted(output, plan, model, profile, issues, verified);
         } catch (IOException e) {
             throw new UncheckedIOException("converting " + source, e);
@@ -46,12 +47,7 @@ public final class SqliteFixture {
 
     /** A finished conversion: the file, what the planner decided, and everything reported on the way. */
     public record Converted(
-            Path file,
-            SqlitePlan plan,
-            SchemaModel model,
-            DataProfile profile,
-            Issues issues,
-            SqliteVerifier.Result verified) {
+            Path file, SqlitePlan plan, SchemaModel model, DataProfile profile, Issues issues, VerifyResult verified) {
 
         public Sqlite open() {
             return Sqlite.open(file);

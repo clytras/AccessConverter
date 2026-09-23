@@ -30,8 +30,8 @@ import picocli.CommandLine.Spec;
         mixinStandardHelpOptions = true,
         versionProvider = Main.Version.class,
         subcommands = {ConvertCommand.class, InspectCommand.class, VerifyCommand.class},
-        description = "Converts Microsoft Access databases (.mdb, .accdb) to SQLite. The MySQL/MariaDB dump"
-                + " and JSON targets are not in this build yet.",
+        description = "Converts Microsoft Access databases (.mdb, .accdb) to SQLite and to MySQL/MariaDB dumps."
+                + " The JSON target is not in this build yet.",
         exitCodeListHeading = "%nExit codes:%n",
         exitCodeList = {"0:success", "1:success with warnings (see the issues)", "2:failed", "64:usage error"})
 public final class Main implements Callable<Integer> {

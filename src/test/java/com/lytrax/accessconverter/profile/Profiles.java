@@ -80,6 +80,7 @@ public final class Profiles {
         private Integer maxFractionDigits;
         private Long maxAutoNumber;
         private RuleStats rule;
+        private Long unsafeKeyText;
 
         private Stats(String column) {
             this.column = column;
@@ -111,6 +112,11 @@ public final class Profiles {
             return this;
         }
 
+        public Stats unsafeKeyText(long count) {
+            this.unsafeKeyText = count;
+            return this;
+        }
+
         public Stats rule(long violations, long unevaluable) {
             this.rule =
                     new RuleStats(violations, unevaluable, List.of(), unevaluable > 0 ? "incompatible types" : null);
@@ -127,7 +133,8 @@ public final class Profiles {
                     maxScale,
                     maxFractionDigits,
                     maxAutoNumber,
-                    rule);
+                    rule,
+                    unsafeKeyText);
         }
     }
 }

@@ -221,6 +221,10 @@ final class ModelText {
                 if (c.maxAutoNumber() != null) {
                     parts.add("max-autonumber " + c.maxAutoNumber());
                 }
+                if (c.unsafeKeyText() != null) {
+                    parts.add("unsafe-key-text " + c.unsafeKeyText() + " (characters the default MySQL collations"
+                            + " compare unlike Access)");
+                }
                 if (c.rule() != null) {
                     parts.add("check " + ruleStats(c.rule()));
                 }

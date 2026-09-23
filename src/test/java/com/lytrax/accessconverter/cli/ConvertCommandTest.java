@@ -203,10 +203,58 @@ class ConvertCommandTest {
     }
 
     @Test
-    void theTargetsThatArentBuiltYetAreAUsageError() {
+    void convertsToAMySqlOrMariaDbDumpNextToTheInput() throws IOException {
+        Path input = dir.resolve("copy.accdb");
+        Files.copy(GeneratedFixture.HUNDRED_ROWS.path(), input);
+
+        Cli mysql = Cli.run("convert", "--to", "mysql", input.toString());
+        assertThat(mysql.exitCode()).isEqualTo(ExitCodes.OK);
+        Path dump = dir.resolve("copy.sql");
+        String sql = Files.readString(dump, StandardCharsets.UTF_8);
+        assertThat(sql).startsWith("-- AccessConverter ").contains("COLLATE=utf8mb4_0900_as_ci");
+        assertThat(mysql.out()).contains("import it with: mysql <database> < copy.sql");
+        assertThat(Files.readString(dir.resolve("copy.sql.report.json"), StandardCharsets.UTF_8))
+                .contains("\"to\": \"mysql\"")
+                .contains("\"collation\": \"utf8mb4_0900_as_ci\"");
+
+        Cli mariadb = Cli.run(
+                "convert", "--to", "mariadb", "--overwrite", "--database", "shop", "--drop-existing", input.toString());
+        assertThat(mariadb.exitCode()).isEqualTo(ExitCodes.OK);
+        assertThat(Files.readString(dump, StandardCharsets.UTF_8))
+                .contains("COLLATE=utf8mb4_uca1400_as_ci")
+                .contains("CREATE DATABASE IF NOT EXISTS `shop`")
+                .contains("DROP TABLE IF EXISTS `Hundred`;");
+        assertThat(mariadb.out()).contains("import it with: mariadb < copy.sql");
+    }
+
+    @Test
+    void optionsForAnotherTargetAreAUsageErrorNeverIgnored() {
+        String input = GeneratedFixture.HUNDRED_ROWS.path().toString();
+        Cli sqliteOption = Cli.run("convert", "--to", "mysql", "--sqlite-strict", input);
+        assertThat(sqliteOption.exitCode()).isEqualTo(ExitCodes.USAGE);
+        assertThat(sqliteOption.err()).contains("apply to --to sqlite");
+
+        Cli mysqlOption = Cli.run("convert", "--to", "sqlite", "--drop-existing", input);
+        assertThat(mysqlOption.exitCode()).isEqualTo(ExitCodes.USAGE);
+        assertThat(mysqlOption.err()).contains("apply to --to mysql and --to mariadb");
+
+        Cli verify = Cli.run("convert", "--to", "mariadb", "--verify", input);
+        assertThat(verify.exitCode()).isEqualTo(ExitCodes.USAGE);
+        assertThat(verify.err()).contains("verify --jdbc-url");
+
+        Cli collation = Cli.run("convert", "--to", "mysql", "--collation", "latin1_swedish_ci", input);
+        assertThat(collation.exitCode()).isEqualTo(ExitCodes.USAGE);
+        assertThat(collation.err()).contains("utf8mb4");
+    }
+
+    @Test
+    void verifyNamesTheMissingDriverWhenThereIsNone() {
         Cli cli = Cli.run(
-                "convert", "--to", "mysql", GeneratedFixture.HUNDRED_ROWS.path().toString());
-        assertThat(cli.exitCode()).isEqualTo(ExitCodes.USAGE);
-        assertThat(cli.err()).contains("--to").contains("sqlite");
+                "verify",
+                GeneratedFixture.HUNDRED_ROWS.path().toString(),
+                "--jdbc-url",
+                "jdbc:nosuchdb://localhost/test");
+        assertThat(cli.exitCode()).isEqualTo(ExitCodes.FAILED);
+        assertThat(cli.err()).contains("--jdbc-driver");
     }
 }

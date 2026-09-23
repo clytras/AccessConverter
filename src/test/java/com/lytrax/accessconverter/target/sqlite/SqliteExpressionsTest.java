@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.lytrax.accessconverter.extract.ExpressionTranslator;
 import com.lytrax.accessconverter.model.CheckRule;
 import com.lytrax.accessconverter.model.DefaultValue;
+import com.lytrax.accessconverter.target.Rendered;
 import com.lytrax.accessconverter.target.sqlite.SqliteExpressions.Kind;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -56,7 +57,7 @@ class SqliteExpressionsTest {
     void defaultsBecomeSqliteDefaults(String access, Kind kind, String expected) {
         DefaultValue value = ExpressionTranslator.translateDefault(access);
         assertThat(value.isTranslated()).as(access).isTrue();
-        SqliteExpressions.Result result = SqliteExpressions.defaultClause(value.expr(), kind, 0);
+        Rendered result = SqliteExpressions.defaultClause(value.expr(), kind, 0);
         // '@' stands for the SQL string quote, which @CsvSource reads as its own quote character
         assertThat(result.sql()).isEqualTo(expected.replace('@', SINGLE_QUOTE));
     }
@@ -114,7 +115,7 @@ class SqliteExpressionsTest {
             })
     void aDefaultThatDoesNotFitItsColumnIsReportedInsteadOfGuessed(String access, Kind kind) {
         DefaultValue value = ExpressionTranslator.translateDefault(access);
-        SqliteExpressions.Result result = SqliteExpressions.defaultClause(value.expr(), kind, 0);
+        Rendered result = SqliteExpressions.defaultClause(value.expr(), kind, 0);
         assertThat(result.isPresent()).isFalse();
         assertThat(result.typeMismatch()).isTrue();
         assertThat(result.problem()).isNotBlank();
@@ -175,7 +176,7 @@ class SqliteExpressionsTest {
     @Test
     void aRuleSqliteCannotExpressIsReportedNotGuessed() {
         CheckRule digits = ExpressionTranslator.translateColumnRule("Like \"##\"", null, "Code");
-        SqliteExpressions.Result result = SqliteExpressions.check(digits.expr(), COLUMNS);
+        Rendered result = SqliteExpressions.check(digits.expr(), COLUMNS);
         assertThat(result.isPresent()).isFalse();
         assertThat(result.problem()).contains("# wildcard");
 

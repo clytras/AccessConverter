@@ -1601,6 +1601,7 @@ Profile:
     dtExpire: fraction-digits 0
   BGT: 1 rows scanned
     hbgt: nulls 0
+    szFull: unsafe-key-text 1 (characters the default MySQL collations compare unlike Access)
     dtStart: fraction-digits 0
     dtEnd: fraction-digits 0
     dtSerial: fraction-digits 0

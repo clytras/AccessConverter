@@ -17,6 +17,7 @@ import com.lytrax.accessconverter.target.sqlite.SqliteOptions;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedColumn;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedTable;
 import com.lytrax.accessconverter.target.sqlite.SqliteVerifier;
+import com.lytrax.accessconverter.verify.VerifyResult;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -131,16 +132,14 @@ class SqliteDecimalDisplayTest {
             sqlite.execute("UPDATE Table1 SET Salary = 1000001 WHERE ID = 1");
             sqlite.execute("UPDATE Table1 SET WeeklySalary = '19230.7692307693' WHERE ID = 1");
         }
-        SqliteVerifier.Result again =
-                reverify(CorpusFile.get("jackcess/V2010/calcFieldV2010.accdb"), converted, output);
+        VerifyResult again = reverify(CorpusFile.get("jackcess/V2010/calcFieldV2010.accdb"), converted, output);
         assertThat(again.matches()).isFalse();
         assertThat(again.differences())
-                .extracting(SqliteVerifier.Difference::object)
+                .extracting(VerifyResult.Difference::object)
                 .contains("Salary", "WeeklySalary");
     }
 
-    private static SqliteVerifier.Result reverify(CorpusFile file, Converted converted, Path output)
-            throws IOException {
+    private static VerifyResult reverify(CorpusFile file, Converted converted, Path output) throws IOException {
         try (AccessSource source = AccessSource.open(file.file(), file.openOptions(), new Issues())) {
             return SqliteVerifier.verify(source, converted.plan(), output);
         }

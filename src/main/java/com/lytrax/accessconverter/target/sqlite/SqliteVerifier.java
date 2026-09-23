@@ -2,16 +2,14 @@ package com.lytrax.accessconverter.target.sqlite;
 
 import com.lytrax.accessconverter.model.ForeignKeyModel.Action;
 import com.lytrax.accessconverter.model.IndexModel.IndexColumn;
-import com.lytrax.accessconverter.report.IssueCode;
-import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.source.AccessSource;
-import com.lytrax.accessconverter.source.RowStream;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedColumn;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedForeignKey;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedIndex;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedTable;
-import com.lytrax.accessconverter.value.CanonicalText;
-import com.lytrax.accessconverter.verify.ValueComparator;
+import com.lytrax.accessconverter.verify.RowComparison;
+import com.lytrax.accessconverter.verify.VerifyResult;
+import com.lytrax.accessconverter.verify.VerifyResult.Difference;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -32,72 +30,23 @@ import java.util.stream.Collectors;
  */
 public final class SqliteVerifier {
 
-    /** How many differences of each kind are kept for the report. */
-    private static final int MAX_DIFFERENCES = 20;
-
     private final SqlitePlan plan;
     private final AccessSource source;
-    private final List<Difference> differences = new ArrayList<>();
-    private long differenceCount;
-    private final List<TableRows> rows = new ArrayList<>();
+    private final VerifyResult.Collector differences = new VerifyResult.Collector();
 
     private SqliteVerifier(AccessSource source, SqlitePlan plan) {
         this.source = source;
         this.plan = plan;
     }
 
-    public static Result verify(AccessSource source, SqlitePlan plan, Path output) throws IOException {
+    public static VerifyResult verify(AccessSource source, SqlitePlan plan, Path output) throws IOException {
         SqliteVerifier verifier = new SqliteVerifier(source, plan);
         try (Connection db = DriverManager.getConnection("jdbc:sqlite:" + output.toAbsolutePath())) {
             verifier.run(db);
         } catch (SQLException e) {
             throw new IOException("the output could not be read back: " + e.getMessage(), e);
         }
-        return new Result(verifier.differences, verifier.differenceCount, verifier.rows);
-    }
-
-    /** @param what the kind of difference, for the message */
-    public record Difference(String table, String object, String what, String expected, String actual) {
-
-        @Override
-        public String toString() {
-            return table + (object == null ? "" : "." + object) + ": " + what + " is " + actual + ", expected "
-                    + expected;
-        }
-    }
-
-    public record TableRows(String table, long expected, long actual) {}
-
-    public record Result(List<Difference> differences, long differenceCount, List<TableRows> tables) {
-
-        public Result {
-            differences = List.copyOf(differences);
-            tables = List.copyOf(tables);
-        }
-
-        public boolean matches() {
-            return differenceCount == 0;
-        }
-
-        /** Every difference is a converter bug, so each one is an error in the report. */
-        public void report(Issues issues) {
-            for (Difference difference : differences) {
-                issues.add(
-                        IssueCode.VERIFY_DIFFERENCE,
-                        difference.table(),
-                        difference.object(),
-                        "verify: " + difference.what() + " is " + difference.actual() + ", expected "
-                                + difference.expected());
-            }
-            if (differenceCount > differences.size()) {
-                issues.add(
-                        IssueCode.VERIFY_DIFFERENCE,
-                        null,
-                        null,
-                        "verify found " + differenceCount + " differences in all; the first " + differences.size()
-                                + " are listed");
-            }
-        }
+        return verifier.differences.result();
     }
 
     private void run(Connection db) throws SQLException, IOException {
@@ -131,7 +80,7 @@ public final class SqliteVerifier {
         List<String> actual = new ArrayList<>(schema.tableNames());
         actual.sort(String.CASE_INSENSITIVE_ORDER);
         if (!expected.equals(actual)) {
-            add(new Difference(
+            differences.add(new Difference(
                     null, null, "the set of tables", String.join(", ", expected), String.join(", ", actual)));
         }
     }
@@ -142,7 +91,7 @@ public final class SqliteVerifier {
         List<String> actualNames =
                 actual.columns().stream().map(SqliteIntrospector.Column::name).toList();
         if (!expectedNames.equals(actualNames)) {
-            add(new Difference(
+            differences.add(new Difference(
                     table.name(),
                     null,
                     "the columns",
@@ -153,11 +102,11 @@ public final class SqliteVerifier {
         for (PlannedColumn column : table.columns()) {
             SqliteIntrospector.Column found = actual.column(column.name()).orElseThrow();
             if (!column.declaredType().equals(found.declaredType())) {
-                add(new Difference(
+                differences.add(new Difference(
                         table.name(), column.name(), "the declared type", column.declaredType(), found.declaredType()));
             }
             if (column.notNull() != found.notNull()) {
-                add(new Difference(
+                differences.add(new Difference(
                         table.name(),
                         column.name(),
                         "NOT NULL",
@@ -167,7 +116,7 @@ public final class SqliteVerifier {
             String expectedDefault = unwrap(column.defaultSql());
             String actualDefault = unwrap(found.defaultValue());
             if (!java.util.Objects.equals(expectedDefault, actualDefault)) {
-                add(new Difference(
+                differences.add(new Difference(
                         table.name(),
                         column.name(),
                         "the default",
@@ -193,7 +142,7 @@ public final class SqliteVerifier {
                 table.primaryKey() == null ? List.of() : table.primaryKey().columns();
         List<IndexColumn> found = actual.primaryKey();
         if (!sameColumns(expected, found)) {
-            add(new Difference(table.name(), null, "the primary key", describe(expected), describe(found)));
+            differences.add(new Difference(table.name(), null, "the primary key", describe(expected), describe(found)));
         }
     }
 
@@ -203,7 +152,7 @@ public final class SqliteVerifier {
         List<SqliteIntrospector.Index> found =
                 actual.indexes().stream().filter(i -> "c".equals(i.origin())).toList();
         if (expected.size() != found.size()) {
-            add(new Difference(
+            differences.add(new Difference(
                     table.name(),
                     null,
                     "the number of indexes",
@@ -220,11 +169,11 @@ public final class SqliteVerifier {
                     .findFirst()
                     .orElse(null);
             if (match == null) {
-                add(new Difference(table.name(), index.name(), "the index", "present", "missing"));
+                differences.add(new Difference(table.name(), index.name(), "the index", "present", "missing"));
                 continue;
             }
             if (index.unique() != match.unique()) {
-                add(new Difference(
+                differences.add(new Difference(
                         table.name(),
                         index.name(),
                         "UNIQUE",
@@ -232,7 +181,7 @@ public final class SqliteVerifier {
                         String.valueOf(match.unique())));
             }
             if (!sameColumns(index.columns(), match.columns())) {
-                add(new Difference(
+                differences.add(new Difference(
                         table.name(),
                         index.name(),
                         "the index columns",
@@ -242,7 +191,7 @@ public final class SqliteVerifier {
             String expectedWhere = index.where();
             String actualWhere = match.where().orElse(null);
             if (!java.util.Objects.equals(expectedWhere, actualWhere)) {
-                add(new Difference(
+                differences.add(new Difference(
                         table.name(),
                         index.name(),
                         "the partial-index predicate",
@@ -261,7 +210,7 @@ public final class SqliteVerifier {
         List<PlannedForeignKey> expected = table.foreignKeys();
         List<SqliteIntrospector.ForeignKey> found = actual.foreignKeys();
         if (expected.size() != found.size()) {
-            add(new Difference(
+            differences.add(new Difference(
                     table.name(),
                     null,
                     "the number of foreign keys",
@@ -278,7 +227,7 @@ public final class SqliteVerifier {
                     .orElse(null);
             String name = fk.source().name();
             if (match == null) {
-                add(new Difference(
+                differences.add(new Difference(
                         table.name(),
                         name,
                         "the foreign key",
@@ -287,10 +236,12 @@ public final class SqliteVerifier {
                 continue;
             }
             if (!action(fk.onUpdate()).equals(match.onUpdate())) {
-                add(new Difference(table.name(), name, "ON UPDATE", action(fk.onUpdate()), match.onUpdate()));
+                differences.add(
+                        new Difference(table.name(), name, "ON UPDATE", action(fk.onUpdate()), match.onUpdate()));
             }
             if (!action(fk.onDelete()).equals(match.onDelete())) {
-                add(new Difference(table.name(), name, "ON DELETE", action(fk.onDelete()), match.onDelete()));
+                differences.add(
+                        new Difference(table.name(), name, "ON DELETE", action(fk.onDelete()), match.onDelete()));
             }
         }
     }
@@ -298,7 +249,7 @@ public final class SqliteVerifier {
     /** The whole statement as SQLite stored it must be the one the planner wrote. */
     private void statement(String table, String kind, String expected, String actual) {
         if (!expected.equals(actual)) {
-            add(new Difference(table, null, "the " + kind + "'s SQL", expected, String.valueOf(actual)));
+            differences.add(new Difference(table, null, "the " + kind + "'s SQL", expected, String.valueOf(actual)));
         }
     }
 
@@ -340,60 +291,27 @@ public final class SqliteVerifier {
     private void data(Connection db, PlannedTable table) throws SQLException, IOException {
         List<PlannedColumn> columns = table.columns();
         List<String> names = columns.stream().map(PlannedColumn::name).toList();
-        long expectedRows = 0;
-        long actualRows = 0;
+        List<RowComparison.Column> compared = columns.stream()
+                .map(c -> new RowComparison.Column(c.name(), c.source().type(), c.sourceIndex(), c.fractionDigits()))
+                .toList();
         try (Statement statement = db.createStatement();
                 ResultSet actual = statement.executeQuery(SqliteIntrospector.selectAll(table.name(), names))) {
-            RowStream expected = source.rows(table.source());
-            boolean hasActual = actual.next();
-            while (expected.hasNext() || hasActual) {
-                if (!expected.hasNext()) {
-                    actualRows++;
-                    add(new Difference(table.name(), null, "row " + actualRows, "no row", "a row"));
-                    hasActual = actual.next();
-                    continue;
-                }
-                Object[] row = expected.next();
-                expectedRows++;
-                if (!hasActual) {
-                    add(new Difference(table.name(), null, "row " + expectedRows, "a row", "no row"));
-                    continue;
-                }
-                actualRows++;
-                for (int i = 0; i < columns.size(); i++) {
-                    PlannedColumn column = columns.get(i);
-                    Object stored = expectedValue(column, row[column.sourceIndex()]);
-                    Object read = actual.getObject(i + 1);
-                    if (!ValueComparator.same(column.source().type(), stored, read, column.fractionDigits())) {
-                        add(new Difference(
-                                table.name(),
-                                column.name(),
-                                "row " + expectedRows,
-                                CanonicalText.of(stored),
-                                CanonicalText.of(read)));
-                    }
-                }
-                hasActual = actual.next();
-            }
-        }
-        rows.add(new TableRows(table.name(), expectedRows, actualRows));
-    }
+            differences.rows(RowComparison.ordered(
+                    table.name(),
+                    compared,
+                    source.rows(table.source()),
+                    new RowComparison.OutputRows() {
+                        @Override
+                        public boolean next() throws SQLException {
+                            return actual.next();
+                        }
 
-    /** What the plan says the output holds: the canonical value, except where the target can't store it. */
-    private static Object expectedValue(PlannedColumn column, Object canonical) {
-        if (canonical instanceof Double d && !Double.isFinite(d)) {
-            return null; // written as NULL and reported (DOUBLE_NON_FINITE)
-        }
-        if (canonical instanceof Float f && !Float.isFinite(f)) {
-            return null;
-        }
-        return canonical;
-    }
-
-    private void add(Difference difference) {
-        differenceCount++;
-        if (differences.size() < MAX_DIFFERENCES) {
-            differences.add(difference);
+                        @Override
+                        public Object value(int column) throws SQLException {
+                            return actual.getObject(column + 1);
+                        }
+                    },
+                    differences));
         }
     }
 }

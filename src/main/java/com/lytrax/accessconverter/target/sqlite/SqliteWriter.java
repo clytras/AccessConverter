@@ -1,19 +1,18 @@
 package com.lytrax.accessconverter.target.sqlite;
 
 import static com.lytrax.accessconverter.target.IdentifierPolicy.quote;
-import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 import com.lytrax.accessconverter.model.ForeignKeyModel;
-import com.lytrax.accessconverter.model.TableModel;
 import com.lytrax.accessconverter.report.ConversionReport.TableResult;
 import com.lytrax.accessconverter.report.IssueCode;
 import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.RowStream;
-import com.lytrax.accessconverter.source.SourceException;
+import com.lytrax.accessconverter.target.AtomicOutput;
 import com.lytrax.accessconverter.target.ConvertOptions;
-import com.lytrax.accessconverter.target.ConvertOptions.OnTableError;
+import com.lytrax.accessconverter.target.RowSource;
+import com.lytrax.accessconverter.target.TableFailure;
+import com.lytrax.accessconverter.target.WriteOutcome;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedColumn;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedForeignKey;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedIndex;
@@ -22,9 +21,7 @@ import com.lytrax.accessconverter.value.CanonicalText;
 import com.lytrax.accessconverter.value.ComplexRef;
 import com.lytrax.accessconverter.value.OleValue;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -47,23 +44,16 @@ import java.util.stream.Collectors;
  */
 public final class SqliteWriter {
 
-    /**
-     * Where a table's rows come from. The Access source provides them; a test replaces it to make one table fail,
-     * which is the only way to exercise {@code --on-table-error} without a database that pretends to be damaged.
-     */
-    interface Rows {
-        RowStream of(TableModel table) throws IOException;
-    }
-
     private final ConvertOptions options;
     private final SqliteOptions sqlite;
     private final SqlitePlan plan;
-    private final Rows source;
+    private final RowSource source;
     private final Issues issues;
     private final List<TableResult> results = new ArrayList<>();
     private boolean tableFailed;
 
-    private SqliteWriter(Rows source, SqlitePlan plan, ConvertOptions options, SqliteOptions sqlite, Issues issues) {
+    private SqliteWriter(
+            RowSource source, SqlitePlan plan, ConvertOptions options, SqliteOptions sqlite, Issues issues) {
         this.source = source;
         this.plan = plan;
         this.options = options;
@@ -75,7 +65,7 @@ public final class SqliteWriter {
      * @param integrityCheck also run {@code PRAGMA integrity_check}
      * @return what each table contributed, and whether a table failed while {@code --on-table-error continue}
      */
-    public static Outcome write(
+    public static WriteOutcome write(
             AccessSource source,
             SqlitePlan plan,
             Path output,
@@ -88,8 +78,8 @@ public final class SqliteWriter {
     }
 
     /** As {@link #write}, reading the rows from somewhere else; for the {@code --on-table-error} test. */
-    static Outcome write(
-            Rows source,
+    static WriteOutcome write(
+            RowSource source,
             SqlitePlan plan,
             Path output,
             ConvertOptions options,
@@ -100,38 +90,16 @@ public final class SqliteWriter {
         return new SqliteWriter(source, plan, options, sqlite, issues).run(output, integrityCheck);
     }
 
-    /** @param tableFailed a table could not be written and {@code --on-table-error continue} kept the output */
-    public record Outcome(List<TableResult> tables, boolean tableFailed) {
-        public Outcome {
-            tables = List.copyOf(tables);
-        }
-
-        public long rowsWritten() {
-            return tables.stream()
-                    .mapToLong(t -> t.rowsWritten() == null ? 0 : t.rowsWritten())
-                    .sum();
-        }
-    }
-
-    private Outcome run(Path output, boolean integrityCheck) throws IOException {
-        Path partial = output.resolveSibling(output.getFileName() + ".partial");
-        Files.deleteIfExists(partial);
-        try {
+    private WriteOutcome run(Path output, boolean integrityCheck) throws IOException {
+        AtomicOutput.write(output, partial -> {
             try (Connection db = connect(partial)) {
                 build(db, integrityCheck);
             } catch (SQLException e) {
                 throw new IOException("the SQLite output could not be written: " + e.getMessage(), e);
             }
-            Files.move(partial, output, ATOMIC_MOVE, REPLACE_EXISTING);
-        } catch (IOException | RuntimeException e) {
-            try {
-                Files.deleteIfExists(partial);
-            } catch (IOException suppressed) {
-                e.addSuppressed(suppressed);
-            }
-            throw e;
-        }
-        return new Outcome(results, tableFailed);
+            return null;
+        });
+        return new WriteOutcome(results, tableFailed);
     }
 
     private void build(Connection db, boolean integrityCheck) throws IOException {
@@ -201,18 +169,7 @@ public final class SqliteWriter {
         } catch (IOException | SQLException | RuntimeException e) {
             db.rollback();
             tableFailed = true;
-            boolean reading = e instanceof IOException || e instanceof UncheckedIOException;
-            issues.add(
-                    reading ? IssueCode.TABLE_READ_FAILED : IssueCode.TABLE_WRITE_FAILED,
-                    table.name(),
-                    null,
-                    (reading ? "reading" : "writing") + " the table failed after " + counts[1] + " rows: "
-                            + message(e));
-            if (options.onTableError() == OnTableError.FAIL) {
-                throw e instanceof SourceException source
-                        ? source
-                        : new IOException("table " + table.name() + " failed: " + message(e), e);
-            }
+            TableFailure.handle(issues, options, table.name(), counts[1], e);
         }
         results.add(new TableResult(table.name(), counts[0], counts[1]));
     }
@@ -415,14 +372,5 @@ public final class SqliteWriter {
         if (!problems.isEmpty()) {
             throw new IOException("PRAGMA integrity_check failed: " + String.join("; ", problems));
         }
-    }
-
-    private static String message(Throwable e) {
-        for (Throwable t = e; t != null; t = t.getCause()) {
-            if (t instanceof SourceException source) {
-                return source.getMessage();
-            }
-        }
-        return e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ": " + e.getMessage());
     }
 }

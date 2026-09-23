@@ -16,11 +16,12 @@ import com.lytrax.accessconverter.model.expr.ExprColumns;
 import com.lytrax.accessconverter.profile.DataProfile;
 import com.lytrax.accessconverter.profile.DataProfile.ColumnStats;
 import com.lytrax.accessconverter.profile.DataProfile.RelationshipProfile;
-import com.lytrax.accessconverter.profile.DataProfile.RuleStats;
 import com.lytrax.accessconverter.report.IssueCode;
 import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.IdentifierPolicy;
+import com.lytrax.accessconverter.target.PlanRules;
+import com.lytrax.accessconverter.target.Rendered;
 import com.lytrax.accessconverter.target.sqlite.SqliteExpressions.Kind;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedColumn;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedForeignKey;
@@ -52,7 +53,8 @@ public final class SqlitePlanner {
     private final ConvertOptions options;
     private final SqliteOptions sqlite;
     private final Issues issues;
-    private final IdentifierPolicy names = new IdentifierPolicy();
+    private final PlanRules rules;
+    private final IdentifierPolicy names = new IdentifierPolicy(IdentifierPolicy.SQLITE);
     private final List<TableDraft> drafts = new ArrayList<>();
 
     private SqlitePlanner(
@@ -62,6 +64,7 @@ public final class SqlitePlanner {
         this.options = options;
         this.sqlite = sqlite;
         this.issues = issues;
+        this.rules = new PlanRules(profile, options, issues, "SQLite");
     }
 
     /** @param profile null when {@code --no-profile} skipped it */
@@ -71,15 +74,8 @@ public final class SqlitePlanner {
     }
 
     private SqlitePlan build() {
-        if (profile == null) {
-            issues.add(
-                    IssueCode.PROFILE_SKIPPED,
-                    null,
-                    null,
-                    "the data was not profiled (--no-profile): exact decimals are stored as text, NOT NULL and CHECK"
-                            + " are only emitted where Access itself guarantees them, and text foreign keys compare"
-                            + " case-insensitively");
-        }
+        rules.reportProfileSkipped("exact decimals are stored as text, NOT NULL and CHECK are only emitted where"
+                + " Access itself guarantees them, and text foreign keys compare case-insensitively");
         for (TableModel table : model.tables()) {
             if (!table.isLinked()) {
                 drafts.add(new TableDraft(table));
@@ -131,30 +127,14 @@ public final class SqlitePlanner {
                     "foreign key skipped: one of its columns is not written to the output");
             return;
         }
-        RelationshipProfile stats =
-                profile == null ? null : profile.relationship(fk.name()).orElse(null);
-        if (stats != null && stats.orphans() > 0) {
-            issues.add(
-                    IssueCode.FK_SKIPPED_ORPHANS,
-                    fk.childTable(),
-                    fk.name(),
-                    "foreign key skipped: " + stats.orphans() + " of " + stats.checked()
-                            + " child rows have no parent row, which SQLite would reject",
-                    String.join("; ", stats.orphanSamples()));
+        PlanRules.ForeignKeyData data = rules.foreignKeyData(fk, false);
+        if (data == PlanRules.ForeignKeyData.BLOCKED) {
             return;
         }
-        boolean relaxCollation =
-                stats == null ? childColumns.stream().anyMatch(c -> c.kind == Kind.TEXT) : stats.inexact() > 0;
-        if (stats != null && stats.inexact() > 0 && !stats.inexactAsciiCaseOnly()) {
-            issues.add(
-                    IssueCode.FK_SKIPPED_ORPHANS,
-                    fk.childTable(),
-                    fk.name(),
-                    "foreign key skipped: " + stats.inexact() + " child rows match their parent only under Access's"
-                            + " text comparison, and the difference is more than ASCII letter case",
-                    String.join("; ", stats.inexactSamples()));
-            return;
-        }
+        RelationshipProfile stats = rules.relationship(fk);
+        boolean relaxCollation = data == PlanRules.ForeignKeyData.UNKNOWN
+                ? childColumns.stream().anyMatch(c -> c.kind == Kind.TEXT)
+                : data == PlanRules.ForeignKeyData.ASCII_CASE_ONLY;
         if (relaxCollation) {
             boolean relaxed = false;
             for (int i = 0; i < childColumns.size(); i++) {
@@ -171,19 +151,13 @@ public final class SqlitePlanner {
                         String.join("; ", stats.inexactSamples()));
             }
         }
-        Action onDelete = fk.onDelete();
-        if (onDelete == Action.SET_NULL) {
-            ColumnDraft notNull =
-                    childColumns.stream().filter(c -> c.notNull).findFirst().orElse(null);
-            if (notNull != null) {
-                onDelete = Action.NO_ACTION;
-                issues.add(
-                        IssueCode.FK_SET_NULL_ON_REQUIRED,
-                        fk.childTable(),
-                        fk.name(),
-                        "ON DELETE SET NULL downgraded to NO ACTION: " + notNull.name + " is NOT NULL");
-            }
-        }
+        Action onDelete = rules.onDelete(
+                fk,
+                childColumns.stream()
+                        .filter(c -> c.notNull)
+                        .map(c -> c.name)
+                        .findFirst()
+                        .orElse(null));
         parent.parentKeys.add(fk.parentKey());
         child.foreignKeys.add(new PlannedForeignKey(
                 fk,
@@ -214,22 +188,6 @@ public final class SqlitePlanner {
         return found;
     }
 
-    // ---------------------------------------------------------------- profile lookups
-
-    private ColumnStats stats(String table, String column) {
-        if (profile == null) {
-            return null;
-        }
-        return profile.table(table).flatMap(t -> t.column(column)).orElse(null);
-    }
-
-    private RuleStats tableRule(String table) {
-        if (profile == null) {
-            return null;
-        }
-        return profile.table(table).map(DataProfile.TableProfile::tableRule).orElse(null);
-    }
-
     // ---------------------------------------------------------------- table
 
     /** One table being planned: its columns, key, checks, indexes and foreign keys, and finally its DDL. */
@@ -250,69 +208,17 @@ public final class SqlitePlanner {
         TableDraft(TableModel source) {
             this.source = source;
             this.name = names.register(source.name(), "table " + source.name(), "table", issues, source.name());
-            Set<String> required = requiredColumns();
-            Set<String> keyColumns = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-            if (source.primaryKey() != null) {
-                keyColumns.addAll(source.primaryKey().columnNames());
-            }
-            for (int i = 0; i < source.columns().size(); i++) {
-                ColumnModel column = source.columns().get(i);
-                if (skip(column, keyColumns.contains(column.name()))) {
-                    continue;
-                }
-                columns.add(new ColumnDraft(source, column, i, required.contains(column.name()), keyColumns));
-            }
-            if (columns.isEmpty()) {
-                // A table must have at least one column; keep everything rather than write an empty one
-                for (int i = 0; i < source.columns().size(); i++) {
-                    ColumnModel column = source.columns().get(i);
-                    columns.add(new ColumnDraft(source, column, i, required.contains(column.name()), keyColumns));
-                }
+            Set<String> required = PlanRules.requiredColumns(source);
+            Set<String> keyColumns = PlanRules.primaryKeyColumns(source);
+            for (PlanRules.WrittenColumn written : rules.writtenColumns(source)) {
+                ColumnModel column = written.column();
+                columns.add(new ColumnDraft(
+                        source, column, written.sourceIndex(), required.contains(column.name()), keyColumns));
             }
             primaryKey();
             if (source.description() != null) {
                 tableComments.add(source.description());
             }
-        }
-
-        /** Columns Access marks as required, directly or through an index that can't hold NULLs. */
-        private Set<String> requiredColumns() {
-            Set<String> required = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-            for (ColumnModel column : source.columns()) {
-                if (column.required()) {
-                    required.add(column.name());
-                }
-            }
-            for (IndexModel index : source.allIndexes()) {
-                if (index.required()) {
-                    required.addAll(index.columnNames());
-                }
-            }
-            return required;
-        }
-
-        /** Whether a column is left out of the output: version history, or a hidden system column (04). */
-        private boolean skip(ColumnModel column, boolean inPrimaryKey) {
-            if (inPrimaryKey) {
-                return false;
-            }
-            if (column.type() == AccessType.VERSION_HISTORY) {
-                issues.add(
-                        IssueCode.VERSION_HISTORY_SKIPPED,
-                        source.name(),
-                        column.name(),
-                        "the append-only memo's version history is not written; the memo itself is");
-                return true;
-            }
-            if (column.hidden() && !options.includeHidden()) {
-                issues.add(
-                        IssueCode.HIDDEN_COLUMN_SKIPPED,
-                        source.name(),
-                        column.name(),
-                        "Access maintains this column itself; pass --include-hidden to write it");
-                return true;
-            }
-            return false;
         }
 
         /**
@@ -372,50 +278,17 @@ public final class SqlitePlanner {
                 tableComments.add("Access validation rule: " + rule.raw());
                 return;
             }
-            if (!ruleHolds(rule, tableRule(source.name()), null)) {
+            if (!rules.ruleHolds(source, rule, null)) {
                 tableComments.add("Access validation rule: " + rule.raw());
                 return;
             }
-            SqliteExpressions.Result check = SqliteExpressions.check(rule.expr(), new ColumnLookup(this));
+            Rendered check = SqliteExpressions.check(rule.expr(), new ColumnLookup(this));
             if (check.isPresent()) {
                 addConstraint("ck_" + source.name(), check.sql());
             } else {
-                issues.add(
-                        IssueCode.CHECK_UNTRANSLATABLE,
-                        source.name(),
-                        null,
-                        "the table's validation rule " + rule.raw() + " has no SQLite CHECK: " + check.problem());
+                rules.checkUntranslatable(source, null, rule, check.problem());
                 tableComments.add("Access validation rule: " + rule.raw());
             }
-        }
-
-        /** Whether the profile proves every row satisfies a rule, so a CHECK can be emitted. */
-        private boolean ruleHolds(CheckRule rule, RuleStats stats, String column) {
-            if (stats == null) {
-                if (profile != null) {
-                    return false;
-                }
-                issues.add(
-                        IssueCode.CHECK_VIOLATED_BY_DATA,
-                        source.name(),
-                        column,
-                        "no CHECK for the validation rule " + rule.raw()
-                                + ": without profiling (--no-profile) the data can't be shown to comply");
-                return false;
-            }
-            if (stats.holds()) {
-                return true;
-            }
-            issues.add(
-                    IssueCode.CHECK_VIOLATED_BY_DATA,
-                    source.name(),
-                    column,
-                    "no CHECK for the validation rule " + rule.raw() + ": "
-                            + (stats.violations() > 0
-                                    ? stats.violations() + " existing rows violate it, as Access allows"
-                                    : stats.unevaluable() + " rows could not be checked (" + stats.firstError() + ")"),
-                    String.join("; ", stats.samples()));
-            return false;
         }
 
         void addConstraint(String preferred, String check) {
@@ -441,27 +314,9 @@ public final class SqlitePlanner {
                 if (covered(fk.childColumns())) {
                     continue;
                 }
-                List<IndexColumn> columns = fk.childColumns().stream()
-                        .map(c -> new IndexColumn(c, true))
-                        .toList();
-                if (index(
-                        new IndexModel(
-                                fk.name(),
-                                columns,
-                                false,
-                                false,
-                                false,
-                                false,
-                                IndexModel.Origin.RELATIONSHIP,
-                                List.of(fk.name())),
-                        fk.name(),
-                        false)) {
-                    issues.add(
-                            IssueCode.INDEX_ADDED_FOR_RELATIONSHIP,
-                            source.name(),
-                            fk.name(),
-                            "index on " + String.join(", ", fk.childColumns())
-                                    + ": Access creates none for a relationship without referential integrity");
+                if (index(PlanRules.relationshipIndex(fk), fk.name(), false)) {
+                    rules.indexAddedForRelationship(
+                            fk, "Access creates none for a relationship without referential integrity");
                 }
             }
         }
@@ -473,19 +328,7 @@ public final class SqlitePlanner {
                 existing.add(key.columnNames());
             }
             plannedIndexes.forEach(i -> existing.add(i.columnNames()));
-            for (List<String> candidate : existing) {
-                if (candidate.size() < columns.size()) {
-                    continue;
-                }
-                boolean prefix = true;
-                for (int i = 0; i < columns.size(); i++) {
-                    prefix &= candidate.get(i).equalsIgnoreCase(columns.get(i));
-                }
-                if (prefix) {
-                    return true;
-                }
-            }
-            return false;
+            return PlanRules.covered(existing, columns);
         }
 
         private boolean index(IndexModel index, String preferred, boolean unique) {
@@ -493,24 +336,8 @@ public final class SqlitePlanner {
             if (indexColumns == null) {
                 return false;
             }
-            ColumnDraft complex = indexColumns.stream()
-                    .filter(c -> c.source.type().isComplex())
-                    .findFirst()
-                    .orElse(null);
-            if (complex != null) {
-                // Access's hidden index on an attachment or multi-value column indexes data we don't store (F-16)
-                issues.add(
-                        IssueCode.INDEX_SKIPPED_COMPLEX_COLUMN,
-                        source.name(),
-                        index.name(),
-                        "index skipped: " + complex.source.name() + " is an Access "
-                                + complex.source
-                                        .type()
-                                        .name()
-                                        .toLowerCase(java.util.Locale.ROOT)
-                                        .replace('_', ' ')
-                                + " column, whose values become child tables");
-                return false;
+            if (rules.skipsComplexIndex(source, index)) {
+                return false; // F-16
             }
             String where = null;
             if (index.ignoreNulls()) {
@@ -573,7 +400,7 @@ public final class SqlitePlanner {
 
         /** What {@code sqlite_sequence} must hold so the next generated id is one Access hasn't used (04). */
         private Long seed() {
-            ColumnStats stats = stats(source.name(), autoIncrementColumn);
+            ColumnStats stats = rules.stats(source.name(), autoIncrementColumn);
             return stats == null ? null : stats.maxAutoNumber();
         }
 
@@ -663,7 +490,7 @@ public final class SqlitePlanner {
             this.form = form(source.type(), decimalAsText);
             this.fractionDigits = fractionDigits();
             this.nocase = sqlite.nocase() && kind == Kind.TEXT;
-            this.notNull = notNull(required, keyColumns.contains(source.name()));
+            this.notNull = rules.notNull(table, source, required, keyColumns.contains(source.name()));
             defaults();
             if (source.isCalculated()) {
                 comments.add("Access expression: " + source.calculatedExpression());
@@ -678,7 +505,7 @@ public final class SqlitePlanner {
             if (sqlite.strict()) {
                 return true;
             }
-            ColumnStats stats = stats(table.name(), source.name());
+            ColumnStats stats = rules.stats(table.name(), source.name());
             Integer digits = stats == null ? null : stats.maxSignificantDigits();
             boolean asText = digits == null || !SqliteValues.fitsNumeric(digits);
             if (asText) {
@@ -708,39 +535,12 @@ public final class SqlitePlanner {
             if (source.type() == AccessType.EXT_DATE_TIME) {
                 return SqliteValues.EXTENDED_FRACTION_DIGITS;
             }
-            ColumnStats stats = stats(table.name(), source.name());
+            ColumnStats stats = rules.stats(table.name(), source.name());
             Integer used = stats == null ? null : stats.maxFractionDigits();
             if (used == null) {
                 return SqliteValues.DEFAULT_FRACTION_DIGITS;
             }
             return used == 0 ? 0 : Math.max(SqliteValues.DEFAULT_FRACTION_DIGITS, used);
-        }
-
-        /**
-         * NOT NULL only where the data allows it (05, Constraints): Access's own guarantees (Yes/No, autonumbers and
-         * primary keys) plus Required columns whose profiled NULL count is zero.
-         */
-        private boolean notNull(boolean required, boolean inPrimaryKey) {
-            boolean guaranteed =
-                    source.type() == AccessType.BOOLEAN || source.type().isAutoNumber() || inPrimaryKey;
-            if (!guaranteed && !required) {
-                return false;
-            }
-            ColumnStats stats = stats(table.name(), source.name());
-            Long nulls = stats == null ? null : stats.nulls();
-            if (nulls == null) {
-                return guaranteed;
-            }
-            if (nulls == 0) {
-                return true;
-            }
-            issues.add(
-                    IssueCode.NOT_NULL_DROPPED_NULLS_PRESENT,
-                    table.name(),
-                    source.name(),
-                    "the column is nullable in the output: Access marks it as required, but " + nulls
-                            + " rows hold NULL");
-            return false;
         }
 
         private void defaults() {
@@ -759,7 +559,7 @@ public final class SqlitePlanner {
                 comments.add("Access default: " + value.raw());
                 return;
             }
-            SqliteExpressions.Result result = SqliteExpressions.defaultClause(value.expr(), kind, fractionDigits);
+            Rendered result = SqliteExpressions.defaultClause(value.expr(), kind, fractionDigits);
             if (result.isPresent()) {
                 defaultSql = result.sql();
                 return;
@@ -775,17 +575,15 @@ public final class SqlitePlanner {
         /** The column's CHECKs: its validation rule, and {@code <> ''} when Access rejects the empty string. */
         void check() {
             TableDraft draft = draft(table.name());
-            ColumnStats stats = stats(table.name(), source.name());
             CheckRule rule = source.validation();
             if (rule != null) {
-                if (rule.isTranslated() && draft.ruleHolds(rule, stats == null ? null : stats.rule(), source.name())) {
+                if (rule.isTranslated() && rules.ruleHolds(table, rule, source.name())) {
                     checkFor(draft, rule);
                 } else {
                     comments.add("Access validation rule: " + rule.raw());
                 }
             }
-            Long empty = stats == null ? null : stats.emptyStrings();
-            if (kind == Kind.TEXT && !source.allowZeroLength() && empty != null && empty == 0) {
+            if (rules.noEmptyStrings(table, source)) {
                 draft.addConstraint("ck_" + source.name() + "_nonempty", quote(name) + " <> ''");
             }
         }
@@ -795,25 +593,20 @@ public final class SqlitePlanner {
             for (String other : referenced) {
                 ColumnDraft column = draft.column(other);
                 if (column != null && column.form == ValueForm.DECIMAL_TEXT) {
-                    issues.add(
-                            IssueCode.CHECK_UNTRANSLATABLE,
-                            table.name(),
+                    rules.checkUntranslatable(
+                            table,
                             source.name(),
-                            "the validation rule " + rule.raw() + " has no SQLite CHECK: " + other
-                                    + " is stored as exact text, which doesn't compare as a number");
+                            rule,
+                            other + " is stored as exact text, which doesn't compare as a number");
                     comments.add("Access validation rule: " + rule.raw());
                     return;
                 }
             }
-            SqliteExpressions.Result result = SqliteExpressions.check(rule.expr(), new ColumnLookup(draft));
+            Rendered result = SqliteExpressions.check(rule.expr(), new ColumnLookup(draft));
             if (result.isPresent()) {
                 draft.addConstraint("ck_" + source.name(), result.sql());
             } else {
-                issues.add(
-                        IssueCode.CHECK_UNTRANSLATABLE,
-                        table.name(),
-                        source.name(),
-                        "the validation rule " + rule.raw() + " has no SQLite CHECK: " + result.problem());
+                rules.checkUntranslatable(table, source.name(), rule, result.problem());
                 comments.add("Access validation rule: " + rule.raw());
             }
         }

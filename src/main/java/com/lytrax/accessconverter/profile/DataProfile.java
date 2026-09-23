@@ -55,6 +55,8 @@ public record DataProfile(Map<String, TableProfile> tables, Map<String, Relation
      * @param maxFractionDigits date/time: fractional-second digits in use (0 = whole seconds, up to 7)
      * @param maxAutoNumber AUTONUMBER_LONG: the highest value, for the target's sequence seed
      * @param rule the column validation rule's result
+     * @param unsafeKeyText text of a primary key or unique index: values holding a character the default MySQL and
+     *     MariaDB collations don't compare as Access does ({@link KeyText}); null when there are none
      */
     public record ColumnStats(
             String column,
@@ -65,7 +67,8 @@ public record DataProfile(Map<String, TableProfile> tables, Map<String, Relation
             Integer maxScale,
             Integer maxFractionDigits,
             Long maxAutoNumber,
-            RuleStats rule) {}
+            RuleStats rule,
+            Long unsafeKeyText) {}
 
     /**
      * @param violations rows for which the rule is FALSE

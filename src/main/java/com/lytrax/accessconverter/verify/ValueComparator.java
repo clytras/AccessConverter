@@ -53,6 +53,33 @@ public final class ValueComparator {
         }
     }
 
+    /**
+     * The value in a form where two values are {@link #same} exactly when their forms are equal: for comparing rows
+     * whose order differs, by their digests. Null stays null.
+     */
+    public static String normalized(AccessType type, Object value, int fractionDigits) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return switch (type) {
+                case BOOLEAN -> value instanceof Boolean b ? (b ? "1" : "0") : bool(value) ? "1" : "0";
+                case BYTE, INT, LONG, AUTONUMBER_LONG, BIG_INT, MONEY, NUMERIC ->
+                    decimal(value).stripTrailingZeros().toPlainString();
+                case FLOAT -> "f" + Integer.toHexString(Float.floatToIntBits(((Number) value).floatValue()));
+                case DOUBLE -> "d" + Long.toHexString(Double.doubleToLongBits(((Number) value).doubleValue()));
+                case SHORT_DATE_TIME, EXT_DATE_TIME ->
+                    round(dateTime(value), fractionDigits).toString();
+                case TEXT, MEMO, HYPERLINK, GUID, AUTONUMBER_GUID -> "s" + value;
+                case BINARY, UNSUPPORTED, OLE -> "b" + java.util.HexFormat.of().formatHex(bytes(value));
+                case ATTACHMENT, MULTI_VALUE, VERSION_HISTORY, COMPLEX_UNSUPPORTED ->
+                    "c" + (value instanceof ComplexRef ref ? ref.complexId() : ((Number) value).longValue());
+            };
+        } catch (NumberFormatException | DateTimeParseException | ClassCastException e) {
+            return "?" + value; // not comparable: equal to nothing a sound value normalizes to
+        }
+    }
+
     /** Rounds half up to {@code digits} fractional-second digits. */
     static LocalDateTime round(LocalDateTime t, int digits) {
         if (digits >= 9) {

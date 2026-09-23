@@ -2,10 +2,11 @@ package com.lytrax.accessconverter.target.sqlite;
 
 import com.lytrax.accessconverter.model.expr.Expr;
 import com.lytrax.accessconverter.model.expr.LikePattern;
+import com.lytrax.accessconverter.target.CheckRenderer;
 import com.lytrax.accessconverter.target.IdentifierPolicy;
+import com.lytrax.accessconverter.target.Rendered;
 import java.math.BigDecimal;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * Renders the Access expression subset ({@link Expr}) as SQLite SQL, for {@code DEFAULT} clauses and {@code CHECK}
@@ -42,26 +43,6 @@ public final class SqliteExpressions {
         BLOB
     }
 
-    /** The rendered SQL, or why there is none. Exactly one of the two is set. */
-    public record Result(String sql, String problem, boolean typeMismatch) {
-
-        static Result of(String sql) {
-            return new Result(sql, null, false);
-        }
-
-        static Result unsupported(String problem) {
-            return new Result(null, problem, false);
-        }
-
-        static Result mismatch(String problem) {
-            return new Result(null, problem, true);
-        }
-
-        public boolean isPresent() {
-            return sql != null;
-        }
-    }
-
     /** What the planner knows about the columns an expression refers to. */
     public interface Columns {
         /** The column's output name, or empty when it isn't written (a dropped column). */
@@ -75,7 +56,7 @@ public final class SqliteExpressions {
     private SqliteExpressions() {}
 
     /** A {@code DEFAULT} clause for a column of this kind, or why the Access default can't become one. */
-    public static Result defaultClause(Expr expr, Kind kind, int fractionDigits) {
+    public static Rendered defaultClause(Expr expr, Kind kind, int fractionDigits) {
         return switch (kind) {
             case NUMERIC -> numericLiteral(expr);
             case TEXT -> textLiteral(expr);
@@ -83,62 +64,58 @@ public final class SqliteExpressions {
             case GUID -> guidLiteral(expr);
             case BLOB ->
                 expr instanceof Expr.NullLiteral
-                        ? Result.of("NULL")
-                        : Result.mismatch("a BLOB column takes no default value");
+                        ? Rendered.of("NULL")
+                        : Rendered.mismatch("a BLOB column takes no default value");
         };
     }
 
     /** A {@code CHECK} expression, or why SQLite can't express the rule. */
-    public static Result check(Expr expr, Columns columns) {
-        try {
-            return Result.of(render(expr, 0, columns));
-        } catch (Unrenderable e) {
-            return Result.unsupported(e.getMessage());
-        }
+    public static Rendered check(Expr expr, Columns columns) {
+        return new Renderer(columns).check(expr);
     }
 
-    private static Result numericLiteral(Expr expr) {
+    private static Rendered numericLiteral(Expr expr) {
         return switch (expr) {
-            case Expr.NumberLiteral n -> Result.of(n.value().toPlainString());
-            case Expr.BooleanLiteral b -> Result.of(b.value() ? "1" : "0");
-            case Expr.NullLiteral n -> Result.of("NULL");
+            case Expr.NumberLiteral n -> Rendered.of(n.value().toPlainString());
+            case Expr.BooleanLiteral b -> Rendered.of(b.value() ? "1" : "0");
+            case Expr.NullLiteral n -> Rendered.of("NULL");
             case Expr.StringLiteral s ->
                 number(s.value())
-                        .map(v -> Result.of(v.toPlainString()))
-                        .orElseGet(() -> Result.mismatch("the value " + quote(s.value()) + " is not a number"));
-            default -> Result.mismatch("a number column takes no " + describe(expr) + " value");
+                        .map(v -> Rendered.of(v.toPlainString()))
+                        .orElseGet(() -> Rendered.mismatch("the value " + quote(s.value()) + " is not a number"));
+            default -> Rendered.mismatch("a number column takes no " + describe(expr) + " value");
         };
     }
 
-    private static Result textLiteral(Expr expr) {
+    private static Rendered textLiteral(Expr expr) {
         return switch (expr) {
-            case Expr.StringLiteral s -> Result.of(IdentifierPolicy.literal(s.value()));
+            case Expr.StringLiteral s -> Rendered.of(IdentifierPolicy.literal(s.value()));
             case Expr.NumberLiteral n ->
-                Result.of(IdentifierPolicy.literal(n.value().toPlainString()));
-            case Expr.NullLiteral n -> Result.of("NULL");
-            case Expr.NewGuid g -> Result.of(RANDOM_GUID);
-            case Expr.CurrentDateTime c -> Result.of(currentDateTime(c));
-            case Expr.DateTimeLiteral d -> Result.of(IdentifierPolicy.literal(SqliteValues.dateTime(d.value(), 0)));
-            default -> Result.mismatch("a text column takes no " + describe(expr) + " value");
+                Rendered.of(IdentifierPolicy.literal(n.value().toPlainString()));
+            case Expr.NullLiteral n -> Rendered.of("NULL");
+            case Expr.NewGuid g -> Rendered.of(RANDOM_GUID);
+            case Expr.CurrentDateTime c -> Rendered.of(currentDateTime(c));
+            case Expr.DateTimeLiteral d -> Rendered.of(IdentifierPolicy.literal(SqliteValues.dateTime(d.value(), 0)));
+            default -> Rendered.mismatch("a text column takes no " + describe(expr) + " value");
         };
     }
 
-    private static Result dateLiteral(Expr expr, int fractionDigits) {
+    private static Rendered dateLiteral(Expr expr, int fractionDigits) {
         return switch (expr) {
             case Expr.DateTimeLiteral d ->
-                Result.of(IdentifierPolicy.literal(SqliteValues.dateTime(d.value(), fractionDigits)));
-            case Expr.CurrentDateTime c -> Result.of(currentDateTime(c));
-            case Expr.NullLiteral n -> Result.of("NULL");
-            default -> Result.mismatch("a date column takes no " + describe(expr) + " value");
+                Rendered.of(IdentifierPolicy.literal(SqliteValues.dateTime(d.value(), fractionDigits)));
+            case Expr.CurrentDateTime c -> Rendered.of(currentDateTime(c));
+            case Expr.NullLiteral n -> Rendered.of("NULL");
+            default -> Rendered.mismatch("a date column takes no " + describe(expr) + " value");
         };
     }
 
-    private static Result guidLiteral(Expr expr) {
+    private static Rendered guidLiteral(Expr expr) {
         return switch (expr) {
-            case Expr.NewGuid g -> Result.of(RANDOM_GUID);
-            case Expr.StringLiteral s -> Result.of(IdentifierPolicy.literal(s.value()));
-            case Expr.NullLiteral n -> Result.of("NULL");
-            default -> Result.mismatch("a GUID column takes no " + describe(expr) + " value");
+            case Expr.NewGuid g -> Rendered.of(RANDOM_GUID);
+            case Expr.StringLiteral s -> Rendered.of(IdentifierPolicy.literal(s.value()));
+            case Expr.NullLiteral n -> Rendered.of("NULL");
+            default -> Rendered.mismatch("a GUID column takes no " + describe(expr) + " value");
         };
     }
 
@@ -150,90 +127,60 @@ public final class SqliteExpressions {
         };
     }
 
-    /** Precedence: Or 1, And 2, Not 3, predicates 4. Mirrors {@code ExprPrinter}, so both read the same. */
-    private static String render(Expr expr, int context, Columns columns) {
-        return switch (expr) {
-            case Expr.Or or ->
-                wrap(1, context, render(or.left(), 1, columns) + " OR " + render(or.right(), 1, columns));
-            case Expr.And and ->
-                wrap(2, context, render(and.left(), 2, columns) + " AND " + render(and.right(), 2, columns));
-            case Expr.Not not -> wrap(3, context, "NOT " + render(not.operand(), 3, columns));
-            case Expr.Comparison c ->
-                operand(c.left(), columns) + " " + c.operator().symbol() + " " + beside(c.left(), c.right(), columns);
-            case Expr.Between b ->
-                operand(b.operand(), columns) + (b.negated() ? " NOT" : "") + " BETWEEN "
-                        + beside(b.operand(), b.low(), columns) + " AND " + beside(b.operand(), b.high(), columns);
-            case Expr.In in ->
-                operand(in.operand(), columns) + (in.negated() ? " NOT" : "") + " IN ("
-                        + in.values().stream()
-                                .map(v -> beside(in.operand(), v, columns))
-                                .collect(Collectors.joining(", "))
-                        + ")";
-            case Expr.IsNull n -> operand(n.operand(), columns) + (n.negated() ? " IS NOT NULL" : " IS NULL");
-            case Expr.Like l -> like(l, columns);
-            default -> value(expr, Kind.NUMERIC, 0, columns);
-        };
-    }
+    /** CHECK expressions: text is compared with {@code COLLATE NOCASE}, a date literal in its column's format. */
+    private static final class Renderer extends CheckRenderer {
+        private final Columns columns;
 
-    /** The left-hand side of a predicate: a column reference, compared the way Access compares it. */
-    private static String operand(Expr expr, Columns columns) {
-        if (expr instanceof Expr.ColumnRef ref) {
+        Renderer(Columns columns) {
+            this.columns = columns;
+        }
+
+        @Override
+        protected String operand(Expr.ColumnRef ref) {
             String name = columns.name(ref.name())
-                    .orElseThrow(() -> new Unrenderable("it refers to " + ref.name() + ", which is not written"));
+                    .orElseThrow(() -> unrenderable("it refers to " + ref.name() + ", which is not written"));
             // Access compares text case-insensitively; BINARY would reject rows Access accepted
             return IdentifierPolicy.quote(name) + (columns.kind(ref.name()) == Kind.TEXT ? " COLLATE NOCASE" : "");
         }
-        return value(expr, Kind.NUMERIC, 0, columns);
-    }
 
-    /** A value rendered for the column it stands beside, so a date literal matches that column's format. */
-    private static String beside(Expr subject, Expr expr, Columns columns) {
-        if (subject instanceof Expr.ColumnRef ref) {
-            return value(expr, columns.kind(ref.name()), columns.fractionDigits(ref.name()), columns);
-        }
-        return value(expr, Kind.NUMERIC, 0, columns);
-    }
-
-    private static String value(Expr expr, Kind kind, int fractionDigits, Columns columns) {
-        if (expr instanceof Expr.ColumnRef) {
-            return operand(expr, columns);
-        }
-        Result result = defaultClause(expr, kind, fractionDigits);
-        if (!result.isPresent()) {
-            throw new Unrenderable(result.problem());
-        }
-        return result.sql();
-    }
-
-    private static String like(Expr.Like like, Columns columns) {
-        LikePattern pattern = like.pattern();
-        if (!pattern.mapsToSqlLike()) {
-            throw new Unrenderable("SQLite's LIKE has no equivalent of the # wildcard in " + quote(pattern.access()));
-        }
-        StringBuilder sql = new StringBuilder();
-        boolean escaped = false;
-        for (LikePattern.Element element : pattern.elements()) {
-            switch (element) {
-                case LikePattern.Literal l -> {
-                    for (char c : l.text().toCharArray()) {
-                        if (c == '%' || c == '_' || c == '\\') {
-                            sql.append('\\');
-                            escaped = true;
-                        }
-                        sql.append(c);
-                    }
-                }
-                case LikePattern.AnyString s -> sql.append('%');
-                case LikePattern.AnyChar c -> sql.append('_');
-                case LikePattern.AnyDigit d -> throw new IllegalStateException("excluded by mapsToSqlLike");
+        @Override
+        protected String value(Expr expr, Expr.ColumnRef beside) {
+            Kind kind = beside == null ? Kind.NUMERIC : columns.kind(beside.name());
+            int fractionDigits = beside == null ? 0 : columns.fractionDigits(beside.name());
+            Rendered result = defaultClause(expr, kind, fractionDigits);
+            if (!result.isPresent()) {
+                throw unrenderable(result.problem());
             }
+            return result.sql();
         }
-        return operand(like.operand(), columns) + (like.negated() ? " NOT" : "") + " LIKE "
-                + IdentifierPolicy.literal(sql.toString()) + (escaped ? " ESCAPE '\\'" : "");
-    }
 
-    private static String wrap(int precedence, int context, String text) {
-        return precedence < context ? "(" + text + ")" : text;
+        @Override
+        protected String like(Expr.Like like, String operand) {
+            LikePattern pattern = like.pattern();
+            if (!pattern.mapsToSqlLike()) {
+                throw unrenderable("SQLite's LIKE has no equivalent of the # wildcard in " + quote(pattern.access()));
+            }
+            StringBuilder sql = new StringBuilder();
+            boolean escaped = false;
+            for (LikePattern.Element element : pattern.elements()) {
+                switch (element) {
+                    case LikePattern.Literal l -> {
+                        for (char c : l.text().toCharArray()) {
+                            if (c == '%' || c == '_' || c == '\\') {
+                                sql.append('\\');
+                                escaped = true;
+                            }
+                            sql.append(c);
+                        }
+                    }
+                    case LikePattern.AnyString any -> sql.append('%');
+                    case LikePattern.AnyChar one -> sql.append('_');
+                    case LikePattern.AnyDigit d -> throw new IllegalStateException("excluded by mapsToSqlLike");
+                }
+            }
+            return operand + (like.negated() ? " NOT" : "") + " LIKE " + IdentifierPolicy.literal(sql.toString())
+                    + (escaped ? " ESCAPE '\\'" : "");
+        }
     }
 
     private static Optional<BigDecimal> number(String text) {
@@ -258,14 +205,5 @@ public final class SqliteExpressions {
 
     private static String quote(String text) {
         return "\"" + text + "\"";
-    }
-
-    /** Thrown while rendering a CHECK that SQLite can't express; turned into a {@link Result} problem. */
-    private static final class Unrenderable extends RuntimeException {
-        private static final long serialVersionUID = 1L;
-
-        Unrenderable(String message) {
-            super(message, null, false, false);
-        }
     }
 }

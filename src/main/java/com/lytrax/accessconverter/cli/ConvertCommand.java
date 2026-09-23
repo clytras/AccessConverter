@@ -14,11 +14,17 @@ import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.OpenOptions;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.ConvertOptions.OnTableError;
+import com.lytrax.accessconverter.target.WriteOutcome;
+import com.lytrax.accessconverter.target.mysql.MySqlDumpWriter;
+import com.lytrax.accessconverter.target.mysql.MySqlOptions;
+import com.lytrax.accessconverter.target.mysql.MySqlPlan;
+import com.lytrax.accessconverter.target.mysql.MySqlPlanner;
 import com.lytrax.accessconverter.target.sqlite.SqliteOptions;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlanner;
 import com.lytrax.accessconverter.target.sqlite.SqliteVerifier;
 import com.lytrax.accessconverter.target.sqlite.SqliteWriter;
+import com.lytrax.accessconverter.verify.VerifyResult;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -37,6 +43,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.ParameterException;
 import picocli.CommandLine.Parameters;
 import picocli.CommandLine.ParentCommand;
 import picocli.CommandLine.Spec;
@@ -49,18 +56,10 @@ import picocli.CommandLine.Spec;
             "Convert an Access database. The output carries the Access keys, indexes, foreign keys with their"
                     + " cascade actions, NOT NULL, defaults and CHECK constraints, as far as the data allows and the"
                     + " target can express them.",
-            "Every value is exported exactly or reported in the conversion report."
+            "Every value is exported exactly or reported in the conversion report.",
+            "A MySQL or MariaDB dump imports with the server's own client: mysql <database> < <output>"
         })
 final class ConvertCommand implements Callable<Integer> {
-
-    enum Target {
-        /** A {@code .sqlite3} database file (06). */
-        sqlite;
-
-        String extension() {
-            return ".sqlite3";
-        }
-    }
 
     enum ResultFormat {
         text,
@@ -112,11 +111,11 @@ final class ConvertCommand implements Callable<Integer> {
 
     @Option(
             names = "--verify",
-            description = "After writing, check the output's integrity and compare its schema and every value with"
-                    + " the source.")
+            description = "SQLite: after writing, check the output's integrity and compare its schema and every value"
+                    + " with the source. For a MySQL or MariaDB dump, import it and run verify --jdbc-url.")
     boolean verify;
 
-    @Option(names = "--analyze", description = "Run ANALYZE on the finished output, not only PRAGMA optimize.")
+    @Option(names = "--analyze", description = "SQLite: run ANALYZE on the finished output, not only PRAGMA optimize.")
     boolean analyze;
 
     @Option(
@@ -124,6 +123,31 @@ final class ConvertCommand implements Callable<Integer> {
             paramLabel = "<n>",
             description = "Rows per insert batch (default: " + ConvertOptions.DEFAULT_BATCH_ROWS + ").")
     int batchRows = ConvertOptions.DEFAULT_BATCH_ROWS;
+
+    @Option(
+            names = "--batch-bytes",
+            paramLabel = "<n>",
+            description = "MySQL/MariaDB: the largest INSERT statement in bytes; a single larger row gets its own"
+                    + " (default: " + MySqlOptions.DEFAULT_BATCH_BYTES + ").")
+    Integer batchBytes;
+
+    @Option(
+            names = "--drop-existing",
+            description = "MySQL/MariaDB: drop each table first (DROP TABLE IF EXISTS), so the dump can be imported"
+                    + " again.")
+    boolean dropExisting;
+
+    @Option(
+            names = "--database",
+            paramLabel = "<name>",
+            description = "MySQL/MariaDB: create this database if it doesn't exist, and use it.")
+    String database;
+
+    @Option(
+            names = "--stamp",
+            description = "MySQL/MariaDB: put the generation time in the dump's header (the dump then differs on"
+                    + " every run).")
+    boolean stamp;
 
     @Mixin
     PlanOptions plan;
@@ -139,6 +163,7 @@ final class ConvertCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws IOException {
+        checkOptions();
         Main.requireFile(input);
         Path out = output != null ? output : input.resolveSibling(baseName(input) + to.extension());
         if (Files.exists(out) && !overwrite) {
@@ -147,7 +172,6 @@ final class ConvertCommand implements Callable<Integer> {
         }
         OpenOptions openOptions = source.toOpenOptions();
         ConvertOptions options = plan.convertOptions(onTableError, batchRows);
-        SqliteOptions sqlite = plan.sqliteOptions(analyze);
         Issues issues = new Issues();
         Map<String, Duration> timings = new LinkedHashMap<>();
         SchemaModel model;
@@ -161,21 +185,9 @@ final class ConvertCommand implements Callable<Integer> {
             DataProfile profile = options.profile() ? DataProfiler.profile(db, model) : null;
             timings.put("profile", since(started));
 
-            started = System.nanoTime();
-            SqlitePlan planned = SqlitePlanner.plan(model, profile, options, sqlite, issues);
-            timings.put("plan", since(started));
-
-            started = System.nanoTime();
-            SqliteWriter.Outcome outcome = SqliteWriter.write(db, planned, out, options, sqlite, verify, issues);
-            timings.put("write", since(started));
-            tables = outcome.tables();
-
-            if (verify) {
-                started = System.nanoTime();
-                SqliteVerifier.Result result = SqliteVerifier.verify(db, planned, out);
-                timings.put("verify", since(started));
-                result.report(issues);
-            }
+            tables = to == Target.sqlite
+                    ? sqlite(db, model, profile, out, options, issues, timings)
+                    : mysql(db, model, profile, out, options, issues, timings);
         }
         ConversionReport conversionReport = new ConversionReport(
                 Main.Version.version(),
@@ -197,14 +209,104 @@ final class ConvertCommand implements Callable<Integer> {
         return ExitCodes.of(issues);
     }
 
+    /** Options that don't apply to the target are usage errors, never silently ignored. */
+    private void checkOptions() {
+        plan.check(to, spec.commandLine());
+        if (to == Target.sqlite) {
+            if (batchBytes != null || dropExisting || database != null || stamp) {
+                throw new ParameterException(
+                        spec.commandLine(),
+                        "--batch-bytes, --drop-existing, --database and --stamp apply to --to mysql and --to mariadb");
+            }
+            return;
+        }
+        if (verify || analyze) {
+            throw new ParameterException(
+                    spec.commandLine(),
+                    "--verify and --analyze apply to --to sqlite; to check a MySQL or MariaDB dump, import it and run"
+                            + " verify --jdbc-url");
+        }
+        if (batchBytes != null && batchBytes < 1) {
+            throw new ParameterException(spec.commandLine(), "--batch-bytes must be at least 1");
+        }
+    }
+
+    private List<TableResult> sqlite(
+            AccessSource db,
+            SchemaModel model,
+            DataProfile profile,
+            Path out,
+            ConvertOptions options,
+            Issues issues,
+            Map<String, Duration> timings)
+            throws IOException {
+        SqliteOptions sqlite = plan.sqliteOptions(analyze);
+        long started = System.nanoTime();
+        SqlitePlan planned = SqlitePlanner.plan(model, profile, options, sqlite, issues);
+        timings.put("plan", since(started));
+
+        started = System.nanoTime();
+        WriteOutcome outcome = SqliteWriter.write(db, planned, out, options, sqlite, verify, issues);
+        timings.put("write", since(started));
+
+        if (verify) {
+            started = System.nanoTime();
+            VerifyResult result = SqliteVerifier.verify(db, planned, out);
+            timings.put("verify", since(started));
+            result.report(issues);
+        }
+        return outcome.tables();
+    }
+
+    private List<TableResult> mysql(
+            AccessSource db,
+            SchemaModel model,
+            DataProfile profile,
+            Path out,
+            ConvertOptions options,
+            Issues issues,
+            Map<String, Duration> timings)
+            throws IOException {
+        MySqlOptions mysql = mysqlOptions();
+        long started = System.nanoTime();
+        MySqlPlan planned = MySqlPlanner.plan(model, profile, options, mysql, issues);
+        timings.put("plan", since(started));
+
+        started = System.nanoTime();
+        WriteOutcome outcome = MySqlDumpWriter.write(
+                db, planned, out, options, mysql, "AccessConverter " + Main.Version.version(), issues);
+        timings.put("write", since(started));
+        return outcome.tables();
+    }
+
+    private MySqlOptions mysqlOptions() {
+        return plan.mysqlOptions(
+                to.dialect(),
+                dropExisting,
+                database,
+                batchBytes == null ? MySqlOptions.DEFAULT_BATCH_BYTES : batchBytes,
+                stamp);
+    }
+
     private SortedMap<String, String> effectiveOptions(Path out) {
         SortedMap<String, String> options = plan.describe();
         options.put("to", to.name());
         options.put("output", out.toString());
         options.put("onTableError", PlanOptions.lower(onTableError));
         options.put("batchRows", String.valueOf(batchRows));
-        options.put("verify", String.valueOf(verify));
-        options.put("analyze", String.valueOf(analyze));
+        if (to == Target.sqlite) {
+            options.put("verify", String.valueOf(verify));
+            options.put("analyze", String.valueOf(analyze));
+        } else {
+            MySqlOptions mysql = mysqlOptions();
+            options.put("collation", mysql.effectiveCollation());
+            options.put("batchBytes", String.valueOf(mysql.batchBytes()));
+            options.put("dropExisting", String.valueOf(dropExisting));
+            options.put("stamp", String.valueOf(stamp));
+            if (database != null) {
+                options.put("database", database);
+            }
+        }
         if (source.charset != null) {
             options.put("charset", source.charset);
         }
@@ -270,6 +372,15 @@ final class ConvertCommand implements Callable<Integer> {
         if (report.issues().stream().anyMatch(i -> i.code() == IssueCode.FOREIGN_KEYS_NEED_PRAGMA)) {
             text.append("  SQLite enforces the foreign keys only for a connection that runs"
                     + " PRAGMA foreign_keys = ON\n");
+        }
+        if (to != Target.sqlite) {
+            text.append("  import it with: ")
+                    .append(to == Target.mariadb ? "mariadb" : "mysql")
+                    .append(' ')
+                    .append(database != null ? "" : "<database> ")
+                    .append("< ")
+                    .append(out.getFileName())
+                    .append('\n');
         }
         spec.commandLine().getOut().print(text);
         spec.commandLine().getOut().flush();

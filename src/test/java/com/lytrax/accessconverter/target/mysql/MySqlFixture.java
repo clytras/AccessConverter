@@ -1,0 +1,80 @@
+package com.lytrax.accessconverter.target.mysql;
+
+import com.lytrax.accessconverter.extract.ExtractOptions;
+import com.lytrax.accessconverter.extract.SchemaExtractor;
+import com.lytrax.accessconverter.model.SchemaModel;
+import com.lytrax.accessconverter.profile.DataProfile;
+import com.lytrax.accessconverter.profile.DataProfiler;
+import com.lytrax.accessconverter.report.Issue;
+import com.lytrax.accessconverter.report.IssueCode;
+import com.lytrax.accessconverter.report.Issues;
+import com.lytrax.accessconverter.source.AccessSource;
+import com.lytrax.accessconverter.source.OpenOptions;
+import com.lytrax.accessconverter.target.ConvertOptions;
+import com.lytrax.accessconverter.verify.VerifyResult;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.sql.Connection;
+import java.util.List;
+
+/** Test helper: converts an Access database to a MySQL/MariaDB dump in process, keeping the plan and the issues. */
+public final class MySqlFixture {
+
+    /** The header's producer in tests: no version, so golden dumps don't change with it. */
+    public static final String PRODUCER = "AccessConverter";
+
+    private MySqlFixture() {}
+
+    public static Converted convert(Path source, Path output, MySqlDialect dialect) {
+        return convert(source, output, OpenOptions.DEFAULT, ConvertOptions.DEFAULT, MySqlOptions.of(dialect));
+    }
+
+    public static Converted convert(
+            Path source, Path output, OpenOptions open, ConvertOptions options, MySqlOptions mysql) {
+        Issues issues = new Issues();
+        try (AccessSource db = AccessSource.open(source, open, issues)) {
+            SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
+            DataProfile profile = options.profile() ? DataProfiler.profile(db, model) : null;
+            MySqlPlan plan = MySqlPlanner.plan(model, profile, options, mysql, issues);
+            MySqlDumpWriter.write(db, plan, output, options, mysql, PRODUCER, issues);
+            return new Converted(source, open, output, plan, model, profile, issues);
+        } catch (IOException e) {
+            throw new UncheckedIOException("converting " + source, e);
+        }
+    }
+
+    /** A finished conversion: the dump, what the planner decided, and everything reported on the way. */
+    public record Converted(
+            Path source,
+            OpenOptions open,
+            Path file,
+            MySqlPlan plan,
+            SchemaModel model,
+            DataProfile profile,
+            Issues issues) {
+
+        public List<Issue> issues(IssueCode code) {
+            return issues.list().stream().filter(i -> i.code() == code).toList();
+        }
+
+        public MySqlPlan.PlannedTable table(String name) {
+            return plan.table(name).orElseThrow(() -> new AssertionError("no planned table " + name));
+        }
+
+        public MySqlPlan.PlannedColumn column(String table, String column) {
+            return table(table)
+                    .column(column)
+                    .orElseThrow(() -> new AssertionError("no planned column " + table + "." + column));
+        }
+
+        /** Compares a database the dump was loaded into with the source, as {@code verify --jdbc-url} does. */
+        public VerifyResult verify(Connection db) {
+            try (AccessSource access = AccessSource.open(source, open, new Issues())) {
+                return MySqlVerifier.verify(access, plan, db);
+            } catch (IOException e) {
+                throw new UncheckedIOException("verifying " + source, e);
+            }
+        }
+    }
+}
