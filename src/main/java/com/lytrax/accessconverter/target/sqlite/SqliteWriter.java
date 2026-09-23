@@ -5,6 +5,7 @@ import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 import com.lytrax.accessconverter.model.ForeignKeyModel;
+import com.lytrax.accessconverter.model.TableModel;
 import com.lytrax.accessconverter.report.ConversionReport.TableResult;
 import com.lytrax.accessconverter.report.IssueCode;
 import com.lytrax.accessconverter.report.Issues;
@@ -46,16 +47,23 @@ import java.util.stream.Collectors;
  */
 public final class SqliteWriter {
 
+    /**
+     * Where a table's rows come from. The Access source provides them; a test replaces it to make one table fail,
+     * which is the only way to exercise {@code --on-table-error} without a database that pretends to be damaged.
+     */
+    interface Rows {
+        RowStream of(TableModel table) throws IOException;
+    }
+
     private final ConvertOptions options;
     private final SqliteOptions sqlite;
     private final SqlitePlan plan;
-    private final AccessSource source;
+    private final Rows source;
     private final Issues issues;
     private final List<TableResult> results = new ArrayList<>();
     private boolean tableFailed;
 
-    private SqliteWriter(
-            AccessSource source, SqlitePlan plan, ConvertOptions options, SqliteOptions sqlite, Issues issues) {
+    private SqliteWriter(Rows source, SqlitePlan plan, ConvertOptions options, SqliteOptions sqlite, Issues issues) {
         this.source = source;
         this.plan = plan;
         this.options = options;
@@ -69,6 +77,19 @@ public final class SqliteWriter {
      */
     public static Outcome write(
             AccessSource source,
+            SqlitePlan plan,
+            Path output,
+            ConvertOptions options,
+            SqliteOptions sqlite,
+            boolean integrityCheck,
+            Issues issues)
+            throws IOException {
+        return write(source::rows, plan, output, options, sqlite, integrityCheck, issues);
+    }
+
+    /** As {@link #write}, reading the rows from somewhere else; for the {@code --on-table-error} test. */
+    static Outcome write(
+            Rows source,
             SqlitePlan plan,
             Path output,
             ConvertOptions options,
@@ -205,7 +226,7 @@ public final class SqliteWriter {
         long read = 0;
         long written = 0;
         try (PreparedStatement statement = db.prepareStatement(sql)) {
-            RowStream rows = source.rows(table.source());
+            RowStream rows = source.of(table.source());
             int batch = 0;
             while (rows.hasNext()) {
                 Object[] row = rows.next();

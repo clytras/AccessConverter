@@ -16,6 +16,7 @@ import com.lytrax.accessconverter.target.sqlite.SqliteFixture.Converted;
 import com.lytrax.accessconverter.target.sqlite.SqliteOptions;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedColumn;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedTable;
+import com.lytrax.accessconverter.target.sqlite.SqliteVerifier;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -99,6 +100,49 @@ class SqliteDecimalDisplayTest {
             // Text sorts and aggregates as text; CAST makes it a number again (the report says so per column)
             assertThat(sqlite.value("SELECT CAST(WeeklySalary AS REAL) > 19000 FROM Table1 WHERE ID = 1"))
                     .isEqualTo(1);
+        }
+    }
+
+    /**
+     * A number column has no scale in SQLite, so Access's Currency {@code 1000000.0000} is stored as the integer
+     * {@code 1000000}: the value is the same, the padding isn't. {@code verify} compares decimals numerically, so
+     * that isn't a difference — and it still catches a digit that really changed, whichever way it was stored.
+     */
+    @Test
+    void aLostScaleIsNotADifferenceButAChangedDigitIs() throws IOException {
+        Path output = dir.resolve("scale.sqlite3");
+        Converted converted = SqliteFixture.convert(
+                CorpusFile.get("jackcess/V2010/calcFieldV2010.accdb").file(), output);
+        try (Sqlite sqlite = converted.open()) {
+            assertThat(sqlite.value("SELECT typeof(Salary) FROM Table1 WHERE ID = 1"))
+                    .isEqualTo("integer");
+            assertThat(sqlite.value("SELECT CAST(Salary AS TEXT) FROM Table1 WHERE ID = 1"))
+                    .isEqualTo("1000000");
+            assertThat(sqlite.value("SELECT printf('%.4f', Salary) FROM Table1 WHERE ID = 1"))
+                    .isEqualTo("1000000.0000");
+            // The declared type still tells a tool what Access had
+            assertThat(sqlite.value("SELECT type FROM pragma_table_info('Table1') WHERE name = 'Salary'"))
+                    .isEqualTo("DECIMAL(19,4)");
+        }
+        assertThat(converted.verified().matches()).isTrue();
+
+        // Change one digit in the finished file: verify must see it, exact-text columns included
+        try (Sqlite sqlite = Sqlite.open(output)) {
+            sqlite.execute("UPDATE Table1 SET Salary = 1000001 WHERE ID = 1");
+            sqlite.execute("UPDATE Table1 SET WeeklySalary = '19230.7692307693' WHERE ID = 1");
+        }
+        SqliteVerifier.Result again =
+                reverify(CorpusFile.get("jackcess/V2010/calcFieldV2010.accdb"), converted, output);
+        assertThat(again.matches()).isFalse();
+        assertThat(again.differences())
+                .extracting(SqliteVerifier.Difference::object)
+                .contains("Salary", "WeeklySalary");
+    }
+
+    private static SqliteVerifier.Result reverify(CorpusFile file, Converted converted, Path output)
+            throws IOException {
+        try (AccessSource source = AccessSource.open(file.file(), file.openOptions(), new Issues())) {
+            return SqliteVerifier.verify(source, converted.plan(), output);
         }
     }
 
