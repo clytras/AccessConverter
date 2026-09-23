@@ -2,6 +2,7 @@ package com.lytrax.accessconverter.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.lytrax.accessconverter.fixtures.Access97Fixture;
 import com.lytrax.accessconverter.fixtures.CorpusFile;
 import com.lytrax.accessconverter.fixtures.GeneratedFixture;
 import com.lytrax.accessconverter.target.sqlite.Sqlite;
@@ -256,5 +257,24 @@ class ConvertCommandTest {
                 "jdbc:nosuchdb://localhost/test");
         assertThat(cli.exitCode()).isEqualTo(ExitCodes.FAILED);
         assertThat(cli.err()).contains("--jdbc-driver");
+    }
+
+    @Test
+    void verifySaysWhyAMatchingOutputStillExitsWithWarnings() {
+        // gr97 warns while it is read (CATALOG_INDEX_UNUSABLE), in the conversion and again in verify
+        String input = Access97Fixture.GR97.file().toString();
+        Path output = dir.resolve("gr97.sqlite3");
+        assertThat(Cli.run("convert", "--to", "sqlite", "-o", output.toString(), input)
+                        .exitCode())
+                .isEqualTo(ExitCodes.WARNINGS);
+
+        Cli verify = Cli.run("verify", input, output.toString());
+
+        // 02: exit 1 is success with warnings, so the line says both
+        assertThat(verify.exitCode()).isEqualTo(ExitCodes.WARNINGS);
+        assertThat(verify.out())
+                .contains("verify: the output matches the source, with 1 warning carried over from reading the"
+                        + " source, as in the conversion:")
+                .contains("warning CATALOG_INDEX_UNUSABLE");
     }
 }

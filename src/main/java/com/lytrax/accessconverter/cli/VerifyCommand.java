@@ -4,7 +4,9 @@ import com.lytrax.accessconverter.extract.SchemaExtractor;
 import com.lytrax.accessconverter.model.SchemaModel;
 import com.lytrax.accessconverter.profile.DataProfile;
 import com.lytrax.accessconverter.profile.DataProfiler;
+import com.lytrax.accessconverter.report.Issue;
 import com.lytrax.accessconverter.report.Issues;
+import com.lytrax.accessconverter.report.Severity;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.OpenOptions;
 import com.lytrax.accessconverter.target.ConvertOptions;
@@ -30,6 +32,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -170,7 +173,26 @@ final class VerifyCommand implements Callable<Integer> {
                     .append(" rows\n");
         }
         if (result.matches()) {
-            text.append("verify: the output matches the source\n");
+            // Exit 1 (02: success with warnings) when reading the source warns, as the conversion did; say so
+            List<Issue> warnings = issues.list().stream()
+                    .filter(i -> i.severity() == Severity.WARNING)
+                    .toList();
+            if (warnings.isEmpty()) {
+                text.append("verify: the output matches the source\n");
+            } else {
+                text.append("verify: the output matches the source, with ")
+                        .append(warnings.size())
+                        .append(warnings.size() == 1 ? " warning" : " warnings")
+                        .append(" carried over from reading the source, as in the conversion:\n");
+                for (Issue warning : warnings) {
+                    text.append("  warning ")
+                            .append(warning.code())
+                            .append(warning.table() == null ? "" : " " + warning.table())
+                            .append(": ")
+                            .append(warning.message())
+                            .append('\n');
+                }
+            }
         } else {
             text.append("verify: ").append(result.differenceCount()).append(" differences\n");
             result.differences().forEach(d -> text.append("  ").append(d).append('\n'));

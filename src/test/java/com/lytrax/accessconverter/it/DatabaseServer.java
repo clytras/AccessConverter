@@ -132,6 +132,11 @@ final class DatabaseServer {
                 .replaceFirst("/" + container.getDatabaseName() + "(\\?|$)", "/" + database + "$1");
     }
 
+    /** {@code host:port} of the server, for a URL of another driver than the container's own. */
+    String address() {
+        return container.getHost() + ":" + container.getMappedPort(3306);
+    }
+
     String rootPassword() {
         return container.getPassword();
     }

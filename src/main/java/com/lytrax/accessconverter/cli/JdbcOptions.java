@@ -24,8 +24,9 @@ final class JdbcOptions {
     @Option(
             names = "--jdbc-url",
             paramLabel = "<url>",
-            description = "MySQL/MariaDB: the database the dump was imported into, e.g."
-                    + " jdbc:mariadb://localhost:3306/northwind or jdbc:mysql://localhost:3306/northwind.")
+            description = "MySQL/MariaDB: the database the dump was imported into. With MariaDB Connector/J:"
+                    + " jdbc:mariadb://localhost:3306/northwind, plus ?allowPublicKeyRetrieval=true for a MySQL 8"
+                    + " server. With MySQL Connector/J: jdbc:mysql://localhost:3306/northwind.")
     String url;
 
     @Option(
@@ -79,9 +80,27 @@ final class JdbcOptions {
             }
             throw new IOException(driver + " has no JDBC driver for " + url);
         } catch (SQLException e) {
-            boolean noDriver = driver == null && String.valueOf(e.getMessage()).contains("No suitable driver");
-            String hint = noDriver ? "; pass --jdbc-driver with MariaDB Connector/J or MySQL Connector/J" : "";
-            throw new IOException("can't connect to " + url + ": " + e.getMessage() + hint, e);
+            throw new IOException("can't connect to " + url + ": " + e.getMessage() + hint(e), e);
         }
+    }
+
+    /**
+     * What to do about the failures a user is likely to meet first. MySQL 8's {@code caching_sha2_password} needs the
+     * server's RSA key or an encrypted connection: MariaDB Connector/J doesn't use TLS unless asked and says "RSA
+     * public key is not available client side"; MySQL Connector/J uses TLS by default and, without it, says "Public
+     * Key Retrieval is not allowed" (measured against MySQL 8.4).
+     */
+    private String hint(SQLException e) {
+        String message = String.valueOf(e.getMessage());
+        if (driver == null && message.contains("No suitable driver")) {
+            return "; pass --jdbc-driver with MariaDB Connector/J or MySQL Connector/J";
+        }
+        if (message.contains("RSA public key is not available")
+                || message.contains("Public Key Retrieval is not allowed")) {
+            return "; MySQL 8 authenticates with the server's RSA key or over TLS: add allowPublicKeyRetrieval=true to"
+                    + " the URL (" + url + (url.contains("?") ? "&" : "?") + "allowPublicKeyRetrieval=true), or connect"
+                    + " over TLS (MariaDB Connector/J: sslMode=trust, or verify-full with the server's certificate)";
+        }
+        return "";
     }
 }
