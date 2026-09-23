@@ -1,0 +1,16 @@
+Source: indexCursorV2010.accdb (V2010)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table test (0 rows)
+  columns:
+    id     LONG  default 0  decimal-places auto
+    value  TEXT(50)
+  primary key: none
+  indexes:
+    id (id)
+
+Profile:
+
+Issues: 1
+  info NO_PRIMARY_KEY test: table has no primary key; targets create none

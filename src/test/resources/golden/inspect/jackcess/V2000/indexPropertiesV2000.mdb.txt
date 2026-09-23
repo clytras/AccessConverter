@@ -1,0 +1,70 @@
+Source: indexPropertiesV2000.mdb (V2000)
+Text: charset UTF-16LE
+Tables: 6 local, 0 linked; relationships: 0
+
+Table TableIgnoreNulls1 (10 rows)
+  columns:
+    row   TEXT(50)
+    data  TEXT(50)
+  primary key: PrimaryKey (row)
+  indexes:
+    DataIndex (data) ignore-nulls
+
+Table TableIgnoreNulls1_temp (0 rows)
+  columns:
+    row   TEXT(50)
+    data  TEXT(50)
+  primary key: PrimaryKey (row)
+  indexes:
+    DataIndex (data) ignore-nulls
+
+Table TableIgnoreNulls2 (11 rows)
+  columns:
+    row    TEXT(50)
+    data1  TEXT(50)
+    data2  LONG  default 0  decimal-places auto
+  primary key: PrimaryKey (row)
+  indexes:
+    DataIndex (data1, data2) ignore-nulls
+
+Table TableIgnoreNulls2_temp (0 rows)
+  columns:
+    row    TEXT(50)
+    data1  TEXT(50)
+    data2  LONG  default 0  decimal-places auto
+  primary key: PrimaryKey (row)
+  indexes:
+    DataIndex (data1, data2) ignore-nulls
+
+Table TableUnique1_temp (10 rows)
+  columns:
+    row   TEXT(50)
+    data  TEXT(50)
+  primary key: PrimaryKey (row)
+  indexes:
+    DataIndex (data) unique
+
+Table TableUnique2_temp (11 rows)
+  columns:
+    row    TEXT(50)
+    data1  TEXT(50)
+    data2  LONG  default 0  decimal-places auto
+  primary key: PrimaryKey (row)
+  indexes:
+    DataIndex (data1, data2) unique
+
+Profile:
+  TableIgnoreNulls1: 10 rows scanned
+    row: nulls 0
+  TableIgnoreNulls1_temp: 0 rows scanned
+    row: nulls 0
+  TableIgnoreNulls2: 11 rows scanned
+    row: nulls 0
+  TableIgnoreNulls2_temp: 0 rows scanned
+    row: nulls 0
+  TableUnique1_temp: 10 rows scanned
+    row: nulls 0
+  TableUnique2_temp: 11 rows scanned
+    row: nulls 0
+
+Issues: 0

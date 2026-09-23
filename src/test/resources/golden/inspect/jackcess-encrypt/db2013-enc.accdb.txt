@@ -1,0 +1,15 @@
+Source: db2013-enc.accdb (V2010)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Customers (7 rows)
+  columns:
+    ID      AUTONUMBER_LONG
+    Field1  TEXT(255)
+  primary key: PrimaryKey (ID)
+
+Profile:
+  Customers: 7 rows scanned
+    ID: nulls 0, max-autonumber 7
+
+Issues: 0

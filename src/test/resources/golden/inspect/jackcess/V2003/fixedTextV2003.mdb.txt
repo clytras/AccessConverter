@@ -1,0 +1,38 @@
+Source: fixedTextV2003.mdb (V2003)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table users (2 rows)
+  columns:
+    i_user_id       LONG  required
+    c_user_login    TEXT(32)  required
+    c_user_pwd      TEXT(32)  required
+    c_user_session  TEXT(40)  required
+    c_user_name     TEXT(200)  required
+    i_user_flags    LONG  required
+    i_user_type     LONG  required
+    i_user_merch    LONG  required
+    c_flag_         TEXT(1)  required
+    d_stamp_        SHORT_DATE_TIME  required
+  primary key: Users2CID_0 (i_user_id)
+  indexes:
+    Users2_1_idx (c_user_login)
+    Users2_3_idx (c_user_session)
+    Users2_4_idx (c_user_name)
+    Users2_8_idx (c_flag_)
+    Users2_9_idx (d_stamp_)
+
+Profile:
+  users: 2 rows scanned
+    i_user_id: nulls 0
+    c_user_login: nulls 0
+    c_user_pwd: nulls 0
+    c_user_session: nulls 0
+    c_user_name: nulls 0
+    i_user_flags: nulls 0
+    i_user_type: nulls 0
+    i_user_merch: nulls 0
+    c_flag_: nulls 0
+    d_stamp_: nulls 0, fraction-digits 0
+
+Issues: 0

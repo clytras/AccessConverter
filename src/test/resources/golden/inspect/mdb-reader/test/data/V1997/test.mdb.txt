@@ -1,0 +1,146 @@
+Source: test.mdb (V1997)
+Text: code page 1252, charset windows-1252
+Tables: 4 local, 0 linked; relationships: 0
+
+Table Table1 (2 rows)
+  columns:
+    A  TEXT(50)  no-empty-string
+    B  TEXT(100)  no-empty-string
+    C  BYTE  default 0  decimal-places auto
+    D  INT  default 0  decimal-places auto
+    E  LONG  default 0  decimal-places auto
+    F  DOUBLE  default 0  decimal-places auto
+    G  SHORT_DATE_TIME
+    H  MONEY(19,4)  default 0  format "$#,##0.00;($#,##0.00)"  decimal-places auto
+    I  BOOLEAN  format "Yes/No"
+  primary key: PrimaryKey (A)
+  indexes:
+    B (B)
+
+Table Table2 (0 rows)
+  columns:
+    column1   TEXT(50)
+    column2   TEXT(50)
+    column3   TEXT(50)
+    column4   TEXT(50)
+    column5   TEXT(50)
+    column6   TEXT(50)
+    column7   TEXT(50)
+    column8   TEXT(50)
+    column9   TEXT(50)
+    column10  TEXT(50)
+    column11  TEXT(50)
+    column12  TEXT(50)
+    column13  TEXT(50)
+    column14  TEXT(50)
+    column15  TEXT(50)
+    column16  TEXT(50)
+    column17  TEXT(50)
+    column18  TEXT(50)
+    column19  TEXT(50)
+    column20  TEXT(50)
+    column21  TEXT(50)
+    column22  TEXT(50)
+    column23  TEXT(50)
+    column24  TEXT(50)
+    column25  TEXT(50)
+    column26  TEXT(50)
+    column27  TEXT(50)
+    column28  TEXT(50)
+    column29  TEXT(50)
+    column30  TEXT(50)
+    column31  TEXT(50)
+    column32  TEXT(50)
+    column33  TEXT(50)
+    column34  TEXT(50)
+    column35  TEXT(50)
+    column36  TEXT(50)
+    column37  TEXT(50)
+    column38  TEXT(50)
+    column39  TEXT(50)
+    column40  TEXT(50)
+    column41  TEXT(50)
+    column42  TEXT(50)
+    column43  TEXT(50)
+    column44  TEXT(50)
+    column45  TEXT(50)
+    column46  TEXT(50)
+    column47  TEXT(50)
+    column48  TEXT(50)
+    column49  TEXT(50)
+    column50  TEXT(50)
+    column51  TEXT(50)
+    column52  TEXT(50)
+    column53  TEXT(50)
+    column54  TEXT(50)
+    column55  TEXT(50)
+    column56  TEXT(50)
+    column57  TEXT(50)
+    column58  TEXT(50)
+    column59  TEXT(50)
+    column60  TEXT(50)
+    column61  TEXT(50)
+    column62  TEXT(50)
+    column63  TEXT(50)
+    column64  TEXT(50)
+    column65  TEXT(50)
+    column66  TEXT(50)
+    column67  TEXT(50)
+    column68  TEXT(50)
+    column69  TEXT(50)
+    column70  TEXT(50)
+    column71  TEXT(50)
+    column72  TEXT(50)
+    column73  TEXT(50)
+    column74  TEXT(50)
+    column75  TEXT(50)
+    column76  TEXT(50)
+    column77  TEXT(50)
+    column78  TEXT(50)
+    column79  TEXT(50)
+    column80  TEXT(50)
+    column81  TEXT(50)
+    column82  TEXT(50)
+    column83  TEXT(50)
+    column84  TEXT(50)
+    column85  TEXT(50)
+    column86  TEXT(50)
+    column87  TEXT(50)
+    column88  TEXT(50)
+    column89  TEXT(50)
+  primary key: PrimaryKey (column1) [merged: id]
+  indexes:
+    column10 (column10)
+    column14 (column14)
+    column75 (column75)
+
+Table Table3 (0 rows)
+  columns:
+    a  AUTONUMBER_LONG
+    b  TEXT(50)  no-empty-string
+  primary key: PrimaryKey (a) [merged: id]
+
+Table Table4 (0 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  AUTONUMBER_GUID  default GenGUID()
+  primary key: PrimaryKey (data)
+
+Profile:
+  Table1: 2 rows scanned
+    A: nulls 0, empty-strings 0
+    B: empty-strings 0
+    G: fraction-digits 0
+    H: max-digits 2 max-scale 1
+  Table2: 0 rows scanned
+    column1: nulls 0
+  Table3: 0 rows scanned
+    a: nulls 0
+    b: empty-strings 0
+  Table4: 0 rows scanned
+    name: empty-strings 0
+    data: nulls 0
+
+Issues: 2
+  info INDEX_MERGED_DUPLICATE Table2 / id: plain index on the same columns as the primary key PrimaryKey; merged
+  info INDEX_MERGED_DUPLICATE Table3 / id: plain index on the same columns as the primary key PrimaryKey; merged

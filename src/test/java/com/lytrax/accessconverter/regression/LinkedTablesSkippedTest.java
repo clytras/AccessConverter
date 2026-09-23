@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.healthmarketscience.jackcess.Database;
 import com.lytrax.accessconverter.Extraction;
+import com.lytrax.accessconverter.fixtures.CorpusFile;
 import com.lytrax.accessconverter.fixtures.Fixtures;
-import com.lytrax.accessconverter.fixtures.JackcessCorpus;
 import com.lytrax.accessconverter.model.ForeignKeyModel;
 import com.lytrax.accessconverter.model.TableModel;
 import com.lytrax.accessconverter.report.IssueCode;
@@ -24,7 +24,8 @@ class LinkedTablesSkippedTest {
 
     @Test
     void theLinkedTableIsInTheModelButNotRead() {
-        Extraction extraction = Extraction.of(JackcessCorpus.LINKED_V2007.path());
+        Extraction extraction =
+                Extraction.of(CorpusFile.get("jackcess/V2007/linkedV2007.accdb").file());
 
         TableModel local = extraction.table("Table1");
         assertThat(local.isLinked()).isFalse();
@@ -42,7 +43,8 @@ class LinkedTablesSkippedTest {
 
     @Test
     void relationshipsToItAreDecodedAndSkipped() {
-        Extraction extraction = Extraction.of(JackcessCorpus.LINKED_V2007.path());
+        Extraction extraction =
+                Extraction.of(CorpusFile.get("jackcess/V2007/linkedV2007.accdb").file());
         assertThat(extraction.relationship("Table1Table2")).satisfies(r -> {
             assertThat(r.parentTable()).isEqualTo("Table1");
             assertThat(r.childTable()).isEqualTo("Table2");
@@ -53,8 +55,10 @@ class LinkedTablesSkippedTest {
 
     @Test
     void theLocalTableStillStreams() throws IOException {
-        Extraction extraction = Extraction.of(JackcessCorpus.LINKED_V2007.path());
-        try (AccessSource source = AccessSource.open(JackcessCorpus.LINKED_V2007.path())) {
+        Extraction extraction =
+                Extraction.of(CorpusFile.get("jackcess/V2007/linkedV2007.accdb").file());
+        try (AccessSource source = AccessSource.open(
+                CorpusFile.get("jackcess/V2007/linkedV2007.accdb").file())) {
             assertThat(source.rows(extraction.table("Table1"))).toIterable().hasSize(1);
         }
     }
@@ -65,7 +69,8 @@ class LinkedTablesSkippedTest {
      */
     @Test
     void jackcessGetRelationshipsFailsOnThisFile() throws IOException {
-        try (Database db = Fixtures.openReadOnly(JackcessCorpus.LINKED_V2007.path())) {
+        try (Database db = Fixtures.openReadOnly(
+                CorpusFile.get("jackcess/V2007/linkedV2007.accdb").file())) {
             assertThatThrownBy(db::getRelationships)
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("Linked database resolution is disabled");

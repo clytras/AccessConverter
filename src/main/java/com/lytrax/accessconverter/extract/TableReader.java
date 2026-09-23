@@ -14,7 +14,9 @@ import com.lytrax.accessconverter.model.IndexModel.IndexColumn;
 import com.lytrax.accessconverter.model.TableModel;
 import com.lytrax.accessconverter.report.IssueCode;
 import com.lytrax.accessconverter.report.Issues;
+import com.lytrax.accessconverter.source.SourceException;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,7 +24,16 @@ import java.util.List;
 final class TableReader {
     private TableReader() {}
 
-    static TableModel read(Table table, Issues issues) {
+    /** Reads a table's metadata; anything Jackcess fails on becomes a typed error naming the table. */
+    static TableModel read(Path file, Table table, Issues issues) throws SourceException {
+        try {
+            return read(table, issues);
+        } catch (RuntimeException e) {
+            throw SourceException.readFailed(file, "table " + table.getName(), e);
+        }
+    }
+
+    private static TableModel read(Table table, Issues issues) {
         String name = table.getName();
         List<ColumnModel> columns = new ArrayList<>();
         for (Column column : table.getColumns()) {

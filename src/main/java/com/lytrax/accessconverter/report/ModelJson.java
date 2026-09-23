@@ -34,6 +34,8 @@ public final class ModelJson {
             g.writeObjectPropertyStart("source");
             g.writeStringProperty("file", model.source().fileName());
             g.writeStringProperty("fileFormat", model.source().fileFormat());
+            optional(g, "codePage", model.source().codePage());
+            g.writeStringProperty("charset", model.source().charset());
             g.writeEndObject();
             schema(g, model);
             if (profile != null) {
@@ -204,6 +206,7 @@ public final class ModelJson {
                 g.writeStringProperty("column", c.column());
                 optional(g, "nulls", c.nulls());
                 optional(g, "emptyStrings", c.emptyStrings());
+                optional(g, "undecodable", c.undecodable());
                 optional(g, "maxSignificantDigits", c.maxSignificantDigits());
                 optional(g, "maxScale", c.maxScale());
                 optional(g, "maxFractionDigits", c.maxFractionDigits());
@@ -226,6 +229,7 @@ public final class ModelJson {
             g.writeNumberProperty("inexactMatches", r.inexact());
             g.writeBooleanProperty("inexactAsciiCaseOnly", r.inexactAsciiCaseOnly());
             strings(g, "inexactSamples", r.inexactSamples());
+            optional(g, "scanFallback", r.scanFallback());
             g.writeEndObject();
         }
         g.writeEndArray();

@@ -1,0 +1,21 @@
+Source: overflowV2003.mdb (V2003)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Table1 (7 rows)
+  columns:
+    data1   TEXT(50)
+    data3   TEXT(50)
+    data4   TEXT(50)
+    data5   TEXT(50)
+    data6   TEXT(50)
+    data7   TEXT(50)
+    data8   TEXT(50)
+    data9   TEXT(50)
+    data10  TEXT(50)
+  primary key: none
+
+Profile:
+
+Issues: 1
+  info NO_PRIMARY_KEY Table1: table has no primary key; targets create none

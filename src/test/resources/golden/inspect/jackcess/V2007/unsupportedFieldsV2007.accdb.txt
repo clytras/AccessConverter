@@ -1,0 +1,23 @@
+Source: unsupportedFieldsV2007.accdb (V2007)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Test (3 rows)
+  columns:
+    ID              AUTONUMBER_LONG
+    UnknownVar      UNSUPPORTED
+    UnknownFix      UNSUPPORTED  decimal-places auto
+    UnknownComplex  COMPLEX_UNSUPPORTED
+  primary key: PrimaryKey (ID)
+  indexes:
+    UnknownComplex_6A5D9882BA33463D8EDAEFDF1FB96C3D (UnknownComplex) unique required
+
+Profile:
+  Test: 3 rows scanned
+    ID: nulls 0, max-autonumber 3
+    UnknownComplex: nulls 0
+
+Issues: 3
+  warning UNSUPPORTED_COLUMN_TYPE Test / UnknownComplex: Jackcess can't decode this column type (COMPLEX_TYPE); its raw bytes are kept
+  warning UNSUPPORTED_COLUMN_TYPE Test / UnknownFix: Jackcess can't decode this column type (UNSUPPORTED_FIXEDLEN); its raw bytes are kept
+  warning UNSUPPORTED_COLUMN_TYPE Test / UnknownVar: Jackcess can't decode this column type (UNSUPPORTED_VARLEN); its raw bytes are kept

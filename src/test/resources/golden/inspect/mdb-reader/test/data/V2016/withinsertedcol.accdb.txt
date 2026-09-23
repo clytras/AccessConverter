@@ -1,0 +1,15 @@
+Source: withinsertedcol.accdb (V2007)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Table1 (1 rows)
+  columns:
+    col1  BOOLEAN  default False from "No"  format "Yes/No"
+    col2  BOOLEAN  default False from "No"  format "Yes/No"
+    col3  BOOLEAN  default False from "No"  format "Yes/No"
+  primary key: none
+
+Profile:
+
+Issues: 1
+  info NO_PRIMARY_KEY Table1: table has no primary key; targets create none

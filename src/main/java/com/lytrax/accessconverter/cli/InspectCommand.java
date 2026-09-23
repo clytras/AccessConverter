@@ -8,6 +8,7 @@ import com.lytrax.accessconverter.profile.DataProfiler;
 import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.report.ModelJson;
 import com.lytrax.accessconverter.source.AccessSource;
+import com.lytrax.accessconverter.source.OpenOptions;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -52,6 +54,9 @@ final class InspectCommand implements Callable<Integer> {
             description = "Write to this file (UTF-8) instead of standard output.")
     Path output;
 
+    @Mixin
+    SourceOptions source;
+
     @Spec
     CommandSpec spec;
 
@@ -61,13 +66,14 @@ final class InspectCommand implements Callable<Integer> {
     @Override
     public Integer call() throws IOException {
         Main.requireFile(input);
+        OpenOptions options = source.toOpenOptions();
         Issues issues = new Issues();
         SchemaModel model;
         DataProfile data = null;
-        try (AccessSource source = AccessSource.open(input)) {
-            model = SchemaExtractor.extract(source, ExtractOptions.ALL, issues);
+        try (AccessSource db = AccessSource.open(input, options, issues)) {
+            model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
             if (profile) {
-                data = DataProfiler.profile(source, model);
+                data = DataProfiler.profile(db, model);
             }
         }
         if (output == null) {

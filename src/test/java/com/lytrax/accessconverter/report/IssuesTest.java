@@ -60,7 +60,7 @@ class IssuesTest {
                 "3.0.0",
                 "convert",
                 new TreeMap<>(Map.of("to", "sqlite")),
-                new SchemaModel.Source("x.accdb", "V2010"),
+                new SchemaModel.Source("x.mdb", "V1997", 1252, "windows-1252"),
                 List.of(new ConversionReport.TableResult("Πελάτες", 3, null)),
                 issues.list(),
                 "success",
@@ -72,6 +72,8 @@ class IssuesTest {
                 .contains("\"table\": \"Πελάτες\"")
                 .contains("\"rowsRead\": 3")
                 .doesNotContain("rowsWritten")
-                .contains("\"extractMillis\": 12");
+                .contains("\"extractMillis\": 12")
+                .contains("\"codePage\": 1252")
+                .contains("\"charset\": \"windows-1252\"");
     }
 }

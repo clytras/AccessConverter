@@ -2,8 +2,8 @@ package com.lytrax.accessconverter.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.lytrax.accessconverter.fixtures.CorpusFile;
 import com.lytrax.accessconverter.fixtures.GeneratedFixture;
-import com.lytrax.accessconverter.fixtures.JackcessCorpus;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -33,7 +33,9 @@ class MainTest {
 
     @Test
     void warningsGiveExitCodeOne() {
-        Cli cli = Cli.run("inspect", JackcessCorpus.LINKED_V2007.path().toString());
+        Cli cli = Cli.run(
+                "inspect",
+                CorpusFile.get("jackcess/V2007/linkedV2007.accdb").file().toString());
         assertThat(cli.exitCode()).isEqualTo(ExitCodes.WARNINGS);
         assertThat(cli.out()).contains("warning LINKED_TABLE_SKIPPED");
     }

@@ -3,6 +3,7 @@ package com.lytrax.accessconverter.fixtures;
 import com.healthmarketscience.jackcess.Database;
 import com.healthmarketscience.jackcess.DatabaseBuilder;
 import com.healthmarketscience.jackcess.DateTimeType;
+import com.healthmarketscience.jackcess.crypt.CryptCodecProvider;
 import java.io.IOException;
 import java.nio.file.Path;
 
@@ -18,7 +19,18 @@ public final class Fixtures {
 
     /** Opens an Access file read-only with {@link java.time.LocalDateTime} values (no time zone involved). */
     public static Database openReadOnly(Path file) throws IOException {
-        Database db = new DatabaseBuilder(file).setReadOnly(true).open();
+        return openReadOnly(file, null);
+    }
+
+    /** As {@link #openReadOnly(Path)}, for encoded and encrypted files too (jackcess-encrypt). */
+    public static Database openReadOnly(Path file, String password) throws IOException {
+        Database db = new DatabaseBuilder(file)
+                .setReadOnly(true)
+                .setCodecProvider(new CryptCodecProvider(password))
+                // Some fixtures are written by a non-English Access, whose catalog index Jackcess can't use; tests
+                // compare against the whole catalog, as the converter reads it
+                .setIgnoreBrokenSystemCatalogIndex(true)
+                .open();
         db.setDateTimeType(DateTimeType.LOCAL_DATE_TIME);
         return db;
     }

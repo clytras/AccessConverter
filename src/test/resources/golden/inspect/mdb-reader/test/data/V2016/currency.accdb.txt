@@ -1,0 +1,16 @@
+Source: currency.accdb (V2007)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Table (1 rows)
+  columns:
+    ID     AUTONUMBER_LONG
+    Money  MONEY(19,4)  default 0  format "#,##0.00 €;-#,##0.00 €"  decimal-places auto
+  primary key: PrimaryKey (ID)
+
+Profile:
+  Table: 1 rows scanned
+    ID: nulls 0, max-autonumber 1
+    Money: max-digits 2 max-scale 0
+
+Issues: 0

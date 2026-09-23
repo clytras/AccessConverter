@@ -1,0 +1,48 @@
+Source: calcFieldV2010.accdb (V2010)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Table1 (3 rows)
+  columns:
+    ID             AUTONUMBER_LONG
+    FirstName      TEXT(255)
+    LastName       TEXT(255)
+    LastFirst      TEXT(243)  calculated "[LastName] & \", \" & [FirstName]"
+    City           TEXT(255)
+    LastFirstLen   LONG  calculated "Len([LastFirst])"  decimal-places auto
+    Salary         MONEY(19,4)  format "$#,##0.00;($#,##0.00)"  decimal-places auto
+    MonthlySalary  MONEY(19,4)  calculated "[Salary]/12"  format "$#,##0.00;($#,##0.00)"  decimal-places auto
+    IsRich         BOOLEAN  calculated "[Salary]>100000"  format "Yes/No"
+    AllNames       MEMO  calculated "[LastName] & \", \" & [FirstName] & \"=\" & [LastFirst]"
+    WeeklySalary   NUMERIC(28,0)  calculated "[Salary]/52"  format "General Number"  decimal-places auto
+    SalaryTest     MONEY(19,4)  calculated "[Salary]"  format "$#,##0.00;($#,##0.00)"  decimal-places auto
+    BoolTest       BOOLEAN  calculated "True"  format "True/False"
+    Popularity     NUMERIC(18,6)  default 0  decimal-places auto
+    DecimalTest    NUMERIC(28,0)  calculated "[Popularity]"  decimal-places auto
+    FloatTest      FLOAT  calculated "[Salary]*0.13/[DecimalTest]"  decimal-places auto
+    BigNumTest     NUMERIC(28,0)  calculated "([Salary]*[MonthlySalary]/[DecimalTest])*34.12342134"  decimal-places auto
+  primary key: PrimaryKey (ID)
+
+Profile:
+  Table1: 4 rows scanned
+    ID: nulls 0, max-autonumber 4
+    Salary: max-digits 1 max-scale 0
+    MonthlySalary: max-digits 9 max-scale 4
+    WeeklySalary: max-digits 15 max-scale 16
+    SalaryTest: max-digits 1 max-scale 0
+    Popularity: max-digits 18 max-scale 6
+    DecimalTest: max-digits 18 max-scale 6
+    BigNumTest: max-digits 28 max-scale 28
+
+Issues: 11
+  info CALCULATED_AS_VALUE Table1 / AllNames: calculated column exported as its stored values; expression [LastName] & ", " & [FirstName] & "=" & [LastFirst]
+  info CALCULATED_AS_VALUE Table1 / BigNumTest: calculated column exported as its stored values; expression ([Salary]*[MonthlySalary]/[DecimalTest])*34.12342134
+  info CALCULATED_AS_VALUE Table1 / BoolTest: calculated column exported as its stored values; expression True
+  info CALCULATED_AS_VALUE Table1 / DecimalTest: calculated column exported as its stored values; expression [Popularity]
+  info CALCULATED_AS_VALUE Table1 / FloatTest: calculated column exported as its stored values; expression [Salary]*0.13/[DecimalTest]
+  info CALCULATED_AS_VALUE Table1 / IsRich: calculated column exported as its stored values; expression [Salary]>100000
+  info CALCULATED_AS_VALUE Table1 / LastFirst: calculated column exported as its stored values; expression [LastName] & ", " & [FirstName]
+  info CALCULATED_AS_VALUE Table1 / LastFirstLen: calculated column exported as its stored values; expression Len([LastFirst])
+  info CALCULATED_AS_VALUE Table1 / MonthlySalary: calculated column exported as its stored values; expression [Salary]/12
+  info CALCULATED_AS_VALUE Table1 / SalaryTest: calculated column exported as its stored values; expression [Salary]
+  info CALCULATED_AS_VALUE Table1 / WeeklySalary: calculated column exported as its stored values; expression [Salary]/52

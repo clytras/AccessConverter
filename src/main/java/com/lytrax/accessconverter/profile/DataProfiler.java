@@ -16,7 +16,6 @@ import com.lytrax.accessconverter.profile.RuleEvaluator.EvaluationException;
 import com.lytrax.accessconverter.profile.RuleEvaluator.Truth;
 import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.source.AccessSource;
-import com.lytrax.accessconverter.source.KeyLookup;
 import com.lytrax.accessconverter.source.RowStream;
 import com.lytrax.accessconverter.value.CanonicalText;
 import java.io.IOException;
@@ -43,6 +42,9 @@ import java.util.stream.Collectors;
  * a target feature, plus an index lookup per child row of each enforced relationship.
  */
 public final class DataProfiler {
+    /** U+FFFD, what a byte the code page doesn't define decodes to. */
+    private static final char REPLACEMENT = (char) 0xFFFD;
+
     private DataProfiler() {}
 
     public static DataProfile profile(AccessSource source, SchemaModel model) throws IOException {
@@ -107,7 +109,10 @@ public final class DataProfiler {
                     new TableProfile(
                             table.name(),
                             rows,
-                            columns.stream().map(ColumnAccumulator::stats).toList(),
+                            columns.stream()
+                                    .filter(ColumnAccumulator::reports)
+                                    .map(ColumnAccumulator::stats)
+                                    .toList(),
                             tableRule == null ? null : tableRule.stats()));
             for (ForeignKeyCheck fk : foreignKeys) {
                 relationships.put(fk.relationship.name(), fk.profile());
@@ -126,6 +131,8 @@ public final class DataProfiler {
                 ColumnAccumulator acc = new ColumnAccumulator(column);
                 acc.nulls = column.required() || requiredByIndex.contains(column.name());
                 acc.emptyStrings = column.type().isText() && !column.allowZeroLength();
+                // Access 97 text is in a code page, whose undefined bytes can't be decoded; Unicode text always can
+                acc.undecodable = column.type().isText() && model.source().codePage() != null;
                 acc.digits = column.type().isExactNumeric();
                 acc.fraction = column.type().isDateTime();
                 acc.autoNumber = column.type() == AccessType.AUTONUMBER_LONG;
@@ -181,7 +188,7 @@ public final class DataProfiler {
 
         private final class ForeignKeyCheck {
             final ForeignKeyModel relationship;
-            final KeyLookup lookup;
+            final ParentKeys lookup;
             final int[] childPositions;
             long checked;
             long orphans;
@@ -198,7 +205,7 @@ public final class DataProfiler {
                         .findFirst()
                         .orElseThrow(() -> new IllegalStateException("relationship " + fk.name() + ": no key "
                                 + fk.parentKey() + " on " + fk.parentTable()));
-                this.lookup = source.keyLookup(parent, key);
+                this.lookup = ParentKeys.of(source, parent, key);
                 // The lookup wants the key in index order; map each index column to its child column
                 this.childPositions = new int[key.columns().size()];
                 for (int j = 0; j < childPositions.length; j++) {
@@ -243,7 +250,8 @@ public final class DataProfiler {
                         orphanSamples,
                         inexact,
                         inexact > 0 && asciiCaseOnly,
-                        inexactSamples);
+                        inexactSamples,
+                        lookup.fallbackReason());
             }
         }
 
@@ -281,6 +289,7 @@ public final class DataProfiler {
             final ColumnModel column;
             boolean nulls;
             boolean emptyStrings;
+            boolean undecodable;
             boolean digits;
             boolean fraction;
             boolean autoNumber;
@@ -288,6 +297,7 @@ public final class DataProfiler {
             Integer at;
             long nullCount;
             long emptyCount;
+            long undecodableCount;
             int maxDigits;
             int maxScale;
             int maxFraction;
@@ -298,7 +308,18 @@ public final class DataProfiler {
             }
 
             boolean collects() {
-                return nulls || emptyStrings || digits || fraction || autoNumber || rule != null;
+                return nulls || emptyStrings || undecodable || digits || fraction || autoNumber || rule != null;
+            }
+
+            /** Whether there is a statistic to show: undecodable text is only reported when there is some. */
+            boolean reports() {
+                return nulls
+                        || emptyStrings
+                        || undecodableCount > 0
+                        || digits
+                        || fraction
+                        || autoNumber
+                        || rule != null;
             }
 
             void accept(Object[] row, Function<String, Object> byName) {
@@ -306,6 +327,9 @@ public final class DataProfiler {
                 if (value == null) {
                     nullCount++;
                 } else {
+                    if (undecodable && ((String) value).indexOf(REPLACEMENT) >= 0) {
+                        undecodableCount++;
+                    }
                     switch (value) {
                         case String s when emptyStrings && s.isEmpty() -> emptyCount++;
                         case BigDecimal d
@@ -329,6 +353,7 @@ public final class DataProfiler {
                         column.name(),
                         nulls ? nullCount : null,
                         emptyStrings ? emptyCount : null,
+                        undecodableCount > 0 ? undecodableCount : null,
                         digits ? maxDigits : null,
                         digits ? maxScale : null,
                         fraction ? maxFraction : null,

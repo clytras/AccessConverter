@@ -6,6 +6,7 @@ import com.lytrax.accessconverter.model.ColumnModel;
 import com.lytrax.accessconverter.value.AccessValues;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -17,13 +18,15 @@ import java.util.Set;
  * accumulated: memory doesn't grow with the table (03, Streaming).
  */
 public final class RowStream implements Iterator<Object[]> {
+    private final Path file;
     private final Cursor cursor;
     private final List<ColumnModel> columns;
     private final Set<String> names = new LinkedHashSet<>();
     private Row next;
     private boolean done;
 
-    RowStream(Cursor cursor, List<ColumnModel> columns) {
+    RowStream(Path file, Cursor cursor, List<ColumnModel> columns) {
+        this.file = file;
         this.cursor = cursor;
         this.columns = List.copyOf(columns);
         this.columns.forEach(c -> names.add(c.name()));
@@ -38,8 +41,9 @@ public final class RowStream implements Iterator<Object[]> {
         if (next == null && !done) {
             try {
                 next = cursor.getNextRow(names);
-            } catch (IOException e) {
-                throw new UncheckedIOException("reading " + cursor.getTable().getName(), e);
+            } catch (IOException | RuntimeException e) {
+                throw new UncheckedIOException(SourceException.readFailed(
+                        file, "table " + cursor.getTable().getName(), e));
             }
             done = next == null;
         }

@@ -1,0 +1,7 @@
+Source: empty.mdb (V2003)
+Text: charset UTF-16LE
+Tables: 0 local, 0 linked; relationships: 0
+
+Profile:
+
+Issues: 0

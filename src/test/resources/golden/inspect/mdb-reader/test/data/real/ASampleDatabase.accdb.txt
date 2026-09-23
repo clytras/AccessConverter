@@ -1,0 +1,37 @@
+Source: ASampleDatabase.accdb (V2007)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Asset Items (65 rows)
+  columns:
+    Asset No        TEXT(5)  no-empty-string  description "Records the asset number"
+    Asset Category  TEXT(20)  no-empty-string  description "Records the asset type"
+    Make            TEXT(25)  no-empty-string  description "Records the item make"
+    Model           TEXT(25)  no-empty-string  description "Records the item model"
+    Description     TEXT(40)  no-empty-string  description "Records a brief description of the item"
+    Owner           TEXT(20)  no-empty-string  description "Records the owner of the asset"
+    Serial No       TEXT(15)  no-empty-string  description "Records the serial number of the asset"
+    Acquired        SHORT_DATE_TIME  description "Records the date that the asset was purchased"
+    Cost            MONEY(19,4)  default 0  format "$#,##0.00;-$#,##0.00"  decimal-places auto  description "Records the purchase price of the asset"
+    Warranty        LONG  default 0  decimal-places auto  description "Records the warranty period in months"
+    Tax Scale       TEXT(1)  no-empty-string  description "Records the tax scale that the item belongs to"
+    Supplier No     TEXT(5)  no-empty-string  description "Records the code number of the supplier"
+    Comments        MEMO  no-empty-string  description "Records miscellaneous comments"
+  primary key: PrimaryKey (Asset No)
+
+Profile:
+  Asset Items: 65 rows scanned
+    Asset No: nulls 0, empty-strings 0
+    Asset Category: empty-strings 0
+    Make: empty-strings 0
+    Model: empty-strings 0
+    Description: empty-strings 0
+    Owner: empty-strings 0
+    Serial No: empty-strings 0
+    Acquired: fraction-digits 0
+    Cost: max-digits 5 max-scale 1
+    Tax Scale: empty-strings 0
+    Supplier No: empty-strings 0
+    Comments: empty-strings 0
+
+Issues: 0

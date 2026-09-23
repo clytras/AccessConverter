@@ -1,0 +1,26 @@
+Source: extDateV2019.accdb (V2019)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Table1 (9 rows)
+  columns:
+    ID              AUTONUMBER_LONG
+    Field1          TEXT(255)
+    DateExt         EXT_DATE_TIME  format "General Date"  decimal-places 7
+    DateNormal      SHORT_DATE_TIME
+    DateExtStr      TEXT(255)
+    DateNormalCalc  SHORT_DATE_TIME  calculated "[DateNormal]"
+  primary key: PrimaryKey (ID)
+  indexes:
+    DateExtAsc (DateExt)
+    DateExtDesc (DateExt DESC)
+
+Profile:
+  Table1: 9 rows scanned
+    ID: nulls 0, max-autonumber 9
+    DateExt: fraction-digits 7
+    DateNormal: fraction-digits 0
+    DateNormalCalc: fraction-digits 0
+
+Issues: 1
+  info CALCULATED_AS_VALUE Table1 / DateNormalCalc: calculated column exported as its stored values; expression [DateNormal]

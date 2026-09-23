@@ -1,0 +1,20 @@
+Source: blobV2007.accdb (V2007)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Table1 (11 rows)
+  columns:
+    ID           AUTONUMBER_LONG
+    name         TEXT(255)
+    ole_data     OLE
+    attach_data  ATTACHMENT
+  primary key: PrimaryKey (ID)
+  indexes:
+    attach_data_5C3A6A554ECB44BC86D7CDF1DD11F568 (attach_data) unique required
+
+Profile:
+  Table1: 11 rows scanned
+    ID: nulls 0, max-autonumber 12
+    attach_data: nulls 0
+
+Issues: 0

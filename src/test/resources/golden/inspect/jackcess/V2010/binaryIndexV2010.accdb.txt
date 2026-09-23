@@ -1,0 +1,18 @@
+Source: binaryIndexV2010.accdb (V2010)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Test (105 rows)
+  columns:
+    ID      LONG  decimal-places auto
+    BinAsc  BINARY(200)
+    BinDsc  BINARY(200)
+  primary key: none
+  indexes:
+    BinAscIdx (BinAsc)
+    BinDscIdx (BinDsc DESC)
+
+Profile:
+
+Issues: 1
+  info NO_PRIMARY_KEY Test: table has no primary key; targets create none

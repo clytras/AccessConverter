@@ -1,0 +1,20 @@
+Source: hundred.accdb (V2010)
+Text: charset UTF-16LE
+Tables: 2 local, 0 linked; relationships: 0
+
+Table After (1 rows)
+  columns:
+    ID  LONG
+  primary key: none
+
+Table Hundred (100 rows)
+  columns:
+    ID  AUTONUMBER_LONG
+  primary key: PrimaryKey (ID)
+
+Profile:
+  Hundred: 100 rows scanned
+    ID: nulls 0, max-autonumber 100
+
+Issues: 1
+  info NO_PRIMARY_KEY After: table has no primary key; targets create none

@@ -3,8 +3,8 @@ package com.lytrax.accessconverter.regression;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.lytrax.accessconverter.Extraction;
+import com.lytrax.accessconverter.fixtures.CorpusCase;
 import com.lytrax.accessconverter.fixtures.GeneratedFixture;
-import com.lytrax.accessconverter.fixtures.JackcessCorpus;
 import com.lytrax.accessconverter.fixtures.LocalSample;
 import com.lytrax.accessconverter.fixtures.LocalSamples;
 import com.lytrax.accessconverter.model.ColumnModel;
@@ -12,7 +12,6 @@ import com.lytrax.accessconverter.model.DefaultValue;
 import com.lytrax.accessconverter.model.expr.Expr;
 import com.lytrax.accessconverter.model.expr.ExprPrinter;
 import java.math.BigDecimal;
-import java.nio.file.Path;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,17 +42,15 @@ class DefaultsAreTranslatedTest {
         }
     }
 
-    static Stream<Path> corpus() {
-        return Stream.concat(
-                Stream.of(GeneratedFixture.values()).map(GeneratedFixture::path),
-                Stream.of(JackcessCorpus.values()).map(JackcessCorpus::path));
+    static Stream<CorpusCase> corpus() {
+        return CorpusCase.databases();
     }
 
     /** Every default in the corpus is inside the supported subset; a regression would show as unsupported. */
     @ParameterizedTest
     @MethodSource("corpus")
-    void everyCorpusDefaultTranslates(Path file) {
-        Extraction.of(file).model().tables().stream()
+    void everyCorpusDefaultTranslates(CorpusCase database) {
+        Extraction.of(database.file(), database.options()).model().tables().stream()
                 .flatMap(t -> t.columns().stream())
                 .map(ColumnModel::defaultValue)
                 .filter(d -> d != null)

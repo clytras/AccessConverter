@@ -3,7 +3,15 @@ Copyright (c) 2024 Christos Lytras. Licensed under the MIT License (see LICENSE)
 
 Test data
 ---------
-The test suite downloads Access databases from the Jackcess project
-(https://github.com/spannm/jackcess, src/test/resources/data), licensed under the
-Apache License, Version 2.0. They are fetched at build time into target/fixtures/
-and are not distributed with AccessConverter.
+The test suite downloads Access databases from these projects, pinned by commit
+and checksum in src/test/resources/fixtures/corpus.tsv:
+
+- Jackcess (https://github.com/spannm/jackcess, src/test/resources/data),
+  licensed under the Apache License, Version 2.0
+- Jackcess Encrypt (https://github.com/jahlborn/jackcessencrypt, src/test/data),
+  licensed under the Apache License, Version 2.0
+- mdb-reader (https://github.com/andipaetzold/mdb-reader, test/), licensed under
+  the MIT License
+
+They are fetched at build time into target/fixtures/ and are not distributed with
+AccessConverter.

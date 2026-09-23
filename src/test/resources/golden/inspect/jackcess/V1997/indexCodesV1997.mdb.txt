@@ -1,0 +1,317 @@
+Source: indexCodesV1997.mdb (V1997)
+Text: code page 1252, charset windows-1252
+Tables: 29 local, 0 linked; relationships: 0
+
+Table Table1 (275 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  TEXT(100)  no-empty-string
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data)
+
+Table Table10 (5 rows)
+  columns:
+    name  TEXT(255)  no-empty-string
+    data  BOOLEAN  format "Yes/No"
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data)
+
+Table Table10_desc (5 rows)
+  columns:
+    name  TEXT(255)  no-empty-string
+    data  BOOLEAN  format "Yes/No"
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data DESC)
+
+Table Table11 (52 rows)
+  columns:
+    id    AUTONUMBER_LONG
+    data  TEXT(50)  no-empty-string
+  primary key: PrimaryKey (id)
+  indexes:
+    data (data)
+    dataDesc (data DESC)
+
+Table Table12 (10 rows)
+  columns:
+    name   TEXT(255)  no-empty-string
+    data1  TEXT(255)  no-empty-string
+    data2  LONG  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data1, data2)
+
+Table Table12_asc_desc (10 rows)
+  columns:
+    name   TEXT(255)  no-empty-string
+    data1  TEXT(255)  no-empty-string
+    data2  LONG  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data1, data2 DESC)
+
+Table Table12_desc_asc (10 rows)
+  columns:
+    name   TEXT(255)  no-empty-string
+    data1  TEXT(255)  no-empty-string
+    data2  LONG  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data1 DESC, data2)
+
+Table Table12_desc_desc (10 rows)
+  columns:
+    name   TEXT(255)  no-empty-string
+    data1  TEXT(255)  no-empty-string
+    data2  LONG  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data1 DESC, data2 DESC)
+
+Table Table13 (20 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  AUTONUMBER_GUID  default GenGUID()
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data)
+
+Table Table13_desc (20 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  AUTONUMBER_GUID  default GenGUID()
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data DESC)
+
+Table Table14 (256 rows)
+  columns:
+    name  TEXT(255)  no-empty-string
+    data  TEXT(255)  no-empty-string
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data)
+
+Table Table14_desc (256 rows)
+  columns:
+    name  TEXT(255)  no-empty-string
+    data  TEXT(255)  no-empty-string
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data DESC)
+
+Table Table15 (52 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  TEXT(50)  no-empty-string
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data)
+
+Table Table15_desc (52 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  TEXT(50)  no-empty-string
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data DESC)
+
+Table Table1_desc (275 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  TEXT(100)  no-empty-string
+  primary key: PrimaryKey (name DESC)
+  indexes:
+    DataIndex (data)
+
+Table Table2 (9 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  LONG  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data)
+
+Table Table2_desc (9 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  LONG  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data DESC)
+
+Table Table3 (11 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  INT  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data)
+
+Table Table3_desc (11 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  INT  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data DESC)
+
+Table Table4 (20 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  DOUBLE  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data)
+
+Table Table4_desc (20 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  DOUBLE  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data DESC)
+
+Table Table5 (20 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  FLOAT  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data)
+
+Table Table5_desc (20 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  FLOAT  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data DESC)
+
+Table Table6 (23 rows)
+  columns:
+    name  TEXT(255)  no-empty-string
+    data  SHORT_DATE_TIME
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data)
+
+Table Table6_desc (23 rows)
+  columns:
+    name  TEXT(255)  no-empty-string
+    data  SHORT_DATE_TIME
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data DESC)
+
+Table Table8 (20 rows)
+  columns:
+    name  TEXT(255)  no-empty-string
+    data  MONEY(19,4)  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data)
+
+Table Table8_desc (20 rows)
+  columns:
+    name  TEXT(255)  no-empty-string
+    data  MONEY(19,4)  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data DESC)
+
+Table Table9 (11 rows)
+  columns:
+    name  TEXT(255)  no-empty-string
+    data  BYTE  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data)
+
+Table Table9_desc (11 rows)
+  columns:
+    name  TEXT(255)  no-empty-string
+    data  BYTE  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data DESC)
+
+Profile:
+  Table1: 275 rows scanned
+    name: nulls 0, empty-strings 0
+    data: empty-strings 0
+  Table10: 5 rows scanned
+    name: nulls 0, empty-strings 0
+  Table10_desc: 5 rows scanned
+    name: nulls 0, empty-strings 0
+  Table11: 52 rows scanned
+    id: nulls 0, max-autonumber 52
+    data: empty-strings 0
+  Table12: 10 rows scanned
+    name: nulls 0, empty-strings 0
+    data1: empty-strings 0
+  Table12_asc_desc: 10 rows scanned
+    name: nulls 0, empty-strings 0
+    data1: empty-strings 0
+  Table12_desc_asc: 10 rows scanned
+    name: nulls 0, empty-strings 0
+    data1: empty-strings 0
+  Table12_desc_desc: 10 rows scanned
+    name: nulls 0, empty-strings 0
+    data1: empty-strings 0
+  Table13: 20 rows scanned
+    name: nulls 0, empty-strings 0
+  Table13_desc: 20 rows scanned
+    name: nulls 0, empty-strings 0
+  Table14: 256 rows scanned
+    name: nulls 0, empty-strings 0
+    data: empty-strings 0
+  Table14_desc: 256 rows scanned
+    name: nulls 0, empty-strings 0
+    data: empty-strings 0
+  Table15: 52 rows scanned
+    name: nulls 0, empty-strings 0
+    data: empty-strings 0
+  Table15_desc: 52 rows scanned
+    name: nulls 0, empty-strings 0
+    data: empty-strings 0
+  Table1_desc: 275 rows scanned
+    name: nulls 0, empty-strings 0
+    data: empty-strings 0
+  Table2: 9 rows scanned
+    name: nulls 0, empty-strings 0
+  Table2_desc: 9 rows scanned
+    name: nulls 0, empty-strings 0
+  Table3: 11 rows scanned
+    name: nulls 0, empty-strings 0
+  Table3_desc: 11 rows scanned
+    name: nulls 0, empty-strings 0
+  Table4: 20 rows scanned
+    name: nulls 0, empty-strings 0
+  Table4_desc: 20 rows scanned
+    name: nulls 0, empty-strings 0
+  Table5: 20 rows scanned
+    name: nulls 0, empty-strings 0
+  Table5_desc: 20 rows scanned
+    name: nulls 0, empty-strings 0
+  Table6: 23 rows scanned
+    name: nulls 0, empty-strings 0
+    data: fraction-digits 0
+  Table6_desc: 23 rows scanned
+    name: nulls 0, empty-strings 0
+    data: fraction-digits 0
+  Table8: 20 rows scanned
+    name: nulls 0, empty-strings 0
+    data: max-digits 12 max-scale 2
+  Table8_desc: 20 rows scanned
+    name: nulls 0, empty-strings 0
+    data: max-digits 12 max-scale 2
+  Table9: 11 rows scanned
+    name: nulls 0, empty-strings 0
+  Table9_desc: 11 rows scanned
+    name: nulls 0, empty-strings 0
+
+Issues: 0

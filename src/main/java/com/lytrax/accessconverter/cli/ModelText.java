@@ -39,7 +39,10 @@ final class ModelText {
 
     private void model(SchemaModel model) {
         long local = model.tables().stream().filter(t -> !t.isLinked()).count();
-        line("Source: " + model.source().fileName() + " (" + model.source().fileFormat() + ")");
+        SchemaModel.Source source = model.source();
+        line("Source: " + source.fileName() + " (" + source.fileFormat() + ")");
+        line("Text: " + (source.codePage() == null ? "" : "code page " + source.codePage() + ", ") + "charset "
+                + source.charset());
         line("Tables: " + local + " local, " + (model.tables().size() - local) + " linked; relationships: "
                 + model.relationships().size());
         for (TableModel table : model.tables()) {
@@ -206,6 +209,9 @@ final class ModelText {
                 if (c.emptyStrings() != null) {
                     parts.add("empty-strings " + c.emptyStrings());
                 }
+                if (c.undecodable() != null) {
+                    parts.add("undecodable " + c.undecodable() + " (bytes the code page doesn't define)");
+                }
                 if (c.maxSignificantDigits() != null) {
                     parts.add("max-digits " + c.maxSignificantDigits() + " max-scale " + c.maxScale());
                 }
@@ -231,6 +237,9 @@ final class ModelText {
             if (r.inexact() > 0) {
                 text += ", " + r.inexact() + " inexact matches"
                         + (r.inexactAsciiCaseOnly() ? " (ASCII case only)" : "");
+            }
+            if (r.scanFallback() != null) {
+                text += "; parent keys scanned, the index couldn't be used (" + r.scanFallback() + ")";
             }
             line(text + samples(r.orphanSamples()) + samples(r.inexactSamples()));
         }

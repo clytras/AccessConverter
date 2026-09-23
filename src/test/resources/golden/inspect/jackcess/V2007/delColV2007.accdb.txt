@@ -1,0 +1,28 @@
+Source: delColV2007.accdb (V2007)
+Text: charset UTF-16LE
+Tables: 2 local, 0 linked; relationships: 0
+
+Table MSysCompactError (1 rows)
+  columns:
+    ErrorCode         LONG
+    ErrorDescription  MEMO
+    ErrorTable        TEXT(255)
+    ErrorRecid        BINARY(510)
+  primary key: none
+
+Table Table1 (2 rows)
+  columns:
+    id     LONG  default 0  decimal-places auto
+    id2    LONG  default 0  decimal-places auto
+    data   TEXT(50)
+    data2  TEXT(50)
+  primary key: none
+  indexes:
+    id (id)
+    id2 (id2)
+
+Profile:
+
+Issues: 2
+  info NO_PRIMARY_KEY MSysCompactError: table has no primary key; targets create none
+  info NO_PRIMARY_KEY Table1: table has no primary key; targets create none

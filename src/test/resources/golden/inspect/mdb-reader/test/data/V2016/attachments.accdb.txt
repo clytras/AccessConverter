@@ -1,0 +1,19 @@
+Source: attachments.accdb (V2007)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Table1 (3 rows)
+  columns:
+    ID           AUTONUMBER_LONG
+    Comment      TEXT(255)
+    Attachments  ATTACHMENT
+  primary key: PrimaryKey (ID)
+  indexes:
+    Field1_B649D85014354490BB4AD3B5AB75A5A4 (Attachments) unique required
+
+Profile:
+  Table1: 3 rows scanned
+    ID: nulls 0, max-autonumber 3
+    Attachments: nulls 0
+
+Issues: 0

@@ -1,0 +1,100 @@
+Source: common2V1997.mdb (V1997)
+Text: code page 1252, charset windows-1252
+Tables: 1 local, 0 linked; relationships: 0
+
+Table MSP_PROJECTS (1 rows)
+  columns:
+    PROJ_ID                         LONG
+    PROJ_NAME                       TEXT(255)
+    PROJ_PROP_AUTHOR                MEMO
+    PROJ_OPT_CALC_ACT_COSTS         BOOLEAN
+    PROJ_PROP_CATEGORY              MEMO
+    PROJ_PROP_COMPANY               MEMO
+    PROJ_OPT_CRITICAL_SLACK_LIMIT   LONG
+    PROJ_OPT_CURRENCY_DIGITS        INT
+    PROJ_OPT_CURRENCY_POSITION      INT
+    PROJ_OPT_CURRENCY_SYMBOL        TEXT(20)
+    PROJ_OPT_NEW_ARE_EFFORT_DRIVEN  BOOLEAN
+    PROJ_INFO_CURRENT_DATE          SHORT_DATE_TIME
+    PROJ_OPT_DEF_FINISH_TIME        SHORT_DATE_TIME
+    PROJ_OPT_DEF_FIX_COST_ACCRUAL   INT
+    PROJ_OPT_MINUTES_PER_DAY        LONG
+    PROJ_OPT_MINUTES_PER_WEEK       LONG
+    PROJ_OPT_DEF_OVT_RATE           DOUBLE
+    PROJ_OPT_DEF_STD_RATE           DOUBLE
+    PROJ_OPT_DEF_START_TIME         SHORT_DATE_TIME
+    PROJ_OPT_DEF_TASK_TYPE          INT
+    PROJ_OPT_DUR_ENTRY_FMT          INT
+    PROJ_INFO_FINISH_DATE           SHORT_DATE_TIME
+    PROJ_OPT_HONOR_CONSTRAINTS      BOOLEAN
+    PROJ_PROP_KEYWORDS              MEMO
+    PROJ_LAST_SAVED                 SHORT_DATE_TIME
+    PROJ_PROP_MANAGER               MEMO
+    PROJ_OPT_MULT_CRITICAL_PATHS    BOOLEAN
+    PROJ_CREATION_DATE              SHORT_DATE_TIME
+    PROJ_POOL_ATTACHED_TO           MEMO
+    PROJ_INFO_CAL_NAME              MEMO
+    PROJ_IS_RES_POOL                BOOLEAN
+    PROJ_INFO_SCHED_FROM            INT
+    PROJ_OPT_SPLIT_IN_PROGRESS      BOOLEAN
+    PROJ_OPT_SPREAD_ACT_COSTS       BOOLEAN
+    PROJ_OPT_SPREAD_PCT_COMP        BOOLEAN
+    PROJ_INFO_START_DATE            SHORT_DATE_TIME
+    PROJ_INFO_STATUS_DATE           SHORT_DATE_TIME
+    PROJ_PROP_SUBJECT               MEMO
+    PROJ_PROP_TITLE                 MEMO
+    PROJ_OPT_TASK_UPDATES_RES       BOOLEAN
+    PROJ_OPT_WORK_ENTRY_FMT         INT
+    PROJ_OPT_CALC_SUB_AS_SUMMARY    BOOLEAN
+    PROJ_OPT_WEEK_START_DAY         INT
+    PROJ_OPT_FY_START_MONTH         INT
+    PROJ_OPT_FY_USE_START_YR        BOOLEAN
+    PROJ_OPT_DAYS_PER_MONTH         INT
+    PROJ_OPT_NEW_TASK_EST           BOOLEAN
+    PROJ_OPT_SHOW_EST_DUR           BOOLEAN
+    PROJ_OPT_EXPAND_TIMEPHASED      BOOLEAN
+    PROJ_PROJECT                    TEXT(203)
+    PROJ_VERSION                    TEXT(50)
+    PROJ_CREATION_DATE_EX           SHORT_DATE_TIME
+    PROJ_ACTUALS_SYNCH              INT
+    PROJ_ADMINPROJECT               INT
+    PROJ_ENT_LIST_SEPARATOR         TEXT(2)
+    PROJ_EXT_EDITED_DATE            BOOLEAN
+    PROJ_EXT_EDITED_DUR             BOOLEAN
+    PROJ_EXT_EDITED_NUM             BOOLEAN
+    PROJ_EXT_EDITED_FLAG            BOOLEAN
+    PROJ_EXT_EDITED_CODE            BOOLEAN
+    PROJ_EXT_EDITED_TEXT            BOOLEAN
+    PROJ_IGNORE_FRONT_END           BOOLEAN
+    PROJ_EXT_EDITED                 BOOLEAN
+    PROJ_DATA_SOURCE                TEXT(128)
+    PROJ_READ_ONLY                  TEXT(10)
+    PROJ_READ_WRITE                 TEXT(4)
+    PROJ_READ_COUNT                 TEXT(10)
+    PROJ_LOCKED                     TEXT(4)
+    PROJ_MACHINE_ID                 TEXT(100)
+    PROJ_TYPE                       LONG
+    PROJ_CHECKEDOUT                 LONG
+    PROJ_CHECKEDOUTBY               TEXT(255)
+    PROJ_CHECKEDOUTDATE             SHORT_DATE_TIME
+    RESERVED_BINARY_DATA            OLE
+  primary key: none
+  indexes:
+    I_MSP_PROJECTS (PROJ_ID) unique
+    I_PROJ_NAME (PROJ_NAME) unique
+
+Profile:
+  MSP_PROJECTS: 1 rows scanned
+    PROJ_INFO_CURRENT_DATE: fraction-digits 0
+    PROJ_OPT_DEF_FINISH_TIME: fraction-digits 0
+    PROJ_OPT_DEF_START_TIME: fraction-digits 0
+    PROJ_INFO_FINISH_DATE: fraction-digits 0
+    PROJ_LAST_SAVED: fraction-digits 0
+    PROJ_CREATION_DATE: fraction-digits 0
+    PROJ_INFO_START_DATE: fraction-digits 0
+    PROJ_INFO_STATUS_DATE: fraction-digits 0
+    PROJ_CREATION_DATE_EX: fraction-digits 0
+    PROJ_CHECKEDOUTDATE: fraction-digits 0
+
+Issues: 1
+  info NO_PRIMARY_KEY MSP_PROJECTS: table has no primary key; targets create none

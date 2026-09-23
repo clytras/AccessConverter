@@ -1,0 +1,43 @@
+Source: queryV2003.mdb (V2003)
+Text: charset UTF-16LE
+Tables: 3 local, 0 linked; relationships: 0
+
+Table Table1 (0 rows)
+  columns:
+    col1  TEXT(50)  no-empty-string
+    col2  TEXT(50)  no-empty-string
+    col3  TEXT(50)  no-empty-string
+  primary key: none
+
+Table Table2 (0 rows)
+  columns:
+    col1  TEXT(50)  no-empty-string
+    col2  TEXT(50)  no-empty-string
+    col3  TEXT(50)  no-empty-string
+  primary key: none
+
+Table Table3 (0 rows)
+  columns:
+    col1  TEXT(50)  no-empty-string
+    col2  TEXT(50)  no-empty-string
+    col3  TEXT(50)  no-empty-string
+  primary key: none
+
+Profile:
+  Table1: 0 rows scanned
+    col1: empty-strings 0
+    col2: empty-strings 0
+    col3: empty-strings 0
+  Table2: 0 rows scanned
+    col1: empty-strings 0
+    col2: empty-strings 0
+    col3: empty-strings 0
+  Table3: 0 rows scanned
+    col1: empty-strings 0
+    col2: empty-strings 0
+    col3: empty-strings 0
+
+Issues: 3
+  info NO_PRIMARY_KEY Table1: table has no primary key; targets create none
+  info NO_PRIMARY_KEY Table2: table has no primary key; targets create none
+  info NO_PRIMARY_KEY Table3: table has no primary key; targets create none

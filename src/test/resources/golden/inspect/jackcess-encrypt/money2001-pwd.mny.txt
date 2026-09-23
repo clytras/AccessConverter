@@ -1,0 +1,2002 @@
+Source: money2001-pwd.mny (MSISAM)
+Text: charset UTF-16LE
+Tables: 66 local, 0 linked; relationships: 0
+
+Table ACCT (1 rows)
+  columns:
+    hacct               LONG
+    ast                 LONG
+    at                  LONG
+    szAls               TEXT(8)
+    szFull              TEXT(32)
+    hacctRel            LONG
+    haddr               LONG
+    amtLimit            MONEY(19,4)
+    amtOpen             MONEY(19,4)
+    amtOpenRec          MONEY(19,4)
+    amtEndRec           MONEY(19,4)
+    dtOpen              SHORT_DATE_TIME
+    dtEndRec            SHORT_DATE_TIME
+    dtOpenRec           SHORT_DATE_TIME
+    fFavorite           BOOLEAN
+    fClosed             BOOLEAN
+    fInRec              BOOLEAN
+    fTaxRel             BOOLEAN
+    fRetirement         BOOLEAN
+    mComment            MEMO
+    hfi                 LONG
+    mContact            MEMO
+    mFax                MEMO
+    mVoice              MEMO
+    hcrnc               LONG
+    fVatEnabled         BOOLEAN
+    grp                 LONG
+    fStmtRequested      BOOLEAN
+    mNum                MEMO
+    fAutobalance        BOOLEAN
+    fDebtPlan           BOOLEAN
+    cpm                 LONG
+    dIntRate            DOUBLE
+    dtIntRateChg        SHORT_DATE_TIME
+    dIntRateChg         DOUBLE
+    frqDebtPay          LONG
+    cFrqInstDebtPay     DOUBLE
+    dtNextDebtPay       SHORT_DATE_TIME
+    dPayRateMin         DOUBLE
+    amtPayMin           MONEY(19,4)
+    amtSpending         MONEY(19,4)
+    hcatInterest        LONG
+    hcatPrincipal       LONG
+    hcatService         LONG
+    hcatOpenAdj         LONG
+    hcatEndAdj          LONG
+    fEmpMatch           BOOLEAN
+    fEmpMatchPost       BOOLEAN
+    hcatEmpMatch        LONG
+    hcatEmpMatchPost    LONG
+    fAdjustAmtPost      BOOLEAN
+    amtBalloon          MONEY(19,4)
+    amtPI               MONEY(19,4)
+    amtPayment          MONEY(19,4)
+    frq                 LONG
+    cFrqInst            DOUBLE
+    frqCpd              LONG
+    cFrqInstCpd         DOUBLE
+    iPmtMax             LONG
+    rateUser            DOUBLE
+    rateCalc            DOUBLE
+    rateAPR             DOUBLE
+    fCanadian           BOOLEAN
+    fCoupon             BOOLEAN
+    fLent               BOOLEAN
+    fARM                BOOLEAN
+    dtNextAdj           SHORT_DATE_TIME
+    frqAdj              LONG
+    cFrqInstAdj         DOUBLE
+    ctrnPartialChecks   LONG
+    fGotInterest        BOOLEAN
+    fGotService         BOOLEAN
+    szIdPrint           TEXT(13)
+    mRecIntraSyncToken  MEMO
+    lDebtHtrn           LONG
+    dtClose             SHORT_DATE_TIME
+    grfAdvice           LONG
+    dtCBPost            SHORT_DATE_TIME
+    lCB                 LONG
+    olatHint            LONG
+    dtCBCut             SHORT_DATE_TIME
+    lHcrncOrig          LONG
+    fBusiness           BOOLEAN
+    lHacctBonus         LONG
+    lHacctMonthly       LONG
+    fTaxExport          BOOLEAN
+    uat                 LONG
+    dtSerial            SHORT_DATE_TIME
+    fUpdated            BOOLEAN
+    fWatch              BOOLEAN
+    fAutoRecon          BOOLEAN
+    fIueIncomplete      BOOLEAN
+    amtOpenSaved        MONEY(19,4)
+    lHcrncOpenSaved     LONG
+    lHpgmCur            LONG
+    taat                LONG
+    dtPurchase          SHORT_DATE_TIME
+    amtPurchase         MONEY(19,4)
+    dUnitRec            DOUBLE
+    mMCId               MEMO
+    fAdvAbove           BOOLEAN
+    amtAdvAbove         MONEY(19,4)
+    fAdvBelow           BOOLEAN
+    amtAdvBelow         MONEY(19,4)
+    Balance Sort        LONG
+  primary key: PrimaryKey (hacct)
+  indexes:
+    AstTypeName (ast, at, szFull)
+    CATACCTApc0 (hcatInterest) relationship
+    CATACCTApc1 (hcatPrincipal) relationship
+    CATACCTApc2 (hcatService) relationship
+    CATACCTApc3 (hcatOpenAdj) relationship
+    CATACCTApc4 (hcatEndAdj) relationship
+    CATACCTEmp1 (hcatEmpMatch) relationship
+    CATACCTEmp2 (hcatEmpMatchPost) relationship
+    CRNCACCT (hcrnc) relationship
+    hacctRel (hacctRel) relationship
+    hfiAcct (hfi) relationship
+    NoDupesOnAddr (haddr) unique
+    SuperTypeName (ast, szFull) unique
+    szAls (szAls)
+    szFull (szFull)
+    TypeAndName (at, szFull) unique
+
+Table ADDR (0 rows)
+  columns:
+    haddr            LONG
+    addrt            LONG
+    mNameUserLast    MEMO
+    mNameUserFirst   MEMO
+    mNameUserMiddle  MEMO
+    mId              MEMO
+    mAddrEmail       MEMO
+    mAddr1           MEMO
+    mAddr2           MEMO
+    mAddr3           MEMO
+    mCity            MEMO
+    mState           MEMO
+    mCountry         MEMO
+    lISOCountry      LONG
+    mPostalCode      MEMO
+    mPhoneHome       MEMO
+    mPhoneWork       MEMO
+    mFax             MEMO
+    mURL             MEMO
+    mFreeForm        MEMO
+  primary key: PrimaryKey (haddr)
+
+Table ADV (8 rows)
+  columns:
+    hadv              LONG
+    lAdvId            LONG
+    lType             LONG
+    lStatus           LONG
+    dtTrigger         SHORT_DATE_TIME
+    dtSerial          SHORT_DATE_TIME
+    lAdvCat           LONG
+    lAdvGoal          LONG
+    lBaseImportance   LONG
+    lCurImportance    LONG
+    mReplacements     MEMO
+    lHobjChartFilter  LONG
+    tblChartFilter    LONG
+    lAge              LONG
+  primary key: PrimaryKey (hadv)
+  indexes:
+    ADVT_SUMADV (lAdvId) relationship
+    lCurImpDesc (lCurImportance, hadv)
+
+Table ADV_SUM (22 rows)
+  columns:
+    lAdvId    LONG
+    dtLatest  SHORT_DATE_TIME
+    cAdv      LONG
+  primary key: PrimaryKey (lAdvId)
+
+Table Advisor Important Dates Custom Pool (8 rows)
+  columns:
+    hAdvisor Important Dates Custom Pool  LONG
+    szFull                                TEXT(64)
+    szAls                                 TEXT(16)
+    fHidden                               BOOLEAN
+    fChecked                              BOOLEAN
+    szEvent                               TEXT(255)
+    dtDate                                SHORT_DATE_TIME
+    dtLastTrgrd                           SHORT_DATE_TIME
+  primary key: PrimaryKey (hAdvisor Important Dates Custom Pool)
+  indexes:
+    szAls (szAls)
+    szFull (szFull)
+
+Table Asset Allocation Custom Pool (0 rows)
+  columns:
+    hAsset Allocation Custom Pool  LONG
+    szFull                         TEXT(64)
+    szAls                          TEXT(16)
+    fHidden                        BOOLEAN
+    Object to change               LONG
+    Object Type                    LONG
+    Total value                    MONEY(19,4)
+  primary key: PrimaryKey (hAsset Allocation Custom Pool)
+  indexes:
+    szAls (szAls)
+    szFull (szFull)
+
+Table AUTO (0 rows)
+  columns:
+    hauto          LONG
+    nYear          LONG
+    szLic          TEXT(10)
+    szMake         TEXT(32)
+    dtPutToBiz     SHORT_DATE_TIME
+    szModel        TEXT(32)
+    dtSerial       SHORT_DATE_TIME
+    lHacct         LONG
+    autot          LONG
+    amtCur         MONEY(19,4)
+    dtWarrantyEnd  SHORT_DATE_TIME
+    mVIN           MEMO
+    mWarranty      MEMO
+    mURLMfg        MEMO
+    mPurchaseLoc   MEMO
+  primary key: PrimaryKey (hauto) ignore-nulls
+  indexes:
+    szLic (szLic) unique
+
+Table AWD (0 rows)
+  columns:
+    hawd            LONG
+    hpgm            LONG
+    lHacct          LONG
+    awdt            LONG
+    dt              SHORT_DATE_TIME
+    dUnits          DOUBLE
+    mMemo           MEMO
+    fExpireEntered  BOOLEAN
+    dtSerial        SHORT_DATE_TIME
+    dtExpire        SHORT_DATE_TIME
+  primary key: PrimaryKey (hawd) ignore-nulls
+  indexes:
+    lHacct (lHacct)
+    PgmDt (hpgm, dt) [merged: PGMAWD]
+    TypeHacct (dt, awdt, lHacct)
+
+Table BGT (1 rows)
+  columns:
+    hbgt        LONG
+    szFull      TEXT(64)
+    bf          LONG
+    dtStart     SHORT_DATE_TIME
+    dtEnd       SHORT_DATE_TIME
+    dtSerial    SHORT_DATE_TIME
+    frq         LONG
+    cFrqInst    DOUBLE
+    fSimple     BOOLEAN
+    grfBgtStep  LONG
+  primary key: PrimaryKey (hbgt) ignore-nulls
+  indexes:
+    szFull (szFull) unique
+
+Table BGT_BKT (3 rows)
+  columns:
+    hbgtbkt   LONG
+    bbt       LONG
+    szFull    TEXT(64)
+    dtSerial  SHORT_DATE_TIME
+    hbgt      LONG
+  primary key: PrimaryKey (hbgtbkt) ignore-nulls
+  indexes:
+    BgtTypeName (hbgt, bbt, szFull) unique [merged: BGTBGTBKT]
+    szFull (szFull)
+
+Table BGT_ITM (0 rows)
+  columns:
+    hbgtitm      LONG
+    hbgt         LONG
+    hcat         LONG
+    szFull       TEXT(80)
+    bif          LONG
+    amtPerFrq    MONEY(19,4)
+    amt1         MONEY(19,4)
+    amt2         MONEY(19,4)
+    amt3         MONEY(19,4)
+    amt4         MONEY(19,4)
+    amt5         MONEY(19,4)
+    amt6         MONEY(19,4)
+    amt7         MONEY(19,4)
+    amt8         MONEY(19,4)
+    amt9         MONEY(19,4)
+    amt10        MONEY(19,4)
+    amt11        MONEY(19,4)
+    amt12        MONEY(19,4)
+    dtSerial     SHORT_DATE_TIME
+    hbgtbkt      LONG
+    frq          LONG
+    cFrqInst     DOUBLE
+    dt           SHORT_DATE_TIME
+    hbgtitmLink  LONG
+  primary key: PrimaryKey (hbgtitm) ignore-nulls
+  indexes:
+    BgtCatType (hbgt, hcat, hbgtitm) unique [merged: BGTBGT_ITM]
+    bgtitmLink (hbgtitmLink) relationship
+    BgtName (hbgt, szFull)
+    CATBGT_ITM (hcat) relationship
+    hbgtbkt (hbgtbkt) [merged: BGTBGT_BKT]
+
+Table CAT (112 rows)
+  columns:
+    hcat        LONG
+    hct         LONG
+    nLevel      LONG
+    hcatParent  LONG
+    szAls       TEXT(8)
+    szFull      TEXT(48)
+    mComment    MEMO
+    fCalc       BOOLEAN
+    amtTotal    MONEY(19,4)
+    fTax        BOOLEAN
+    dVat        DOUBLE
+    lConcept    LONG
+    lType       LONG
+    fBusiness   BOOLEAN
+    dtSerial    SHORT_DATE_TIME
+    fAdvChart   BOOLEAN
+    fAdvOvr     BOOLEAN
+    amtAdvOvr   MONEY(19,4)
+    fAdvBdgt    BOOLEAN
+    fAdvClose   BOOLEAN
+  primary key: PrimaryKey (hcat)
+  indexes:
+    AlsHctLevelParent (szAls, hct, nLevel, hcatParent)
+    HctLevelParentAls (hct, nLevel, hcatParent, szAls) unique [merged: CTCAT]
+    HctLevelParentName (hct, nLevel, hcatParent, szFull) unique
+    NameHctLevelParent (szFull, hct, nLevel, hcatParent)
+    ParentName (hcatParent, szFull) unique [merged: CATCAT]
+    szAls (szAls)
+    szFull (szFull)
+
+Table CESRC (0 rows)
+  columns:
+    ceobjt  LONG
+    lHobj   LONG
+    ceoId   LONG
+  primary key: PrimaryKey (ceobjt, lHobj) ignore-nulls
+  indexes:
+    CeobjtCeoId (ceobjt, ceoId) unique
+
+Table CLI (2 rows)
+  columns:
+    hcli    LONG
+    szFull  TEXT(50)
+  primary key: PrimaryKey (hcli)
+  indexes:
+    szFull (szFull) unique
+
+Table CLI_DAT (71 rows)
+  columns:
+    hclidat  LONG
+    hcli     LONG
+    idData   LONG
+    oft      LONG
+    rgbVal   OLE
+  primary key: PrimaryKey (hclidat)
+  indexes:
+    CliData (hcli, idData) unique
+
+Table CNTRY (44 rows)
+  columns:
+    hcntry            LONG
+    szFull            TEXT(32)
+    szCode            TEXT(2)
+    hcrncDef          LONG
+    fEuroConvertible  BOOLEAN
+    fEuroConverted    BOOLEAN
+    fOnlineEnabled    BOOLEAN
+    dtSerial          SHORT_DATE_TIME
+  primary key: PrimaryKey (hcntry)
+  indexes:
+    CRNCCNTRY (hcrncDef) relationship
+    szCode (szCode) unique
+    szFull (szFull) unique
+
+Table CRIT (0 rows)
+  columns:
+    hcrit     LONG
+    hview     LONG
+    ifc       LONG
+    bop       LONG
+    hitm      LONG
+    critt     LONG
+    cop       LONG
+    hviewSub  LONG
+    vart      LONG
+    rgbVar    OLE
+  primary key: PrimaryKey (hcrit)
+  indexes:
+    hitm (hitm)
+    VIEWCRIT1 (hviewSub) relationship
+    ViewIfc (hview, ifc) [merged: VIEWCRIT]
+
+Table CRNC (45 rows)
+  columns:
+    hcrnc      LONG
+    szName     TEXT(32)
+    lcid       LONG
+    rgbFormat  OLE
+    szIsoCode  TEXT(8)
+    szSymbol   TEXT(12)
+    fOnline    BOOLEAN
+    dtSerial   SHORT_DATE_TIME
+  primary key: PrimaryKey (hcrnc)
+  indexes:
+    Lcid (lcid)
+    szFull (szName) unique
+
+Table CRNC_EXCHG (11 rows)
+  columns:
+    hcrncFrom     LONG
+    hcrncTo       LONG
+    rate          DOUBLE
+    dt            SHORT_DATE_TIME
+    fReversed     BOOLEAN
+    fThroughEuro  BOOLEAN
+    exchgid       LONG
+    fHist         BOOLEAN
+    szSymbol      TEXT(32)
+  primary key: PrimaryKey (hcrncFrom, hcrncTo, fHist) ignore-nulls [merged: CRNCCRNC_EXCHG]
+  indexes:
+    CRNCCRNC_EXCHG1 (hcrncTo) relationship
+    CRNCSymbol (hcrncFrom, hcrncTo, szSymbol) unique
+    exchgid (exchgid)
+    szSymbol (szSymbol)
+
+Table CT (1 rows)
+  columns:
+    hct        LONG
+    szFull     TEXT(32)
+    fldTrn     LONG
+    szFullAlt  TEXT(32)
+    ctid       LONG
+    dtSerial   SHORT_DATE_TIME
+  primary key: PrimaryKey (hct)
+  indexes:
+    ctid (ctid) unique ignore-nulls
+    szFull (szFull)
+
+Table DHD (1 rows)
+  columns:
+    dhd              LONG
+    wMagic           LONG
+    cchDec           LONG
+    szBackup         TEXT(80)
+    lcid             LONG
+    hcatServiceLast  LONG
+    hcatIntEarnLast  LONG
+    hcatIntPaidLast  LONG
+    hcatOpenAdjLast  LONG
+    hcatEndAdjLast   LONG
+    hcrncCur         LONG
+    grfVersion       LONG
+    ast              LONG
+    olidMac          LONG
+    hcrncDef         LONG
+    hfiLast          LONG
+    hcatCG           LONG
+    hcatIntTax       LONG
+    hcatIntNoTax     LONG
+    hcatDiv          LONG
+    hcatCGDist       LONG
+    hcatESO          LONG
+    mguidFile        MEMO
+    dtExpire         SHORT_DATE_TIME
+    rgbNhdata        OLE
+  primary key: PrimaryKey (dhd)
+  indexes:
+    hcrncDhd (hcrncDef) unique relationship
+
+Table FI (0 rows)
+  columns:
+    hfi                  LONG
+    szFull               TEXT(255)
+    haddr                LONG
+    fHidden              BOOLEAN
+    mComment             MEMO
+    szBdsId              MEMO
+    fit                  LONG
+    fOEMDisabled         BOOLEAN
+    mActiveStmtURL       MEMO
+    mBankAdPath          MEMO
+    mBankAdURL           MEMO
+    mTradingURL          MEMO
+    haddrPOL             LONG
+    mNewsURL             MEMO
+    mWebPayURL           MEMO
+    mWebSignupURL        MEMO
+    mWebServicesURL      MEMO
+    mSetupFileURL        MEMO
+    dtSerial             SHORT_DATE_TIME
+    rgbLogoL             OLE
+    rgbLogoS             OLE
+    fDisallowThirdParty  BOOLEAN
+  primary key: PrimaryKey (hfi)
+  indexes:
+    ADDRPOLFI (haddrPOL) unique relationship
+    haddrFI (haddr) unique relationship
+    szFull (szFull) unique
+
+Table Goal Custom Pool (20 rows)
+  columns:
+    hGoal Custom Pool  LONG
+    szFull             TEXT(64)
+    szAls              TEXT(16)
+    fHidden            BOOLEAN
+    rgbGoalObj         OLE
+  primary key: PrimaryKey (hGoal Custom Pool)
+  indexes:
+    szAls (szAls)
+    szFull (szFull)
+
+Table Inventory Custom Pool (0 rows)
+  columns:
+    hInventory Custom Pool  LONG
+    szFull                  TEXT(64)
+    szAls                   TEXT(16)
+    fHidden                 BOOLEAN
+    szLocation              TEXT(255)
+    szMake                  TEXT(255)
+    szSerial                TEXT(255)
+    szStore                 TEXT(255)
+    szNote                  TEXT(255)
+    dt                      SHORT_DATE_TIME
+    cyPrice                 MONEY(19,4)
+    cyReplace               MONEY(19,4)
+    cyValue                 MONEY(19,4)
+    lType                   LONG
+    Phone                   TEXT(255)
+    dtWrrntExp              SHORT_DATE_TIME
+    Web                     TEXT(255)
+    szWrrntDtls             TEXT(255)
+    szImgStore              TEXT(255)
+  primary key: PrimaryKey (hInventory Custom Pool)
+  indexes:
+    szAls (szAls)
+    szFull (szFull)
+
+Table ITM (120 rows)
+  columns:
+    hitm      LONG
+    hcli      LONG
+    lt        LONG
+    ft        LONG
+    fr        LONG
+    szName    TEXT(64)
+    tblPool   LONG
+    tblPhys   LONG
+    icolPhys  LONG
+    lMatch    LONG
+    tblFrom   LONG
+    icolFrom  LONG
+    tblSrc    LONG
+    grfopt    LONG
+    mIndex    MEMO
+    rgbStats  OLE
+  primary key: PrimaryKey (hitm)
+  indexes:
+    CLIITM (hcli) relationship
+    NameIcol (szName, icolPhys)
+    PoolIcolTblMatch (tblPool, icolPhys, tblPhys, lMatch)
+    TblIcolMatch (tblPhys, icolPhys, lMatch)
+    TblName (tblPhys, szName) unique
+    TblSrcDestIcol (tblSrc, tblPhys, icolPhys)
+
+Table IVTY (0 rows)
+  columns:
+    hivty     LONG
+    hprod     LONG
+    ivtyt     LONG
+    dt        SHORT_DATE_TIME
+    dQty      DOUBLE
+    dPrice    DOUBLE
+    mMemo     MEMO
+    dtSerial  SHORT_DATE_TIME
+  primary key: PrimaryKey (hivty) ignore-nulls
+  indexes:
+    Dt (dt, ivtyt, hivty)
+    DtIvty (dt, hivty)
+    ivtytProd (ivtyt, hprod, dt, dQty)
+    ProdDt (hprod, dt, ivtyt, hivty) unique [merged: hprodIvty]
+    ProdDtIvty (hprod, dt, hivty)
+
+Table LOT (0 rows)
+  columns:
+    hlot       LONG
+    htrnBuy    LONG
+    htrnSell   LONG
+    qty        DOUBLE
+    hacct      LONG
+    hsec       LONG
+    dtBuy      SHORT_DATE_TIME
+    dtSell     SHORT_DATE_TIME
+    hlotOpen   LONG
+    hlotLink   LONG
+    lott       LONG
+    htrnOpen   LONG
+    htrnClose  LONG
+    dtOpen     SHORT_DATE_TIME
+    dtClose    SHORT_DATE_TIME
+    dtSerial   SHORT_DATE_TIME
+  primary key: PrimaryKey (hlot)
+  indexes:
+    AcctSecDtTrnBuy (hacct, hsec, dtBuy, htrnBuy) [merged: ACCTLOT]
+    AcctSecDtTrnClose (hacct, hsec, dtClose, htrnClose)
+    AcctSecDtTrnOpen (hacct, hsec, dtOpen, htrnOpen)
+    AcctSecDtTrnSell (hacct, hsec, dtSell, htrnSell)
+    hlotOpenDtClose (hlotOpen, dtClose)
+    LOTLINK (hlotLink) relationship
+    LOTOPEN (hlotOpen)
+    SecAcctDtTrnBuy (hsec, hacct, dtBuy, htrnBuy) [merged: SECLOT]
+    SecDtTrnBuy (hsec, dtBuy, htrnBuy)
+    SecDtTrnClose (hsec, dtClose, htrnClose)
+    SecDtTrnOpen (hsec, dtOpen, htrnOpen)
+    SecDtTrnSell (hsec, dtSell, htrnSell)
+    TRN_INVLOT (htrnBuy) relationship
+    TRN_INVLOT1 (htrnSell) relationship
+    TrnDtClose (htrnClose, dtClose) [merged: TRN_INVLOTCLOSE]
+    TrnDtOpen (htrnOpen, dtOpen) [merged: TRN_INVLOTOPEN]
+    TrnOpenDtClose (htrnOpen, dtClose)
+
+Table LSTEP (0 rows)
+  columns:
+    hstep       LONG
+    hacctLoan   LONG
+    hstepNext   LONG
+    dtEnd       SHORT_DATE_TIME
+    dtAmortEnd  SHORT_DATE_TIME
+    dRateCalc   DOUBLE
+    dRateUser   DOUBLE
+    amtPI       MONEY(19,4)
+    amtPayment  MONEY(19,4)
+    dtSerial    SHORT_DATE_TIME
+  primary key: PrimaryKey (hstep) ignore-nulls
+  indexes:
+    hstepNext (hstepNext) relationship
+    LSTEPLOAN (hacctLoan) relationship
+
+Table MAIL (0 rows)
+  columns:
+    hmail     LONG
+    mt        LONG
+    fToFi     BOOLEAN
+    olst      LONG
+    mTo       MEMO
+    mFrom     MEMO
+    mSubject  MEMO
+    mBody     MEMO
+    hacct     LONG
+    ltrn      LONG
+    hfi       LONG
+    dtSerial  SHORT_DATE_TIME
+  primary key: PrimaryKey (hmail)
+  indexes:
+    ACCTMAIL (hacct) relationship
+    FIMAIL (hfi) relationship
+
+Table MCSRC (0 rows)
+  columns:
+    hmcsrc     LONG
+    objt       LONG
+    lHobj      LONG
+    mcoId      LONG
+    fDeleted   BOOLEAN
+    dtDeleted  SHORT_DATE_TIME
+    mcoIdAcct  LONG
+    mcoIdSoq   LONG
+  primary key: PrimaryKey (hmcsrc) ignore-nulls
+  indexes:
+    FDelDtHobj (fDeleted, dtDeleted, mcoId)
+    FDelObjtDtHobj (fDeleted, objt, dtDeleted, mcoId) unique
+    ObjtHobj (objt, lHobj) unique
+    ObjtMcoId (objt, mcoId) unique
+
+Table PAY (0 rows)
+  columns:
+    hpay              LONG
+    hpayParent        LONG
+    haddr             LONG
+    mComment          MEMO
+    fHidden           BOOLEAN
+    szAls             TEXT(8)
+    szFull            TEXT(64)
+    mAcctNum          MEMO
+    mBankId           MEMO
+    mBranchId         MEMO
+    mUserAcctAtPay    MEMO
+    mIntlChkSum       MEMO
+    mCompanyName      MEMO
+    mContact          MEMO
+    haddrBill         LONG
+    haddrShip         LONG
+    mCellPhone        MEMO
+    mPager            MEMO
+    mWebPage          MEMO
+    terms             LONG
+    mPmtType          MEMO
+    mCCNum            MEMO
+    dtCCExp           SHORT_DATE_TIME
+    dDiscount         DOUBLE
+    dRateTax          DOUBLE
+    fVendor           BOOLEAN
+    fCust             BOOLEAN
+    rgbEntryId        OLE
+    dtLastModified    SHORT_DATE_TIME
+    lContactData      LONG
+    shippref          LONG
+    fNoRecurringBill  BOOLEAN
+    dtSerial          SHORT_DATE_TIME
+    grfcontt          LONG
+  primary key: PrimaryKey (hpay)
+  indexes:
+    haddrPay (haddr) unique relationship
+    NoDupOnAddrBill (haddrBill) unique [merged: ADDRPAYBILL]
+    NoDupOnAddrShip (haddrShip) unique [merged: ADDRPAYSHIP]
+    PAYPAY (hpayParent) relationship
+    szAls (szAls)
+    szFull (szFull)
+
+Table PGM (0 rows)
+  columns:
+    hpgm           LONG
+    pgmt           LONG
+    szFull         TEXT(64)
+    pgc            LONG
+    unitt          LONG
+    fClosed        BOOLEAN
+    dPeriodExpire  DOUBLE
+    mNum           MEMO
+    mMemo          MEMO
+    mURL           MEMO
+    rgbTerms       OLE
+    dtSerial       SHORT_DATE_TIME
+    fDetectedExp   BOOLEAN
+  primary key: PrimaryKey (hpgm) ignore-nulls
+  indexes:
+    szFull (szFull)
+    TypeAndName (pgmt, szFull) unique
+
+Table PMT (0 rows)
+  columns:
+    hpmt         LONG
+    hcust        LONG
+    htrnInvoice  LONG
+    htrnPmt      LONG
+    dtInvoice    SHORT_DATE_TIME
+    dtPmt        SHORT_DATE_TIME
+    amt          MONEY(19,4)
+    dtSerial     SHORT_DATE_TIME
+  primary key: PrimaryKey (hpmt)
+  indexes:
+    CustDtTrnInvoice (hcust, dtInvoice, htrnInvoice) [merged: PAYPMT]
+    CustDtTrnPmt (hcust, dtPmt, htrnPmt)
+    TRN_INVOICEPMT (htrnInvoice) relationship
+    TRNPMT (htrnPmt) relationship
+
+Table PORT_REC (0 rows)
+  columns:
+    hportrec     LONG
+    hacct        LONG
+    hsec         LONG
+    fPostponed   BOOLEAN
+    fSelected    BOOLEAN
+    amtUser      MONEY(19,4)
+    amtEmplyer   MONEY(19,4)
+    amtDividend  MONEY(19,4)
+    amtInterest  MONEY(19,4)
+    amt          MONEY(19,4)
+    dPrice       DOUBLE
+    dQty         DOUBLE
+    fFract       BOOLEAN
+    dtSerial     SHORT_DATE_TIME
+  primary key: PrimaryKey (hportrec)
+  indexes:
+    ACCTPORT_REC (hacct) relationship
+    SECPORT_REC (hsec) relationship
+
+Table Portfolio View Custom Pool (0 rows)
+  columns:
+    hPortfolio View Custom Pool  LONG
+    szFull                       TEXT(64)
+    szAls                        TEXT(16)
+    fHidden                      BOOLEAN
+    lDefinedView                 LONG
+    lGroupType                   LONG
+    lSortField                   LONG
+    hviewAcctSelect              LONG
+    rbgHeaderCollapesState       OLE
+    rgbAcctSorting               OLE
+    fAscending                   BOOLEAN
+    rgbPortFieldInfo             OLE
+    cbPortFieldInfo              LONG
+    rgbFieldWidth                OLE
+  primary key: PrimaryKey (hPortfolio View Custom Pool)
+  indexes:
+    szAls (szAls)
+    szFull (szFull)
+
+Table POS_STMT (0 rows)
+  columns:
+    hposstmt    LONG
+    hacct       LONG
+    mUIDType    MEMO
+    mUID        MEMO
+    szFull      TEXT(70)
+    dUnitPrice  DOUBLE
+    szSymbol    TEXT(32)
+    sct         LONG
+    qty         DOUBLE
+    amtPar      MONEY(19,4)
+    dtMaturity  SHORT_DATE_TIME
+    fProcessed  BOOLEAN
+    dtAsOf      SHORT_DATE_TIME
+    dtSerial    SHORT_DATE_TIME
+  primary key: PrimaryKey (hposstmt)
+  indexes:
+    ACCTPOS_STMT (hacct) relationship
+
+Table PRODUCT (0 rows)
+  columns:
+    hproduct   LONG
+    szFull     TEXT(32)
+    hcat       LONG
+    dPrice     DOUBLE
+    fService   BOOLEAN
+    mDesc      MEMO
+    dCost      DOUBLE
+    fTaxable   BOOLEAN
+    fHidden    BOOLEAN
+    fTrackInv  BOOLEAN
+    dtSerial   SHORT_DATE_TIME
+    szPartNum  TEXT(20)
+  primary key: PrimaryKey (hproduct) ignore-nulls
+  indexes:
+    CATPRODUCT (hcat) relationship
+    szFull (szFull) unique
+
+Table PROJ (0 rows)
+  columns:
+    hproj     LONG
+    szFull    TEXT(32)
+    dtStart   SHORT_DATE_TIME
+    dtEnd     SHORT_DATE_TIME
+    mDesc     MEMO
+    dtSerial  SHORT_DATE_TIME
+  primary key: PrimaryKey (hproj) ignore-nulls
+  indexes:
+    EndEntry (dtEnd, hproj)
+    StartEntry (dtStart, hproj)
+    szFull (szFull) unique
+
+Table PROV_FI (0 rows)
+  columns:
+    hprovfi               LONG
+    hfi                   LONG
+    fCallInProgress       BOOLEAN
+    haddr                 LONG
+    mProvBankId           MEMO
+    fNotify               BOOLEAN
+    mProvUserId           MEMO
+    dtLastCall            SHORT_DATE_TIME
+    mPayeeSyncToken       MEMO
+    mMailSyncToken        MEMO
+    dtLastAcctUp          SHORT_DATE_TIME
+    fStandAloneBillpay    BOOLEAN
+    fPinChg               BOOLEAN
+    mFileId               MEMO
+    mSessId               MEMO
+    grfProvCap            LONG
+    grfBankCap            LONG
+    grfPmtCap             LONG
+    grfInvCap             LONG
+    cPinMin               LONG
+    cPinMax               LONG
+    cDfltDaysWith         LONG
+    cDfltDaysToPay        LONG
+    cIntraDfltDaysWith    LONG
+    cIntraDfltDaysToPay   LONG
+    cXferDfltDaysWith     LONG
+    cXferDfltDaysToPay    LONG
+    cIdDfltDaysWith       LONG
+    cIdDfltDaysToPay      LONG
+    mFiURL                MEMO
+    mShortName            MEMO
+    mInfoHtmlPath         MEMO
+    mSignupURL            MEMO
+    mSetupFileURL         MEMO
+    mPmtMailSyncToken     MEMO
+    mTan                  MEMO
+    mFileUID              MEMO
+    rgbSendFileBackup     OLE
+    rgbReceiveFileBackup  OLE
+    mBrokerId             MEMO
+    mAcctSyncToken        MEMO
+    fSelected             BOOLEAN
+    dtSerial              SHORT_DATE_TIME
+    szFull                TEXT(255)
+    fInternet             BOOLEAN
+    szVersion             TEXT(8)
+    szSubstituteCommName  TEXT(8)
+    mclsidSubstituteComm  MEMO
+    oldt                  LONG
+    dtIniEntry            SHORT_DATE_TIME
+    dtMnnFile             SHORT_DATE_TIME
+    fOSURequired          BOOLEAN
+    mUIDLabel             MEMO
+    mPwdLabel             MEMO
+    lIniGuid              LONG
+    lBdsProvGuid          LONG
+    rgbPca                OLE
+    fSavePinSuggested     BOOLEAN
+  primary key: PrimaryKey (hprovfi)
+  indexes:
+    ADDRPROV_FI (haddr) unique relationship
+    hfiPrvFi (hfi) relationship
+
+Table PROV_FI_PAY (0 rows)
+  columns:
+    hprovpayfi     LONG
+    hprovfi        LONG
+    hpay           LONG
+    hfi            LONG
+    haddr          LONG
+    fNotify        BOOLEAN
+    fNew           BOOLEAN
+    mPayID         MEMO
+    cdayToPayPre   LONG
+    cdayToPayPost  LONG
+    rgbAnon        OLE
+    mPayListId     MEMO
+    pmtt           LONG
+    dtSerial       SHORT_DATE_TIME
+  primary key: PrimaryKey (hprovpayfi)
+  indexes:
+    ADDRPROV_FI_PAY (haddr) unique relationship
+    FIPROV_FI_PAY (hfi) relationship
+    PAYPROV_FI_PAY (hpay) relationship
+    PfiPay (hprovfi, hpay) unique [merged: hprovfiPFP]
+
+Table Report Custom Pool (0 rows)
+  columns:
+    hReport Custom Pool  LONG
+    szFull               TEXT(64)
+    szAls                TEXT(16)
+    fHidden              BOOLEAN
+    rptType              LONG
+    rptSub               LONG
+    tvTrans              LONG
+    rgbSRPT              OLE
+    szTitle              TEXT(64)
+    grfView              LONG
+  primary key: PrimaryKey (hReport Custom Pool)
+  indexes:
+    szAls (szAls)
+    szFull (szFull)
+
+Table SAV_GOAL (1 rows)
+  columns:
+    hsavgoal  LONG
+    szFull    TEXT(64)
+    dt        SHORT_DATE_TIME
+    amt       MONEY(19,4)
+    dtSerial  SHORT_DATE_TIME
+    hbgt      LONG
+  primary key: PrimaryKey (hsavgoal) ignore-nulls
+  indexes:
+    BGTSAVGOAL (hbgt) relationship
+    dt (dt)
+    szFull (szFull)
+
+Table SEC (55 rows)
+  columns:
+    hsec                  LONG
+    szExchg               TEXT(32)
+    szFull                TEXT(70)
+    szSymbol              TEXT(32)
+    mComment              MEMO
+    amt                   MONEY(19,4)
+    dtMaturity            SHORT_DATE_TIME
+    dtSplit               SHORT_DATE_TIME
+    sct                   LONG
+    fHidden               BOOLEAN
+    fTaxExempt            BOOLEAN
+    sic                   LONG
+    fOLQuotes             BOOLEAN
+    mUIDType              MEMO
+    mUID                  MEMO
+    dtLastHistQuote       SHORT_DATE_TIME
+    fGetHistQuotes        BOOLEAN
+    d52WeekHigh           DOUBLE
+    d52WeekLow            DOUBLE
+    dSharesOutstanding    DOUBLE
+    cbt                   LONG
+    hcrnc                 LONG
+    hcntry                LONG
+    fEuroPriceDownloaded  BOOLEAN
+    fEuroDialogDisabled   BOOLEAN
+    fWatch                BOOLEAN
+    dCapitalization       DOUBLE
+    hsecLink              LONG
+    dIntRate              DOUBLE
+    frqIntPmt             LONG
+    cFrqInstIntPmt        DOUBLE
+    sctsub                LONG
+    rating                LONG
+    dtCall                SHORT_DATE_TIME
+    szIssuer              TEXT(32)
+    dtLastUpdate          SHORT_DATE_TIME
+    dtFYI                 SHORT_DATE_TIME
+    dBid                  DOUBLE
+    dAsk                  DOUBLE
+    dBeta                 DOUBLE
+    dPercentCash          DOUBLE
+    dPercentEquity        DOUBLE
+    dPercentDebt          DOUBLE
+    dPercentOther         DOUBLE
+    dDividendYield        DOUBLE
+    dTargetHigh           DOUBLE
+    dTargetLow            DOUBLE
+    amtEPS                MONEY(19,4)
+    size                  LONG
+    dtFYILastRead         SHORT_DATE_TIME
+    dtNewsLastRead        SHORT_DATE_TIME
+    dtNews                SHORT_DATE_TIME
+    sat                   LONG
+    dPercentStockS        DOUBLE
+    dPercentStockM        DOUBLE
+    dPercentStockL        DOUBLE
+    fViewInCrnc           BOOLEAN
+    dtSerial              SHORT_DATE_TIME
+    mCusip                MEMO
+    mNewsURL              MEMO
+    dPctVestFirst         DOUBLE
+    dPctVestNext          DOUBLE
+    dPeriodExpire         DOUBLE
+    dPeriodVestNext       DOUBLE
+    dVestFirst            DOUBLE
+    fAdvHigh              BOOLEAN
+    amtAdvHigh            DOUBLE
+    fAdvLow               BOOLEAN
+    amtAdvLow             DOUBLE
+    dAdvLast              DOUBLE
+  primary key: PrimaryKey (hsec)
+  indexes:
+    CNTRYSEC (hcntry) relationship
+    CRNCSEC (hcrnc) relationship
+    SctName (sct, szFull)
+    SECSECLINK (hsecLink) relationship
+    szAls (szSymbol)
+    szFull (szFull)
+
+Table SEC_SPLIT (0 rows)
+  columns:
+    hss          LONG
+    cshrPre      LONG
+    cshrPost     LONG
+    dtRecord     SHORT_DATE_TIME
+    dPriceSplit  DOUBLE
+    fFractSplit  BOOLEAN
+  primary key: PrimaryKey (hss)
+
+Table SIC (160 rows)
+  columns:
+    sic   LONG
+    hcat  LONG
+  primary key: PrimaryKey (sic)
+  indexes:
+    CATSIC (hcat) relationship
+
+Table SOQ (6 rows)
+  columns:
+    hsoq      LONG
+    hsec      LONG
+    hacct     LONG
+    dQty      DOUBLE
+    mcoId     LONG
+    dtSerial  SHORT_DATE_TIME
+    fUpdated  BOOLEAN
+  primary key: PrimaryKey (hsoq) ignore-nulls
+  indexes:
+    hacctSOQ (hacct) relationship
+    SecAcct (hsec, hacct) unique [merged: hsecSoq]
+
+Table SP (0 rows)
+  columns:
+    hsp           LONG
+    dt            SHORT_DATE_TIME
+    hsec          LONG
+    src           LONG
+    dPrice        DOUBLE
+    fFractPrice   BOOLEAN
+    dStrike       DOUBLE
+    fFractStrike  BOOLEAN
+    dOpen         DOUBLE
+    fFractOpen    BOOLEAN
+    dHigh         DOUBLE
+    fFractHigh    BOOLEAN
+    dLow          DOUBLE
+    fFractLow     BOOLEAN
+    dPE           DOUBLE
+    fFractPE      BOOLEAN
+    dtExpire      SHORT_DATE_TIME
+    fClosing      BOOLEAN
+    vol           LONG
+    hss           LONG
+    dChange       DOUBLE
+    fFractChange  BOOLEAN
+    dtSerial      SHORT_DATE_TIME
+    exchgid       LONG
+  primary key: PrimaryKey (hsp)
+  indexes:
+    ExchgidDateSp (exchgid, dt, hsp)
+    HsecDateSrcSp (hsec, dt, src, hsp) [merged: hsecSp]
+    hssSp (hss) relationship
+
+Table STMT (0 rows)
+  columns:
+    hstmt            LONG
+    hacct            LONG
+    atTo             LONG
+    amtLastStmt      MONEY(19,4)
+    mBranchIdTo      MEMO
+    mBankIdTo        MEMO
+    mPayId           MEMO
+    dtPost           SHORT_DATE_TIME
+    szNamePay        TEXT(64)
+    amt              MONEY(19,4)
+    mMemo            MEMO
+    mProvId          MEMO
+    oltt             LONG
+    szId             TEXT(12)
+    mFiStmtId        MEMO
+    sic              LONG
+    cs               LONG
+    frq              LONG
+    cFrqInst         DOUBLE
+    cpmtsOL          LONG
+    mApayModelId     MEMO
+    mUserAcctAtPay   MEMO
+    mClientId        MEMO
+    haddr            LONG
+    stmtt            LONG
+    sct              LONG
+    dUnitPrice       DOUBLE
+    mUIDType         MEMO
+    szSecName        TEXT(70)
+    mUID             MEMO
+    szSecSymbol      TEXT(32)
+    dtTrade          SHORT_DATE_TIME
+    act              LONG
+    amtCommission    MONEY(19,4)
+    inct             LONG
+    lott             LONG
+    cshrPre          LONG
+    cshrPost         LONG
+    cshrNumerator    LONG
+    cshrDenominator  LONG
+    dtSettle         SHORT_DATE_TIME
+    qty              DOUBLE
+    amtPar           MONEY(19,4)
+    dtMaturity       SHORT_DATE_TIME
+    mIntlChkSumTo    MEMO
+    grfEbppFlags     LONG
+    mEbppPmtId       MEMO
+    mNumAcctTo       MEMO
+    lHtrnRel         LONG
+    lHpayRel         LONG
+    dtSerial         SHORT_DATE_TIME
+    lHcrncUser       LONG
+    amtUser          MONEY(19,4)
+    amtCmnUser       MONEY(19,4)
+    amtParUser       MONEY(19,4)
+    amtLastStmtUser  MONEY(19,4)
+  primary key: PrimaryKey (hstmt)
+  indexes:
+    ACCTSTMT (hacct) relationship
+    ADDRSTMT (haddr) unique relationship
+
+Table SVC (0 rows)
+  columns:
+    hsvc                LONG
+    hacct               LONG
+    hprovfi             LONG
+    grfsvcCurrent       LONG
+    grfsvcOld           LONG
+    grfsvcPending       LONG
+    fNotify             BOOLEAN
+    fNew                BOOLEAN
+    rgbAnonAcct         OLE
+    amtLastStmt         MONEY(19,4)
+    dtLastStmtDown      SHORT_DATE_TIME
+    olat                LONG
+    mAcctNumAlias       MEMO
+    mBankId             MEMO
+    mBranchId           MEMO
+    mIntlChkSum         MEMO
+    dtSerial            SHORT_DATE_TIME
+    mStmtSyncToken      MEMO
+    mIntraSyncToken     MEMO
+    mBankmailSyncToken  MEMO
+    mPmtSyncToken       MEMO
+    mRecPmtSyncToken    MEMO
+    mInvMailSyncToken   MEMO
+  primary key: PrimaryKey (hsvc)
+  indexes:
+    AcctProvfi (hacct, hprovfi) unique [merged: ACCTSVC]
+    hprovfiSvc (hprovfi) relationship
+
+Table Tax Rate Custom Pool (5 rows)
+  columns:
+    hTax Rate Custom Pool  LONG
+    szFull                 TEXT(64)
+    szAls                  TEXT(16)
+    fHidden                BOOLEAN
+    Type                   LONG
+    damtStdDed             DOUBLE
+    damtLow1               DOUBLE
+    damtLow2               DOUBLE
+    damtLow3               DOUBLE
+    damtLow4               DOUBLE
+    damtLow5               DOUBLE
+    damtHigh1              DOUBLE
+    damtHigh2              DOUBLE
+    damtHigh3              DOUBLE
+    damtHigh4              DOUBLE
+    dRate1                 DOUBLE
+    dRate2                 DOUBLE
+    dRate3                 DOUBLE
+    dRate4                 DOUBLE
+    dRate5                 DOUBLE
+    dRateCapGains          DOUBLE
+    dRateCapGainsMT        DOUBLE
+    damtStdEx              DOUBLE
+    damtDedBlind           DOUBLE
+    damtDedOver65          DOUBLE
+    damtThreshDed          DOUBLE
+    damtThreshExemp        DOUBLE
+    damtMaxCapLoss         DOUBLE
+  primary key: PrimaryKey (hTax Rate Custom Pool)
+  indexes:
+    szAls (szAls)
+    szFull (szFull)
+
+Table TAXLINE (0 rows)
+  columns:
+    htaxline   LONG
+    txn        LONG
+    txcpy      LONG
+    fInclude   BOOLEAN
+    tds        LONG
+    lHobjLine  LONG
+    dtSerial   SHORT_DATE_TIME
+  primary key: PrimaryKey (htaxline) ignore-nulls
+  indexes:
+    TxnTxcp (txn, txcpy)
+
+Table TMI (0 rows)
+  columns:
+    htmi      LONG
+    hpay      LONG
+    hproduct  LONG
+    dtStart   SHORT_DATE_TIME
+    dtEnd     SHORT_DATE_TIME
+    dHours    DOUBLE
+    dRate     DOUBLE
+    mDesc     MEMO
+    dtSerial  SHORT_DATE_TIME
+  primary key: PrimaryKey (htmi) ignore-nulls
+  indexes:
+    PayStartEnd (hpay, dtStart, dtEnd, htmi) unique [merged: hpayTmi]
+    ProdStartEnd (hproduct, dtStart, dtEnd, htmi) unique [merged: hprodTmi]
+    StartEnd (dtStart, dtEnd, htmi) unique
+
+Table TRIP (0 rows)
+  columns:
+    htrip      LONG
+    hauto      LONG
+    dtStart    SHORT_DATE_TIME
+    dtEnd      SHORT_DATE_TIME
+    mDest      MEMO
+    mContact   MEMO
+    mPurpose   MEMO
+    iOdoStart  LONG
+    iOdoEnd    LONG
+    cOdoNet    LONG
+    tut        LONG
+    amtFees    MONEY(19,4)
+    dtSerial   SHORT_DATE_TIME
+  primary key: PrimaryKey (htrip) ignore-nulls
+  indexes:
+    DtEndDtStartHauto (dtEnd, dtStart, hauto)
+    hautoTrip (hauto) relationship
+
+Table TRN (3 rows)
+  columns:
+    htrn             LONG
+    hacct            LONG
+    hacctLink        LONG
+    hpay             LONG
+    dt               SHORT_DATE_TIME
+    dtSent           SHORT_DATE_TIME
+    dtCleared        SHORT_DATE_TIME
+    dtPost           SHORT_DATE_TIME
+    cs               LONG
+    hsec             LONG
+    amt              MONEY(19,4)
+    szId             TEXT(13)
+    hcat             LONG
+    frq              LONG
+    fDefPmt          BOOLEAN
+    mMemo            MEMO
+    oltt             LONG
+    grfEntryMethods  LONG
+    ps               LONG
+    amtVat           MONEY(19,4)
+    grftt            LONG
+    act              LONG
+    cFrqInst         DOUBLE
+    fPrint           BOOLEAN
+    mFiStmtId        MEMO
+    olst             LONG
+    fDebtPlan        BOOLEAN
+    grfstem          LONG
+    cpmtsRemaining   LONG
+    instt            LONG
+    htrnSrc          LONG
+    payt             LONG
+    grftf            LONG
+    lHtxsrc          LONG
+    lHcrncUser       LONG
+    amtUser          MONEY(19,4)
+    amtVATUser       MONEY(19,4)
+    tef              LONG
+    fRefund          BOOLEAN
+    fReimburse       BOOLEAN
+    dtSerial         SHORT_DATE_TIME
+    fUpdated         BOOLEAN
+    fCCPmt           BOOLEAN
+    fDefBillAmt      BOOLEAN
+    fDefBillDate     BOOLEAN
+    lHclsKak         LONG
+    lHcls1           LONG
+    lHcls2           LONG
+    dtCloseOffYear   SHORT_DATE_TIME
+    dtOldRel         SHORT_DATE_TIME
+  primary key: PrimaryKey (htrn)
+  indexes:
+    AcctCsIdDtTrn (hacct, cs, szId, dt, htrn) [merged: hacctTrn]
+    AcctDtIdTrn (hacct, dt, szId, htrn)
+    AcctIdDtTrn (hacct, szId, dt, htrn)
+    AcctSecDtIdTrn (hacct, hsec, dt, szId, htrn)
+    ActDtIdTrn (act, dt, szId, htrn)
+    CatDtIdTrn (hcat, dt, szId, htrn) [merged: CATTRN2]
+    Cls1DtIdTrn (lHcls1, dt, szId, htrn)
+    Cls2DtIdTrn (lHcls2, dt, szId, htrn)
+    DtIdTrn (dt, szId, htrn)
+    hacctLink (hacctLink) relationship
+    IdDtTrn (szId, dt, htrn)
+    OlttDtTrn (oltt, dt, htrn)
+    PayDtIdTrn (hpay, dt, szId, htrn) [merged: hpayTrn]
+    SecDtIdTrn (hsec, dt, szId, htrn) [merged: hsecTrn]
+    TRNTRN (htrnSrc) relationship
+    TtDtTrn (grftt, dt, htrn)
+    TxsrcDtTrn (lHtxsrc, dt, htrn)
+
+Table TRN_INV (3 rows)
+  columns:
+    htrn        LONG
+    dPrice      DOUBLE
+    qty         DOUBLE
+    amtCmn      MONEY(19,4)
+    fFract      BOOLEAN
+    lott        LONG
+    amtCmnUser  MONEY(19,4)
+    amtInt      MONEY(19,4)
+  primary key: PrimaryKey (htrn)
+
+Table TRN_INVOICE (0 rows)
+  columns:
+    htrn            LONG
+    dtShip          SHORT_DATE_TIME
+    dtDue           SHORT_DATE_TIME
+    terms           LONG
+    haddrShip       LONG
+    haddrBill       LONG
+    amtTotal        MONEY(19,4)
+    hproduct        LONG
+    qtyProd         DOUBLE
+    dPriceProd      DOUBLE
+    fEstimate       BOOLEAN
+    fTax            BOOLEAN
+    dRateTax        DOUBLE
+    amtTax          MONEY(19,4)
+    mPurchOrder     MEMO
+    shippref        LONG
+    amtTotalUser    MONEY(19,4)
+    hproj           LONG
+    lHtrnReimburse  LONG
+    hivty           LONG
+    fTmiTrn         BOOLEAN
+    htmi            LONG
+    fInheritAddr    BOOLEAN
+  primary key: PrimaryKey (htrn)
+  indexes:
+    ADDRTRN_INVOICE (haddrShip) relationship
+    ADDRTRN_INVOICE1 (haddrBill) relationship
+    hivtyInvoice (hivty) relationship
+    hprojInvoice (hproj) relationship
+    htmiInvoice (htmi) relationship
+    PRODUCTTRN_INVOICE (hproduct) relationship
+
+Table TRN_OL (0 rows)
+  columns:
+    htrn           LONG
+    cpmtsOL        LONG
+    dtDueToBiller  SHORT_DATE_TIME
+    dtSentByOLP    SHORT_DATE_TIME
+    mProvId        MEMO
+    mApayModelId   MEMO
+    mClientId      MEMO
+    mEbppModelId   MEMO
+    mEbppFitid     MEMO
+    mEbppImageURL  MEMO
+    dtModelStart   SHORT_DATE_TIME
+    dtModelEnd     SHORT_DATE_TIME
+    mEbppPmtId     MEMO
+    fCannotSend    BOOLEAN
+  primary key: PrimaryKey (htrn)
+
+Table TRN_SPLIT (0 rows)
+  columns:
+    htrn        LONG
+    htrnParent  LONG
+    iSplit      LONG
+  primary key: PrimaryKey (htrn)
+  indexes:
+    SeqInParent (htrnParent, iSplit) unique [merged: htrnTrnSplitParent]
+
+Table TRN_XFER (0 rows)
+  columns:
+    htrnFrom  LONG
+    htrnLink  LONG
+  primary key: PrimaryKey (htrnFrom)
+  indexes:
+    htrnTrnXferTo (htrnLink) unique relationship
+
+Table TXSRC (46 rows)
+  columns:
+    htxsrc    LONG
+    srct      LONG
+    lHsrc     LONG
+    txn       LONG
+    txcpy     LONG
+    txpd      LONG
+    dtSerial  SHORT_DATE_TIME
+  primary key: PrimaryKey (htxsrc) ignore-nulls
+  indexes:
+    SrctHsrcTxnTxcpy (srct, lHsrc, txn, txcpy) unique
+    SrctHsrcTxpdTxn (srct, lHsrc, txpd, txn)
+    TxnCpyTypeSrc (txn, txcpy, srct, lHsrc) unique
+
+Table VIEW (0 rows)
+  columns:
+    hview     LONG
+    so        LONG
+    grfflt    LONG
+    hcli      LONG
+    hitmPool  LONG
+    szFull    TEXT(32)
+    vart      LONG
+    rgbVar    OLE
+    cfc       LONG
+    rgbEx     OLE
+    dtSerial  SHORT_DATE_TIME
+  primary key: PrimaryKey (hview)
+  indexes:
+    CLIVIEW (hcli) relationship
+    PooltypeNameCli (hitmPool, szFull, hcli) unique
+    szFull (szFull)
+
+Table Worksheet Custom Pool (1 rows)
+  columns:
+    hWorksheet Custom Pool  LONG
+    szFull                  TEXT(64)
+    szAls                   TEXT(16)
+    fHidden                 BOOLEAN
+    Type                    LONG
+    rgbPrivate              OLE
+  primary key: PrimaryKey (hWorksheet Custom Pool)
+  indexes:
+    szAls (szAls)
+    szFull (szFull)
+
+Table XACCT (1 rows)
+  columns:
+    hacct          LONG
+    ctrnUnprinted  LONG
+    ctrnUnsent     LONG
+    amtBalance     MONEY(19,4)
+    szIdMost       TEXT(13)
+    htrnIdLast     LONG
+    cstmt          LONG
+  primary key: PrimaryKey (hacct)
+
+Table XMAPACCT (0 rows)
+  columns:
+    hxmapacct    LONG
+    hacct        LONG
+    hsvc         LONG
+    szNum        TEXT(128)
+    szBankId     TEXT(50)
+    mBranchId    MEMO
+    mIntlChkSum  MEMO
+  primary key: PrimaryKey (hxmapacct)
+  indexes:
+    ACCTXMAPACCT (hacct) relationship
+    NumBankId (szNum, szBankId)
+    SVCXMAPACCT (hsvc) relationship
+
+Table XMAPSAT (51 rows)
+  columns:
+    hxmapsat  LONG
+    szMCCat   TEXT(255)
+    sat       LONG
+  primary key: PrimaryKey (hxmapsat) ignore-nulls
+  indexes:
+    szMCCat (szMCCat) unique required
+
+Table XPAY (0 rows)
+  columns:
+    hpay    LONG
+    amtBal  MONEY(19,4)
+  primary key: PrimaryKey (hpay) ignore-nulls [merged: hpayXpay]
+
+Profile:
+  ACCT: 1 rows scanned
+    hacct: nulls 0
+    amtLimit: max-digits 0 max-scale 0
+    amtOpen: max-digits 1 max-scale 0
+    amtOpenRec: max-digits 0 max-scale 0
+    amtEndRec: max-digits 0 max-scale 0
+    dtOpen: fraction-digits 0
+    dtEndRec: fraction-digits 0
+    dtOpenRec: fraction-digits 0
+    dtIntRateChg: fraction-digits 0
+    dtNextDebtPay: fraction-digits 0
+    amtPayMin: max-digits 0 max-scale 0
+    amtSpending: max-digits 0 max-scale 0
+    amtBalloon: max-digits 0 max-scale 0
+    amtPI: max-digits 0 max-scale 0
+    amtPayment: max-digits 0 max-scale 0
+    dtNextAdj: fraction-digits 0
+    dtClose: fraction-digits 0
+    dtCBPost: fraction-digits 0
+    dtCBCut: fraction-digits 0
+    dtSerial: fraction-digits 0
+    amtOpenSaved: max-digits 0 max-scale 0
+    dtPurchase: fraction-digits 0
+    amtPurchase: max-digits 0 max-scale 0
+    amtAdvAbove: max-digits 0 max-scale 0
+    amtAdvBelow: max-digits 0 max-scale 0
+  ADDR: 0 rows scanned
+    haddr: nulls 0
+  ADV: 8 rows scanned
+    hadv: nulls 0
+    dtTrigger: fraction-digits 0
+    dtSerial: fraction-digits 0
+  ADV_SUM: 22 rows scanned
+    lAdvId: nulls 0
+    dtLatest: fraction-digits 0
+  Advisor Important Dates Custom Pool: 8 rows scanned
+    hAdvisor Important Dates Custom Pool: nulls 0
+    dtDate: fraction-digits 0
+    dtLastTrgrd: fraction-digits 0
+  Asset Allocation Custom Pool: 0 rows scanned
+    hAsset Allocation Custom Pool: nulls 0
+    Total value: max-digits 0 max-scale 0
+  AUTO: 0 rows scanned
+    hauto: nulls 0
+    dtPutToBiz: fraction-digits 0
+    dtSerial: fraction-digits 0
+    amtCur: max-digits 0 max-scale 0
+    dtWarrantyEnd: fraction-digits 0
+  AWD: 0 rows scanned
+    hawd: nulls 0
+    dt: fraction-digits 0
+    dtSerial: fraction-digits 0
+    dtExpire: fraction-digits 0
+  BGT: 1 rows scanned
+    hbgt: nulls 0
+    dtStart: fraction-digits 0
+    dtEnd: fraction-digits 0
+    dtSerial: fraction-digits 0
+  BGT_BKT: 3 rows scanned
+    hbgtbkt: nulls 0
+    dtSerial: fraction-digits 0
+  BGT_ITM: 0 rows scanned
+    hbgtitm: nulls 0
+    amtPerFrq: max-digits 0 max-scale 0
+    amt1: max-digits 0 max-scale 0
+    amt2: max-digits 0 max-scale 0
+    amt3: max-digits 0 max-scale 0
+    amt4: max-digits 0 max-scale 0
+    amt5: max-digits 0 max-scale 0
+    amt6: max-digits 0 max-scale 0
+    amt7: max-digits 0 max-scale 0
+    amt8: max-digits 0 max-scale 0
+    amt9: max-digits 0 max-scale 0
+    amt10: max-digits 0 max-scale 0
+    amt11: max-digits 0 max-scale 0
+    amt12: max-digits 0 max-scale 0
+    dtSerial: fraction-digits 0
+    dt: fraction-digits 0
+  CAT: 112 rows scanned
+    hcat: nulls 0
+    amtTotal: max-digits 0 max-scale 0
+    dtSerial: fraction-digits 0
+    amtAdvOvr: max-digits 0 max-scale 0
+  CESRC: 0 rows scanned
+    ceobjt: nulls 0
+    lHobj: nulls 0
+  CLI: 2 rows scanned
+    hcli: nulls 0
+  CLI_DAT: 71 rows scanned
+    hclidat: nulls 0
+  CNTRY: 44 rows scanned
+    hcntry: nulls 0
+    dtSerial: fraction-digits 0
+  CRIT: 0 rows scanned
+    hcrit: nulls 0
+  CRNC: 45 rows scanned
+    hcrnc: nulls 0
+    dtSerial: fraction-digits 0
+  CRNC_EXCHG: 11 rows scanned
+    hcrncFrom: nulls 0
+    hcrncTo: nulls 0
+    dt: fraction-digits 0
+    fHist: nulls 0
+  CT: 1 rows scanned
+    hct: nulls 0
+    dtSerial: fraction-digits 0
+  DHD: 1 rows scanned
+    dhd: nulls 0
+    dtExpire: fraction-digits 0
+  FI: 0 rows scanned
+    hfi: nulls 0
+    dtSerial: fraction-digits 0
+  Goal Custom Pool: 20 rows scanned
+    hGoal Custom Pool: nulls 0
+  Inventory Custom Pool: 0 rows scanned
+    hInventory Custom Pool: nulls 0
+    dt: fraction-digits 0
+    cyPrice: max-digits 0 max-scale 0
+    cyReplace: max-digits 0 max-scale 0
+    cyValue: max-digits 0 max-scale 0
+    dtWrrntExp: fraction-digits 0
+  ITM: 120 rows scanned
+    hitm: nulls 0
+  IVTY: 0 rows scanned
+    hivty: nulls 0
+    dt: fraction-digits 0
+    dtSerial: fraction-digits 0
+  LOT: 0 rows scanned
+    hlot: nulls 0
+    dtBuy: fraction-digits 0
+    dtSell: fraction-digits 0
+    dtOpen: fraction-digits 0
+    dtClose: fraction-digits 0
+    dtSerial: fraction-digits 0
+  LSTEP: 0 rows scanned
+    hstep: nulls 0
+    dtEnd: fraction-digits 0
+    dtAmortEnd: fraction-digits 0
+    amtPI: max-digits 0 max-scale 0
+    amtPayment: max-digits 0 max-scale 0
+    dtSerial: fraction-digits 0
+  MAIL: 0 rows scanned
+    hmail: nulls 0
+    dtSerial: fraction-digits 0
+  MCSRC: 0 rows scanned
+    hmcsrc: nulls 0
+    dtDeleted: fraction-digits 0
+  PAY: 0 rows scanned
+    hpay: nulls 0
+    dtCCExp: fraction-digits 0
+    dtLastModified: fraction-digits 0
+    dtSerial: fraction-digits 0
+  PGM: 0 rows scanned
+    hpgm: nulls 0
+    dtSerial: fraction-digits 0
+  PMT: 0 rows scanned
+    hpmt: nulls 0
+    dtInvoice: fraction-digits 0
+    dtPmt: fraction-digits 0
+    amt: max-digits 0 max-scale 0
+    dtSerial: fraction-digits 0
+  PORT_REC: 0 rows scanned
+    hportrec: nulls 0
+    amtUser: max-digits 0 max-scale 0
+    amtEmplyer: max-digits 0 max-scale 0
+    amtDividend: max-digits 0 max-scale 0
+    amtInterest: max-digits 0 max-scale 0
+    amt: max-digits 0 max-scale 0
+    dtSerial: fraction-digits 0
+  Portfolio View Custom Pool: 0 rows scanned
+    hPortfolio View Custom Pool: nulls 0
+  POS_STMT: 0 rows scanned
+    hposstmt: nulls 0
+    amtPar: max-digits 0 max-scale 0
+    dtMaturity: fraction-digits 0
+    dtAsOf: fraction-digits 0
+    dtSerial: fraction-digits 0
+  PRODUCT: 0 rows scanned
+    hproduct: nulls 0
+    dtSerial: fraction-digits 0
+  PROJ: 0 rows scanned
+    hproj: nulls 0
+    dtStart: fraction-digits 0
+    dtEnd: fraction-digits 0
+    dtSerial: fraction-digits 0
+  PROV_FI: 0 rows scanned
+    hprovfi: nulls 0
+    dtLastCall: fraction-digits 0
+    dtLastAcctUp: fraction-digits 0
+    dtSerial: fraction-digits 0
+    dtIniEntry: fraction-digits 0
+    dtMnnFile: fraction-digits 0
+  PROV_FI_PAY: 0 rows scanned
+    hprovpayfi: nulls 0
+    dtSerial: fraction-digits 0
+  Report Custom Pool: 0 rows scanned
+    hReport Custom Pool: nulls 0
+  SAV_GOAL: 1 rows scanned
+    hsavgoal: nulls 0
+    dt: fraction-digits 0
+    amt: max-digits 0 max-scale 0
+    dtSerial: fraction-digits 0
+  SEC: 55 rows scanned
+    hsec: nulls 0
+    amt: max-digits 0 max-scale 0
+    dtMaturity: fraction-digits 0
+    dtSplit: fraction-digits 0
+    dtLastHistQuote: fraction-digits 0
+    dtCall: fraction-digits 0
+    dtLastUpdate: fraction-digits 0
+    dtFYI: fraction-digits 0
+    amtEPS: max-digits 0 max-scale 0
+    dtFYILastRead: fraction-digits 0
+    dtNewsLastRead: fraction-digits 0
+    dtNews: fraction-digits 0
+    dtSerial: fraction-digits 0
+  SEC_SPLIT: 0 rows scanned
+    hss: nulls 0
+    dtRecord: fraction-digits 0
+  SIC: 160 rows scanned
+    sic: nulls 0
+  SOQ: 6 rows scanned
+    hsoq: nulls 0
+    dtSerial: fraction-digits 0
+  SP: 0 rows scanned
+    hsp: nulls 0
+    dt: fraction-digits 0
+    dtExpire: fraction-digits 0
+    dtSerial: fraction-digits 0
+  STMT: 0 rows scanned
+    hstmt: nulls 0
+    amtLastStmt: max-digits 0 max-scale 0
+    dtPost: fraction-digits 0
+    amt: max-digits 0 max-scale 0
+    dtTrade: fraction-digits 0
+    amtCommission: max-digits 0 max-scale 0
+    dtSettle: fraction-digits 0
+    amtPar: max-digits 0 max-scale 0
+    dtMaturity: fraction-digits 0
+    dtSerial: fraction-digits 0
+    amtUser: max-digits 0 max-scale 0
+    amtCmnUser: max-digits 0 max-scale 0
+    amtParUser: max-digits 0 max-scale 0
+    amtLastStmtUser: max-digits 0 max-scale 0
+  SVC: 0 rows scanned
+    hsvc: nulls 0
+    amtLastStmt: max-digits 0 max-scale 0
+    dtLastStmtDown: fraction-digits 0
+    dtSerial: fraction-digits 0
+  Tax Rate Custom Pool: 5 rows scanned
+    hTax Rate Custom Pool: nulls 0
+  TAXLINE: 0 rows scanned
+    htaxline: nulls 0
+    dtSerial: fraction-digits 0
+  TMI: 0 rows scanned
+    htmi: nulls 0
+    dtStart: fraction-digits 0
+    dtEnd: fraction-digits 0
+    dtSerial: fraction-digits 0
+  TRIP: 0 rows scanned
+    htrip: nulls 0
+    dtStart: fraction-digits 0
+    dtEnd: fraction-digits 0
+    amtFees: max-digits 0 max-scale 0
+    dtSerial: fraction-digits 0
+  TRN: 3 rows scanned
+    htrn: nulls 0
+    dt: fraction-digits 0
+    dtSent: fraction-digits 0
+    dtCleared: fraction-digits 0
+    dtPost: fraction-digits 0
+    amt: max-digits 1 max-scale 0
+    amtVat: max-digits 0 max-scale 0
+    amtUser: max-digits 1 max-scale 0
+    amtVATUser: max-digits 0 max-scale 0
+    dtSerial: fraction-digits 0
+    dtCloseOffYear: fraction-digits 0
+    dtOldRel: fraction-digits 0
+  TRN_INV: 3 rows scanned
+    htrn: nulls 0
+    amtCmn: max-digits 0 max-scale 0
+    amtCmnUser: max-digits 0 max-scale 0
+    amtInt: max-digits 0 max-scale 0
+  TRN_INVOICE: 0 rows scanned
+    htrn: nulls 0
+    dtShip: fraction-digits 0
+    dtDue: fraction-digits 0
+    amtTotal: max-digits 0 max-scale 0
+    amtTax: max-digits 0 max-scale 0
+    amtTotalUser: max-digits 0 max-scale 0
+  TRN_OL: 0 rows scanned
+    htrn: nulls 0
+    dtDueToBiller: fraction-digits 0
+    dtSentByOLP: fraction-digits 0
+    dtModelStart: fraction-digits 0
+    dtModelEnd: fraction-digits 0
+  TRN_SPLIT: 0 rows scanned
+    htrn: nulls 0
+  TRN_XFER: 0 rows scanned
+    htrnFrom: nulls 0
+  TXSRC: 46 rows scanned
+    htxsrc: nulls 0
+    dtSerial: fraction-digits 0
+  VIEW: 0 rows scanned
+    hview: nulls 0
+    dtSerial: fraction-digits 0
+  Worksheet Custom Pool: 1 rows scanned
+    hWorksheet Custom Pool: nulls 0
+  XACCT: 1 rows scanned
+    hacct: nulls 0
+    amtBalance: max-digits 0 max-scale 0
+  XMAPACCT: 0 rows scanned
+    hxmapacct: nulls 0
+  XMAPSAT: 51 rows scanned
+    hxmapsat: nulls 0
+    szMCCat: nulls 0
+  XPAY: 0 rows scanned
+    hpay: nulls 0
+    amtBal: max-digits 0 max-scale 0
+
+Issues: 133
+  info INDEX_BACKING_DROPPED ACCT / .rBB: hidden relationship index on (hacct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ACCT / .rCB: hidden relationship index on (hacct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ACCT / .rDB: hidden relationship index on (hacct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ACCT / .rEB: hidden relationship index on (hacct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ACCT / .rH: hidden relationship index on (hacct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ACCT / .rI: hidden relationship index on (hacct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ACCT / .rJ: hidden relationship index on (hacct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ACCT / .rK: hidden relationship index on (hacct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ACCT / .rL: hidden relationship index on (hacct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ACCT / .rM: hidden relationship index on (hacct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ACCT / .rN: hidden relationship index on (hacct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ACCT / .rO: hidden relationship index on (hacct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ACCT / .rP: hidden relationship index on (hacct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ACCT / ADDRACCT: hidden relationship index on (haddr) repeats unique index NoDupesOnAddr; dropped
+  info INDEX_BACKING_DROPPED ADDR / .rB: hidden relationship index on (haddr) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ADDR / .rC: hidden relationship index on (haddr) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ADDR / .rD: hidden relationship index on (haddr) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ADDR / .rE: hidden relationship index on (haddr) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ADDR / .rF: hidden relationship index on (haddr) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ADDR / .rG: hidden relationship index on (haddr) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ADDR / .rH: hidden relationship index on (haddr) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ADDR / .rI: hidden relationship index on (haddr) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ADDR / .rJ: hidden relationship index on (haddr) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ADDR / .rK: hidden relationship index on (haddr) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ADDR / .rL: hidden relationship index on (haddr) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED ADV_SUM / .rB: hidden relationship index on (lAdvId) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED AUTO / .rC: hidden relationship index on (hauto) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE AWD / PGMAWD: hidden relationship index on (hpgm) is covered by index PgmDt; merged
+  info INDEX_BACKING_DROPPED BGT / .rC: hidden relationship index on (hbgt) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED BGT / .rD: hidden relationship index on (hbgt) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED BGT / .rE: hidden relationship index on (hbgt) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE BGT_BKT / BGTBGTBKT: hidden relationship index on (hbgt) is covered by index BgtTypeName; merged
+  info INDEX_BACKING_DROPPED BGT_BKT / .rE: hidden relationship index on (hbgtbkt) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE BGT_ITM / BGTBGT_BKT: hidden relationship index on (hbgtbkt) is covered by index hbgtbkt; merged
+  info INDEX_MERGED_DUPLICATE BGT_ITM / BGTBGT_ITM: hidden relationship index on (hbgt) is covered by index BgtCatType; merged
+  info INDEX_BACKING_DROPPED BGT_ITM / .rH: hidden relationship index on (hbgtitm) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE CAT / CATCAT: hidden relationship index on (hcatParent) is covered by index ParentName; merged
+  info INDEX_MERGED_DUPLICATE CAT / CTCAT: hidden relationship index on (hct) is covered by index HctLevelParentAls; merged
+  info INDEX_BACKING_DROPPED CAT / .rBB: hidden relationship index on (hcat) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CAT / .rCB: hidden relationship index on (hcat) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CAT / .rDB: hidden relationship index on (hcat) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CAT / .rEB: hidden relationship index on (hcat) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CAT / .rI: hidden relationship index on (hcat) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CAT / .rJ: hidden relationship index on (hcat) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CAT / .rK: hidden relationship index on (hcat) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CAT / .rL: hidden relationship index on (hcat) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CAT / .rM: hidden relationship index on (hcat) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CAT / .rN: hidden relationship index on (hcat) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CAT / .rO: hidden relationship index on (hcat) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CAT / .rP: hidden relationship index on (hcat) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CLI / .rC: hidden relationship index on (hcli) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CLI / .rD: hidden relationship index on (hcli) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CNTRY / .rD: hidden relationship index on (hcntry) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE CRIT / VIEWCRIT: hidden relationship index on (hview) is covered by index ViewIfc; merged
+  info INDEX_BACKING_DROPPED CRNC / .rD: hidden relationship index on (hcrnc) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CRNC / .rE: hidden relationship index on (hcrnc) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CRNC / .rF: hidden relationship index on (hcrnc) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CRNC / .rG: hidden relationship index on (hcrnc) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CRNC / .rH: hidden relationship index on (hcrnc) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED CRNC / .rI: hidden relationship index on (hcrnc) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE CRNC_EXCHG / CRNCCRNC_EXCHG: hidden relationship index on (hcrncFrom) is covered by index PrimaryKey; merged
+  info INDEX_BACKING_DROPPED CT / .rD: hidden relationship index on (hct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED FI / .rE: hidden relationship index on (hfi) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED FI / .rF: hidden relationship index on (hfi) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED FI / .rG: hidden relationship index on (hfi) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED FI / .rH: hidden relationship index on (hfi) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE IVTY / hprodIvty: hidden relationship index on (hprod) is covered by index ProdDt; merged
+  info INDEX_BACKING_DROPPED IVTY / .rG: hidden relationship index on (hivty) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE LOT / ACCTLOT: hidden relationship index on (hacct) is covered by index AcctSecDtTrnBuy; merged
+  info INDEX_MERGED_DUPLICATE LOT / SECLOT: hidden relationship index on (hsec) is covered by index SecAcctDtTrnBuy; merged
+  info INDEX_MERGED_DUPLICATE LOT / TRN_INVLOTCLOSE: hidden relationship index on (htrnClose) is covered by index TrnDtClose; merged
+  info INDEX_MERGED_DUPLICATE LOT / TRN_INVLOTOPEN: hidden relationship index on (htrnOpen) is covered by index TrnDtOpen; merged
+  info INDEX_BACKING_DROPPED LOT / .rBB: hidden relationship index on (hlot) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED LSTEP / .rD: hidden relationship index on (hstep) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE PAY / ADDRPAYBILL: hidden relationship index on (haddrBill) is covered by index NoDupOnAddrBill; merged
+  info INDEX_MERGED_DUPLICATE PAY / ADDRPAYSHIP: hidden relationship index on (haddrShip) is covered by index NoDupOnAddrShip; merged
+  info INDEX_BACKING_DROPPED PAY / .rI: hidden relationship index on (hpay) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED PAY / .rJ: hidden relationship index on (hpay) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED PAY / .rK: hidden relationship index on (hpay) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED PAY / .rM: hidden relationship index on (hpay) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED PAY / .rN: hidden relationship index on (hpay) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED PAY / .rO: hidden relationship index on (hpay) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED PGM / .rD: hidden relationship index on (hpgm) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE PMT / PAYPMT: hidden relationship index on (hcust) is covered by index CustDtTrnInvoice; merged
+  info INDEX_BACKING_DROPPED PRODUCT / .rD: hidden relationship index on (hproduct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED PRODUCT / .rE: hidden relationship index on (hproduct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED PRODUCT / .rF: hidden relationship index on (hproduct) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED PROJ / .rE: hidden relationship index on (hproj) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED PROV_FI / .rD: hidden relationship index on (hprovfi) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED PROV_FI / .rE: hidden relationship index on (hprovfi) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE PROV_FI_PAY / hprovfiPFP: hidden relationship index on (hprovfi) is covered by index PfiPay; merged
+  info INDEX_BACKING_DROPPED SEC / .rG: hidden relationship index on (hsec) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED SEC / .rH: hidden relationship index on (hsec) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED SEC / .rI: hidden relationship index on (hsec) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED SEC / .rJ: hidden relationship index on (hsec) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED SEC / .rK: hidden relationship index on (hsec) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED SEC / .rM: hidden relationship index on (hsec) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED SEC_SPLIT / .rB: hidden relationship index on (hss) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE SOQ / hsecSoq: hidden relationship index on (hsec) is covered by index SecAcct; merged
+  info INDEX_MERGED_DUPLICATE SP / hsecSp: hidden relationship index on (hsec) is covered by index HsecDateSrcSp; merged
+  info INDEX_MERGED_DUPLICATE SVC / ACCTSVC: hidden relationship index on (hacct) is covered by index AcctProvfi; merged
+  info INDEX_BACKING_DROPPED SVC / .rE: hidden relationship index on (hsvc) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE TMI / hpayTmi: hidden relationship index on (hpay) is covered by index PayStartEnd; merged
+  info INDEX_MERGED_DUPLICATE TMI / hprodTmi: hidden relationship index on (hproduct) is covered by index ProdStartEnd; merged
+  info INDEX_BACKING_DROPPED TMI / .rG: hidden relationship index on (htmi) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE TRN / CATTRN2: hidden relationship index on (hcat) is covered by index CatDtIdTrn; merged
+  info INDEX_MERGED_DUPLICATE TRN / hacctTrn: hidden relationship index on (hacct) is covered by index AcctCsIdDtTrn; merged
+  info INDEX_MERGED_DUPLICATE TRN / hpayTrn: hidden relationship index on (hpay) is covered by index PayDtIdTrn; merged
+  info INDEX_MERGED_DUPLICATE TRN / hsecTrn: hidden relationship index on (hsec) is covered by index SecDtIdTrn; merged
+  info INDEX_BACKING_DROPPED TRN / .rFB: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN / .rGB: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN / .rHB: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN / .rIB: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN / .rJB: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN / .rKB: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN / .rMB: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN / .rNB: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN / .rOB: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN_INV / .rC: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN_INV / .rD: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN_INV / .rE: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN_INV / .rF: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN_INV / htrnTrnInv: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN_INVOICE / .rI: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN_INVOICE / TRNTRN_INVOICE: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN_OL / TRNTRN_OL: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE TRN_SPLIT / htrnTrnSplitParent: hidden relationship index on (htrnParent) is covered by index SeqInParent; merged
+  info INDEX_BACKING_DROPPED TRN_SPLIT / htrnTrnSplit: hidden relationship index on (htrn) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED TRN_XFER / htrnTrnXferFrom: hidden relationship index on (htrnFrom) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED VIEW / .rE: hidden relationship index on (hview) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED VIEW / .rF: hidden relationship index on (hview) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED XACCT / ACCTXACCT: hidden relationship index on (hacct) repeats the primary key PrimaryKey; dropped
+  info INDEX_MERGED_DUPLICATE XPAY / hpayXpay: hidden relationship index on (hpay) is covered by index PrimaryKey; merged

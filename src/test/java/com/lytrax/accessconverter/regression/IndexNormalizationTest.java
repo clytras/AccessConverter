@@ -4,13 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 import com.lytrax.accessconverter.Extraction;
+import com.lytrax.accessconverter.fixtures.CorpusCase;
+import com.lytrax.accessconverter.fixtures.CorpusFile;
 import com.lytrax.accessconverter.fixtures.GeneratedFixture;
-import com.lytrax.accessconverter.fixtures.JackcessCorpus;
 import com.lytrax.accessconverter.model.IndexModel;
 import com.lytrax.accessconverter.model.IndexModel.IndexColumn;
 import com.lytrax.accessconverter.model.IndexModel.Origin;
 import com.lytrax.accessconverter.model.TableModel;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -23,16 +23,15 @@ import org.junit.jupiter.params.provider.MethodSource;
  */
 class IndexNormalizationTest {
 
-    static Stream<Path> corpus() {
-        return Stream.concat(
-                Stream.of(GeneratedFixture.values()).map(GeneratedFixture::path),
-                Stream.of(JackcessCorpus.values()).map(JackcessCorpus::path));
+    static Stream<CorpusCase> corpus() {
+        return CorpusCase.databases();
     }
 
     @ParameterizedTest
     @MethodSource("corpus")
-    void noHiddenBackingIndexSurvives(Path file) {
-        for (TableModel table : Extraction.of(file).model().tables()) {
+    void noHiddenBackingIndexSurvives(CorpusCase database) {
+        for (TableModel table :
+                Extraction.of(database.file(), database.options()).model().tables()) {
             for (IndexModel index : table.allIndexes()) {
                 assertThat(index.name()).as(table.name()).doesNotStartWith(".r");
                 // No two kept indexes have the same columns, directions and uniqueness
@@ -73,7 +72,8 @@ class IndexNormalizationTest {
 
     @Test
     void aPlainIndexOnThePrimaryKeyIsAbsorbed() {
-        Extraction e = Extraction.of(JackcessCorpus.INDEX_V2010.path());
+        Extraction e =
+                Extraction.of(CorpusFile.get("jackcess/V2010/indexV2010.accdb").file());
         for (String table : new String[] {"Table1", "Table2", "Table3"}) {
             assertThat(e.table(table).primaryKey().sourceNames()).containsExactly("PrimaryKey", "id");
             assertThat(e.table(table).indexes()).noneMatch(i -> i.name().equals("id"));
@@ -82,7 +82,9 @@ class IndexNormalizationTest {
 
     @Test
     void directionIsKept() {
-        TableModel table = Extraction.of(JackcessCorpus.EXT_DATE_V2019.path()).table("Table1");
+        TableModel table = Extraction.of(
+                        CorpusFile.get("jackcess/V2019/extDateV2019.accdb").file())
+                .table("Table1");
         assertThat(table.indexes())
                 .extracting(IndexModel::name, IndexModel::columns)
                 .containsExactly(
@@ -93,8 +95,9 @@ class IndexNormalizationTest {
     @Test
     void complexColumnsKeepTheirHiddenUniqueIndex() {
         // It becomes the UNIQUE key on the complex id in phase 5 (08)
-        TableModel table =
-                Extraction.of(JackcessCorpus.COMPLEX_DATA_V2010.path()).table("Table1");
+        TableModel table = Extraction.of(
+                        CorpusFile.get("jackcess/V2010/complexDataV2010.accdb").file())
+                .table("Table1");
         assertThat(table.indexes())
                 .filteredOn(i -> i.columnNames().equals(List.of("attach-data")))
                 .singleElement()

@@ -6,10 +6,19 @@ import static com.lytrax.accessconverter.report.Severity.WARNING;
 
 /** The catalogue of report issues (03). Every data decision that isn't an exact copy raises one of these. */
 public enum IssueCode {
+    // Source
+    CHARSET_UNMAPPED(WARNING),
+    CHARSET_OVERRIDDEN(INFO),
+    CHARSET_IGNORED(WARNING),
+    PASSWORD_NOT_REQUIRED(INFO),
+    ROW_ORDER_PHYSICAL(INFO),
+    CATALOG_INDEX_UNUSABLE(WARNING),
+
     // Tables
     LINKED_TABLE_SKIPPED(WARNING),
     TABLE_EXCLUDED(INFO),
     TABLE_READ_FAILED(ERROR),
+    TABLE_NOT_IN_CATALOG(ERROR),
 
     // Keys and indexes
     INDEX_MERGED_DUPLICATE(INFO),
@@ -26,6 +35,7 @@ public enum IssueCode {
     FK_SKIPPED_TABLE_EXCLUDED(INFO),
     FK_SET_NULL_ON_REQUIRED(WARNING),
     RELATIONSHIP_MALFORMED(WARNING),
+    RELATIONSHIPS_UNREADABLE(ERROR),
 
     // Columns
     PROPERTIES_UNREADABLE(WARNING),

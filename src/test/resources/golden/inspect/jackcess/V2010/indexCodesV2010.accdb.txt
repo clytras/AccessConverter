@@ -1,0 +1,323 @@
+Source: indexCodesV2010.accdb (V2010)
+Text: charset UTF-16LE
+Tables: 30 local, 0 linked; relationships: 0
+
+Table Table1 (275 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  TEXT(100)  no-empty-string
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data)
+
+Table Table10 (5 rows)
+  columns:
+    name  TEXT(50)
+    data  BOOLEAN  format "Yes/No"
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data)
+
+Table Table10_desc (5 rows)
+  columns:
+    name  TEXT(50)
+    data  BOOLEAN  format "Yes/No"
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data DESC)
+
+Table Table11 (13 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  MEMO  no-empty-string
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data)
+
+Table Table11_desc (13 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  MEMO  no-empty-string
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data DESC)
+
+Table Table12 (10 rows)
+  columns:
+    row    TEXT(50)
+    data1  TEXT(50)
+    data2  LONG  default 0  decimal-places auto
+  primary key: PrimaryKey (row)
+  indexes:
+    DataIndex (data1, data2)
+
+Table Table12_asc_desc (10 rows)
+  columns:
+    row    TEXT(50)
+    data1  TEXT(50)
+    data2  LONG  default 0  decimal-places auto
+  primary key: PrimaryKey (row)
+  indexes:
+    DataIndex (data1, data2 DESC)
+
+Table Table12_desc_asc (10 rows)
+  columns:
+    row    TEXT(50)
+    data1  TEXT(50)
+    data2  LONG  default 0  decimal-places auto
+  primary key: PrimaryKey (row)
+  indexes:
+    DataIndex (data1 DESC, data2)
+
+Table Table12_desc_desc (10 rows)
+  columns:
+    row    TEXT(50)
+    data1  TEXT(50)
+    data2  LONG  default 0  decimal-places auto
+  primary key: PrimaryKey (row)
+  indexes:
+    DataIndex (data1 DESC, data2 DESC)
+
+Table Table13 (20 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  AUTONUMBER_GUID  default GenGUID()
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data) unique
+
+Table Table13_desc (20 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  AUTONUMBER_GUID  default GenGUID()
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data DESC) unique
+
+Table Table14 (66429 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  TEXT(50)  no-empty-string
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data)
+
+Table Table14_desc (66429 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  TEXT(50)  no-empty-string
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data DESC)
+
+Table Table1_desc (275 rows)
+  columns:
+    name  TEXT(50)  no-empty-string
+    data  TEXT(100)  no-empty-string
+  primary key: PrimaryKey (name)
+  indexes:
+    DataIndex (data DESC)
+
+Table Table2 (9 rows)
+  columns:
+    name  TEXT(50)
+    data  LONG  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data)
+
+Table Table2_desc (9 rows)
+  columns:
+    name  TEXT(50)
+    data  LONG  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data DESC)
+
+Table Table3 (11 rows)
+  columns:
+    name  TEXT(50)
+    data  INT  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data)
+
+Table Table3_desc (11 rows)
+  columns:
+    name  TEXT(50)
+    data  INT  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data DESC)
+
+Table Table4 (20 rows)
+  columns:
+    name  TEXT(50)
+    data  DOUBLE  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data)
+
+Table Table4_desc (20 rows)
+  columns:
+    name  TEXT(50)
+    data  DOUBLE  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data DESC)
+
+Table Table5 (20 rows)
+  columns:
+    name  TEXT(50)
+    data  FLOAT  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data)
+
+Table Table5_desc (20 rows)
+  columns:
+    name  TEXT(50)
+    data  FLOAT  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data DESC)
+
+Table Table6 (23 rows)
+  columns:
+    name  TEXT(50)
+    data  SHORT_DATE_TIME
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data)
+
+Table Table6_desc (23 rows)
+  columns:
+    name  TEXT(50)
+    data  SHORT_DATE_TIME
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data DESC)
+
+Table Table7 (20 rows)
+  columns:
+    name  TEXT(50)
+    data  NUMERIC(20,10)  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data)
+
+Table Table7_desc (20 rows)
+  columns:
+    name  TEXT(50)
+    data  NUMERIC(20,10)  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data DESC)
+
+Table Table8 (20 rows)
+  columns:
+    name  TEXT(50)
+    data  MONEY(19,4)  default 0  format "$#,##0.00;($#,##0.00)"  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data)
+
+Table Table8_desc (20 rows)
+  columns:
+    name  TEXT(50)
+    data  MONEY(19,4)  default 0  format "$#,##0.00;($#,##0.00)"  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data DESC)
+
+Table Table9 (11 rows)
+  columns:
+    name  TEXT(50)
+    data  BYTE  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data)
+
+Table Table9_desc (11 rows)
+  columns:
+    name  TEXT(50)
+    data  BYTE  default 0  decimal-places auto
+  primary key: PrimaryKey (name)
+  indexes:
+    data (data DESC)
+
+Profile:
+  Table1: 275 rows scanned
+    name: nulls 0, empty-strings 0
+    data: empty-strings 0
+  Table10: 5 rows scanned
+    name: nulls 0
+  Table10_desc: 5 rows scanned
+    name: nulls 0
+  Table11: 13 rows scanned
+    name: nulls 0, empty-strings 0
+    data: empty-strings 0
+  Table11_desc: 13 rows scanned
+    name: nulls 0, empty-strings 0
+    data: empty-strings 0
+  Table12: 10 rows scanned
+    row: nulls 0
+  Table12_asc_desc: 10 rows scanned
+    row: nulls 0
+  Table12_desc_asc: 10 rows scanned
+    row: nulls 0
+  Table12_desc_desc: 10 rows scanned
+    row: nulls 0
+  Table13: 20 rows scanned
+    name: nulls 0, empty-strings 0
+  Table13_desc: 20 rows scanned
+    name: nulls 0, empty-strings 0
+  Table14: 66429 rows scanned
+    name: nulls 0, empty-strings 0
+    data: empty-strings 0
+  Table14_desc: 66429 rows scanned
+    name: nulls 0, empty-strings 0
+    data: empty-strings 0
+  Table1_desc: 275 rows scanned
+    name: nulls 0, empty-strings 0
+    data: empty-strings 0
+  Table2: 9 rows scanned
+    name: nulls 0
+  Table2_desc: 9 rows scanned
+    name: nulls 0
+  Table3: 11 rows scanned
+    name: nulls 0
+  Table3_desc: 11 rows scanned
+    name: nulls 0
+  Table4: 20 rows scanned
+    name: nulls 0
+  Table4_desc: 20 rows scanned
+    name: nulls 0
+  Table5: 20 rows scanned
+    name: nulls 0
+  Table5_desc: 20 rows scanned
+    name: nulls 0
+  Table6: 23 rows scanned
+    name: nulls 0
+    data: fraction-digits 3
+  Table6_desc: 23 rows scanned
+    name: nulls 0
+    data: fraction-digits 3
+  Table7: 20 rows scanned
+    name: nulls 0
+    data: max-digits 15 max-scale 9
+  Table7_desc: 20 rows scanned
+    name: nulls 0
+    data: max-digits 15 max-scale 9
+  Table8: 20 rows scanned
+    name: nulls 0
+    data: max-digits 13 max-scale 4
+  Table8_desc: 20 rows scanned
+    name: nulls 0
+    data: max-digits 13 max-scale 4
+  Table9: 11 rows scanned
+    name: nulls 0
+  Table9_desc: 11 rows scanned
+    name: nulls 0
+
+Issues: 0

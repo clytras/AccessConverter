@@ -22,6 +22,10 @@ public record SchemaModel(Source source, List<TableModel> tables, List<ForeignKe
         return tables.stream().filter(t -> t.name().equalsIgnoreCase(name)).findFirst();
     }
 
-    /** @param fileFormat Jackcess's name for the file format, e.g. {@code V2010} */
-    public record Source(String fileName, String fileFormat) {}
+    /**
+     * @param fileFormat Jackcess's name for the file format, e.g. {@code V2010}
+     * @param codePage Access 97 only: the code page in the header; null for Access 2000 and later
+     * @param charset the charset text was decoded with ({@code UTF-16LE} from Access 2000 on)
+     */
+    public record Source(String fileName, String fileFormat, Integer codePage, String charset) {}
 }

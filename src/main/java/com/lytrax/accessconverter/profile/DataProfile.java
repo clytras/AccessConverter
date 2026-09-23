@@ -48,6 +48,8 @@ public record DataProfile(Map<String, TableProfile> tables, Map<String, Relation
      *
      * @param nulls NULL count, for Required columns and columns of required indexes: NOT NULL only when 0
      * @param emptyStrings {@code ""} count where AllowZeroLength is off: {@code CHECK (col <> '')} only when 0
+     * @param undecodable Access 97 text: values holding a byte their code page doesn't define, which decoded to
+     *     U+FFFD; null when there are none
      * @param maxSignificantDigits MONEY/NUMERIC: digits needed to hold every value exactly
      * @param maxScale MONEY/NUMERIC: the most fractional digits any value uses
      * @param maxFractionDigits date/time: fractional-second digits in use (0 = whole seconds, up to 7)
@@ -58,6 +60,7 @@ public record DataProfile(Map<String, TableProfile> tables, Map<String, Relation
             String column,
             Long nulls,
             Long emptyStrings,
+            Long undecodable,
             Integer maxSignificantDigits,
             Integer maxScale,
             Integer maxFractionDigits,
@@ -86,6 +89,8 @@ public record DataProfile(Map<String, TableProfile> tables, Map<String, Relation
      * @param orphans checked rows with no parent: a foreign key would reject them
      * @param inexact rows whose parent matches only under Access's case-insensitive comparison
      * @param inexactAsciiCaseOnly every inexact match differs only in ASCII letter case
+     * @param scanFallback why the parent's index couldn't be used and its keys were scanned instead; null when the
+     *     index was used
      */
     public record RelationshipProfile(
             String relationship,
@@ -94,7 +99,8 @@ public record DataProfile(Map<String, TableProfile> tables, Map<String, Relation
             List<String> orphanSamples,
             long inexact,
             boolean inexactAsciiCaseOnly,
-            List<String> inexactSamples) {
+            List<String> inexactSamples,
+            String scanFallback) {
         public RelationshipProfile {
             orphanSamples = List.copyOf(orphanSamples);
             inexactSamples = List.copyOf(inexactSamples);

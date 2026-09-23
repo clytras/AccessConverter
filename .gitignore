@@ -1,5 +1,8 @@
 *.accdb
 *.mdb
+# except the small Access-authored fixtures the tests need (tier D)
+!/src/test/resources/fixtures/**/*.mdb
+!/src/test/resources/fixtures/**/*.accdb
 *.zip
 *.sql
 *.sqlite3

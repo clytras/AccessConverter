@@ -1,0 +1,19 @@
+Source: delColV2003.mdb (V2003)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Table1 (2 rows)
+  columns:
+    id     LONG  default 0  decimal-places auto
+    id2    LONG  default 0  decimal-places auto
+    data   TEXT(50)
+    data2  TEXT(50)
+  primary key: none
+  indexes:
+    id (id)
+    id2 (id2)
+
+Profile:
+
+Issues: 1
+  info NO_PRIMARY_KEY Table1: table has no primary key; targets create none

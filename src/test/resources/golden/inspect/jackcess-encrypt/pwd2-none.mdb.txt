@@ -1,0 +1,15 @@
+Source: pwd2-none.mdb (V2003)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Table2 (2 rows)
+  columns:
+    ID      AUTONUMBER_LONG
+    Field1  TEXT(255)
+  primary key: PrimaryKey (ID)
+
+Profile:
+  Table2: 2 rows scanned
+    ID: nulls 0, max-autonumber 2
+
+Issues: 0

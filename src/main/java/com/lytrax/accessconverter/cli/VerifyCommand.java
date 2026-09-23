@@ -5,6 +5,7 @@ import com.lytrax.accessconverter.extract.SchemaExtractor;
 import com.lytrax.accessconverter.model.SchemaModel;
 import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.source.AccessSource;
+import com.lytrax.accessconverter.source.OpenOptions;
 import com.lytrax.accessconverter.verify.SourceSnapshot;
 import com.lytrax.accessconverter.verify.SourceSnapshot.TableSnapshot;
 import java.io.IOException;
@@ -12,6 +13,7 @@ import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Parameters;
 import picocli.CommandLine.Spec;
@@ -30,6 +32,9 @@ final class VerifyCommand implements Callable<Integer> {
     @Parameters(index = "1", arity = "0..1", paramLabel = "<output>", description = "Converted output to compare")
     Path output;
 
+    @Mixin
+    SourceOptions source;
+
     @Spec
     CommandSpec spec;
 
@@ -42,11 +47,12 @@ final class VerifyCommand implements Callable<Integer> {
                     .println("error: comparing an output needs its target, which isn't implemented yet: " + output);
             return ExitCodes.USAGE;
         }
+        OpenOptions options = source.toOpenOptions();
         Issues issues = new Issues();
         SourceSnapshot snapshot;
-        try (AccessSource source = AccessSource.open(input)) {
-            SchemaModel model = SchemaExtractor.extract(source, ExtractOptions.ALL, issues);
-            snapshot = SourceSnapshot.capture(source, model);
+        try (AccessSource db = AccessSource.open(input, options, issues)) {
+            SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
+            snapshot = SourceSnapshot.capture(db, model);
         }
         PrintWriter out = spec.commandLine().getOut();
         StringBuilder text = new StringBuilder();

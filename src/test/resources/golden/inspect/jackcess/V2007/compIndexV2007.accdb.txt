@@ -1,0 +1,26 @@
+Source: compIndexV2007.accdb (V2007)
+Text: charset UTF-16LE
+Tables: 2 local, 0 linked; relationships: 0
+
+Table MSysCompactError (1 rows)
+  columns:
+    ErrorCode         LONG
+    ErrorDescription  MEMO
+    ErrorTable        TEXT(255)
+    ErrorRecid        BINARY(510)
+  primary key: none
+
+Table Table1 (512 rows)
+  columns:
+    CD_AGENTE  LONG  default 0  decimal-places auto
+    RS_AGENTE  TEXT(55)
+    DC_AGENTE  TEXT(55)
+  primary key: none
+  indexes:
+    CD_AGENTE (CD_AGENTE DESC)
+
+Profile:
+
+Issues: 2
+  info NO_PRIMARY_KEY MSysCompactError: table has no primary key; targets create none
+  info NO_PRIMARY_KEY Table1: table has no primary key; targets create none

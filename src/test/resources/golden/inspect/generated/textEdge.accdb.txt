@@ -1,0 +1,16 @@
+Source: textEdge.accdb (V2010)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table TextEdge (7 rows)
+  columns:
+    ID     AUTONUMBER_LONG
+    Label  TEXT(30)
+    Val    TEXT(255)
+  primary key: PrimaryKey (ID)
+
+Profile:
+  TextEdge: 7 rows scanned
+    ID: nulls 0, max-autonumber 7
+
+Issues: 0

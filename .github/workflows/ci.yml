@@ -35,11 +35,14 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java }}
           cache: maven
-      # Tier B fixtures (Jackcess test databases), keyed on the pinned commit and checksums
+      # Tier B fixtures (third-party test databases), keyed on the manifest that pins their commits and checksums
       - uses: actions/cache@v6
         with:
-          path: target/fixtures/jackcess
-          key: jackcess-corpus-${{ hashFiles('src/test/java/**/fixtures/JackcessCorpus.java') }}
+          path: |
+            target/fixtures/jackcess
+            target/fixtures/jackcess-encrypt
+            target/fixtures/mdb-reader
+          key: corpus-${{ hashFiles('src/test/resources/fixtures/corpus.tsv', 'src/test/java/**/fixtures/CorpusFile.java') }}
       - run: ./mvnw -B -ntp verify
       - if: failure()
         uses: actions/upload-artifact@v7
@@ -65,8 +68,11 @@ jobs:
           cache: maven
       - uses: actions/cache@v6
         with:
-          path: target/fixtures/jackcess
-          key: jackcess-corpus-${{ hashFiles('src/test/java/**/fixtures/JackcessCorpus.java') }}
+          path: |
+            target/fixtures/jackcess
+            target/fixtures/jackcess-encrypt
+            target/fixtures/mdb-reader
+          key: corpus-${{ hashFiles('src/test/resources/fixtures/corpus.tsv', 'src/test/java/**/fixtures/CorpusFile.java') }}
       - run: ./mvnw -B -ntp verify -Pintegration -Dit.db.images=${{ matrix.db }}
       - if: failure()
         uses: actions/upload-artifact@v7

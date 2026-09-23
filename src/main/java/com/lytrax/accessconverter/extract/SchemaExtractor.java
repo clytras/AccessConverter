@@ -9,6 +9,7 @@ import com.lytrax.accessconverter.report.IssueCode;
 import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.AccessSource.LinkedTable;
+import com.lytrax.accessconverter.source.SourceException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -19,7 +20,6 @@ import java.util.TreeSet;
 
 /** Builds the {@link SchemaModel} from metadata only; no rows are read (03, extract). */
 public final class SchemaExtractor {
-    static final String RELATIONSHIPS_TABLE = "MSysRelationships";
 
     private SchemaExtractor() {}
 
@@ -33,7 +33,7 @@ public final class SchemaExtractor {
                 issues.add(IssueCode.TABLE_EXCLUDED, table.getName(), null, "excluded by the table filter");
                 continue;
             }
-            tables.add(TableReader.read(table, issues));
+            tables.add(TableReader.read(source.file(), table, issues));
         }
         for (LinkedTable linked : source.linkedTables()) {
             if (!options.tables().test(linked.name())) {
@@ -60,16 +60,30 @@ public final class SchemaExtractor {
         tables.sort(Comparator.comparing(TableModel::name, AccessSource.NAME_ORDER));
 
         List<ForeignKeyModel> relationships = List.of();
-        Optional<Table> msysRelationships = source.systemTable(RELATIONSHIPS_TABLE);
+        Optional<Table> msysRelationships = source.systemTable(AccessSource.RELATIONSHIPS_TABLE);
         if (msysRelationships.isPresent()) {
             List<Row> rows = new ArrayList<>();
-            msysRelationships.get().forEach(rows::add);
+            try {
+                msysRelationships.get().forEach(rows::add);
+            } catch (RuntimeException e) {
+                throw SourceException.readFailed(source.file(), AccessSource.RELATIONSHIPS_TABLE, e);
+            }
             relationships = RelationshipResolver.resolve(
                     RelationshipDecoder.decode(rows), tables, source.systemTableNames(), excluded, issues);
+        } else {
+            issues.add(
+                    IssueCode.RELATIONSHIPS_UNREADABLE,
+                    null,
+                    null,
+                    AccessSource.RELATIONSHIPS_TABLE + " is missing from the catalog: no relationship can be read");
         }
 
         return new SchemaModel(
-                new SchemaModel.Source(source.file().getFileName().toString(), source.fileFormat()),
+                new SchemaModel.Source(
+                        source.file().getFileName().toString(),
+                        source.fileFormat(),
+                        source.codePage(),
+                        source.charset().name()),
                 tables,
                 relationships);
     }

@@ -1,0 +1,28 @@
+Source: bigIndexV2007.accdb (V2007)
+Text: charset UTF-16LE
+Tables: 2 local, 0 linked; relationships: 0
+
+Table MSysCompactError (1 rows)
+  columns:
+    ErrorCode         LONG
+    ErrorDescription  MEMO
+    ErrorTable        TEXT(255)
+    ErrorRecid        BINARY(510)
+  primary key: none
+
+Table Table1 (0 rows)
+  columns:
+    col1  TEXT(255)  no-empty-string
+    col2  TEXT(255)  no-empty-string
+  primary key: none
+  indexes:
+    col1 (col1)
+
+Profile:
+  Table1: 0 rows scanned
+    col1: empty-strings 0
+    col2: empty-strings 0
+
+Issues: 2
+  info NO_PRIMARY_KEY MSysCompactError: table has no primary key; targets create none
+  info NO_PRIMARY_KEY Table1: table has no primary key; targets create none

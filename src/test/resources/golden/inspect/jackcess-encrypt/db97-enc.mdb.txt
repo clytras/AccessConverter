@@ -1,0 +1,17 @@
+Source: db97-enc.mdb (V1997)
+Text: code page 1252, charset windows-1252
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Table1 (2 rows)
+  columns:
+    ID    AUTONUMBER_LONG
+    col1  TEXT(50)  no-empty-string
+    col2  LONG  default 0  decimal-places auto
+  primary key: PrimaryKey (ID)
+
+Profile:
+  Table1: 2 rows scanned
+    ID: nulls 0, max-autonumber 2
+    col1: empty-strings 0
+
+Issues: 0

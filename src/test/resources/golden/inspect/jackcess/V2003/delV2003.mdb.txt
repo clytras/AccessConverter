@@ -1,0 +1,14 @@
+Source: delV2003.mdb (V2003)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table Table (2 rows)
+  columns:
+    a  TEXT(50)
+    b  TEXT(50)
+  primary key: none
+
+Profile:
+
+Issues: 1
+  info NO_PRIMARY_KEY Table: table has no primary key; targets create none

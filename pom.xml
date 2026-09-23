@@ -35,6 +35,8 @@
 
         <!-- Runtime -->
         <jackcess.version>5.0.1</jackcess.version>
+        <jackcess-encrypt.version>5.0.0</jackcess-encrypt.version>
+        <bouncycastle.version>1.86</bouncycastle.version>
         <sqlite-jdbc.version>3.53.4.0</sqlite-jdbc.version>
         <jackson.version>3.2.3</jackson.version>
         <picocli.version>4.7.7</picocli.version>
@@ -75,6 +77,12 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- jackcess-encrypt 5.0.0 declares jackcess 5.0.0 -->
+            <dependency>
+                <groupId>com.healthmarketscience.jackcess</groupId>
+                <artifactId>jackcess</artifactId>
+                <version>${jackcess.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
@@ -96,7 +104,17 @@
         <dependency>
             <groupId>com.healthmarketscience.jackcess</groupId>
             <artifactId>jackcess</artifactId>
-            <version>${jackcess.version}</version>
+        </dependency>
+        <!-- Encoded (Access 97, Jet4) and encrypted (Office 2007+) databases -->
+        <dependency>
+            <groupId>com.healthmarketscience.jackcess</groupId>
+            <artifactId>jackcess-encrypt</artifactId>
+            <version>${jackcess-encrypt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
         </dependency>
         <dependency>
             <groupId>org.xerial</groupId>
@@ -246,7 +264,8 @@
                                         <ignoredScope>test</ignoredScope>
                                     </ignoredScopes>
                                 </enforceBytecodeVersion>
-                                <!-- 02: the runtime tree is exactly Jackcess, sqlite-jdbc, jackson-core and picocli -->
+                                <!-- 02: the runtime tree is exactly Jackcess (with jackcess-encrypt and BouncyCastle),
+                                     sqlite-jdbc, jackson-core and picocli -->
                                 <bannedDependencies>
                                     <excludes>
                                         <exclude>*:*:*:*:compile</exclude>
@@ -255,6 +274,8 @@
                                     </excludes>
                                     <includes>
                                         <include>com.healthmarketscience.jackcess:jackcess</include>
+                                        <include>com.healthmarketscience.jackcess:jackcess-encrypt</include>
+                                        <include>org.bouncycastle:bcprov-jdk18on</include>
                                         <include>org.xerial:sqlite-jdbc</include>
                                         <include>tools.jackson.core:jackson-core</include>
                                         <include>info.picocli:picocli</include>

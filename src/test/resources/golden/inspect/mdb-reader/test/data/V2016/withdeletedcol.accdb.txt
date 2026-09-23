@@ -1,0 +1,44 @@
+Source: withdeletedcol.accdb (V2007)
+Text: charset UTF-16LE
+Tables: 3 local, 0 linked; relationships: 0
+
+Table Table1 (1 rows)
+  columns:
+    col2  LONG  required  default 0  decimal-places auto
+    col3  LONG  required  default 0  decimal-places auto
+    col5  LONG  required  default 0  decimal-places auto
+    col6  LONG  required  default 0  decimal-places auto
+    col7  LONG  required  default 0  decimal-places auto
+    col8  LONG  required  default 0  decimal-places auto
+    col1  LONG  required  default 0  decimal-places auto
+  primary key: none
+
+Table ~TMPCLP236321 (2 rows)
+  columns:
+    col3   MEMO
+    col1   MEMO
+    col6   MEMO
+    col7   MEMO
+    col10  MEMO
+  primary key: none
+
+Table ~TMPCLP517911 (2 rows)
+  columns:
+    col3  LONG  default 0  decimal-places auto
+    col1  LONG  default 0  decimal-places auto
+  primary key: none
+
+Profile:
+  Table1: 1 rows scanned
+    col2: nulls 0
+    col3: nulls 0
+    col5: nulls 0
+    col6: nulls 0
+    col7: nulls 0
+    col8: nulls 0
+    col1: nulls 0
+
+Issues: 3
+  info NO_PRIMARY_KEY Table1: table has no primary key; targets create none
+  info NO_PRIMARY_KEY ~TMPCLP236321: table has no primary key; targets create none
+  info NO_PRIMARY_KEY ~TMPCLP517911: table has no primary key; targets create none

@@ -1,0 +1,12 @@
+# MSP_PROJECTS
+1	PROJ_NAME	Project1
+1	PROJ_PROP_AUTHOR	Jon Iles this is a a vawesrasoih aksdkl fas dlkjflkasjd flkjaslkdjflkajlksj dfl lkasjdf lkjaskldfj lkas dlk lkjsjdfkl; aslkdf lkasjkldjf lka skldf lka sdkjfl;kasjd falksjdfljaslkdjf laskjdfk jalskjd flkj aslkdjflkjkjasljdflkjas jf;lkasjd fjkas dasdf asd fasdf asdf asdmhf lksaiyudfoi jasodfj902384jsdf9 aw90se fisajldkfj lkasj dlkfslkd jflksjadf as
+1	PROJ_PROP_COMPANY	T
+1	PROJ_OPT_CURRENCY_SYMBOL	£
+1	PROJ_INFO_CAL_NAME	Standard
+1	PROJ_PROP_TITLE	Project1
+1	PROJ_DATA_SOURCE	Z:\\temp\\Project1.mpd
+1	PROJ_READ_ONLY	0
+1	PROJ_READ_WRITE	0
+1	PROJ_READ_COUNT	0
+1	PROJ_LOCKED	0

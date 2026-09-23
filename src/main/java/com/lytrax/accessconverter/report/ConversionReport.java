@@ -58,6 +58,8 @@ public record ConversionReport(
             g.writeObjectPropertyStart("source");
             g.writeStringProperty("file", source.fileName());
             g.writeStringProperty("fileFormat", source.fileFormat());
+            optional(g, "codePage", source.codePage());
+            g.writeStringProperty("charset", source.charset());
             g.writeEndObject();
             g.writeStringProperty("outcome", outcome);
             g.writeArrayPropertyStart("tables");

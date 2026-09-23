@@ -1,0 +1,93 @@
+database: C:\work\gr97.mdb
+jet format: 3.0   DAO: 3.51
+size: 77824 bytes
+
+TABLE AllTypes
+  field RowID : Long(4)
+  field AByte : Byte(1)
+  field AnInteger : Integer(2)
+  field ALong : Long(4)
+  field ASingle : Single(4)
+  field ADouble : Double(8)
+  field ACurrency : Currency(8)
+  field ADate : Date(8)
+  field ABoolean : Boolean(1)
+  field AText : Text(255) allows-''
+  field AMemo : Memo allows-''
+  field AnOleObject : OLE
+  | 1	42	1234	123456789	3,25	3,14159265358979	19,99	4/7/1997 1:45:30 μμ	Αληθές	plain ascii	short memo	<NULL>
+  | 2	255	-32768	2147483647	-3,4E+38	1,7E+308	-922337203685477,5808	12:00:00 πμ	Ψευδές	XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX...	MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM...	<NULL>
+  | 3	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>	-0,01	23/9/2026	Ψευδές	Ελληνικά: ΑΒΓΔΕΖΗΘ αβγδεζηθ ςΆΈΉΊΌΎΏ	tabs\tnewlines\r\nquotes " and , and ; and \	<NULL>
+  | 4	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>	Ψευδές	<NULL>	<NULL>	<NULL>
+  | 5	0	<NULL>	<NULL>	<NULL>	0	<NULL>	<NULL>	Ψευδές	<empty>	<empty>	<NULL>
+  rows: 5
+
+TABLE Customers
+  field CustomerID : Long(4)
+  field CompanyName : Text(60) allows-''
+  field City : Text(40) allows-''
+  field Credit : Currency(8)
+  field Since : Date(8)
+  field Active : Boolean(1)
+  field Notes : Memo allows-''
+  index PrimaryKey PRIMARY UNIQUE
+  | 1	Αφοι Παπαδοπούλου ΑΕ	Θεσσαλονίκη	1234,56	1/1/1995	Ψευδές	<NULL>
+  | 2	Northwind Traders	Seattle	2469,12	2/2/1996	Αληθές	<NULL>
+  | 3	Ελληνικά Τρόφιμα ΕΠΕ	Αθήνα	3703,68	3/3/1997	Αληθές	µµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµµ...
+  | 4	Blue Ridge Supply	Boston	4938,24	4/4/1998	Ψευδές	<NULL>
+  | 5	Μεσογειακή Διανομή	Πάτρα	6172,8	5/5/1995	Αληθές	<NULL>
+  | 6	Acme Widgets	Chicago	7407,36	6/6/1996	Αληθές	<empty>
+  | 7	Ήλιος Εξαγωγές	Ηράκλειο	8641,92	7/7/1997	Ψευδές	<NULL>
+  | 8	Tundra Foods	Anchorage	9876,48	8/8/1998	Αληθές	<NULL>
+  rows: 8
+
+TABLE Orders
+  field OrderID : Long(4)
+  field CustomerID : Long(4)
+  field Placed : Date(8)
+  field Total : Currency(8)
+  field Shipped : Boolean(1)
+  index CustomersOrders
+  | 1001	1	4/1/1997	97,45	Ψευδές
+  | 1009	1	28/9/1997	877,05	Ψευδές
+  | 1017	1	24/5/1997	1656,65	Ψευδές
+  | 1025	1	20/1/1997	2436,25	Ψευδές
+  | 1033	1	16/9/1997	3215,85	Ψευδές
+  | 1002	2	7/2/1997	194,9	Αληθές
+  | 1010	2	3/10/1997	974,5	Αληθές
+  | 1018	2	27/6/1997	1754,1	Αληθές
+  | 1026	2	23/2/1997	2533,7	Αληθές
+  | 1034	2	19/10/1997	3313,3	Αληθές
+  | 1003	3	10/3/1997	292,35	Ψευδές
+  | 1011	3	6/11/1997	1071,95	Ψευδές
+  | 1019	3	2/7/1997	1851,55	Ψευδές
+  | 1027	3	26/3/1997	2631,15	Ψευδές
+  | 1035	3	22/11/1997	3410,75	Ψευδές
+  | 1004	4	13/4/1997	389,8	Αληθές
+  | 1012	4	9/12/1997	1169,4	Αληθές
+  | 1020	4	5/8/1997	1949	Αληθές
+  | 1028	4	1/4/1997	2728,6	Αληθές
+  | 1036	4	25/12/1997	3508,2	Αληθές
+  | 1005	5	16/5/1997	487,25	Ψευδές
+  | 1013	5	12/1/1997	1266,85	Ψευδές
+  | 1021	5	8/9/1997	2046,45	Ψευδές
+  | 1029	5	4/5/1997	2826,05	Ψευδές
+  | 1037	5	28/1/1997	3605,65	Ψευδές
+  | 1006	6	19/6/1997	584,7	Αληθές
+  | 1014	6	15/2/1997	1364,3	Αληθές
+  | 1022	6	11/10/1997	2143,9	Αληθές
+  | 1030	6	7/6/1997	2923,5	Αληθές
+  | 1038	6	3/2/1997	3703,1	Αληθές
+  | 1007	7	22/7/1997	682,15	Ψευδές
+  | 1015	7	18/3/1997	1461,75	Ψευδές
+  | 1023	7	14/11/1997	2241,35	Ψευδές
+  | 1031	7	10/7/1997	3020,95	Ψευδές
+  | 1039	7	6/3/1997	3800,55	Ψευδές
+  | 1008	8	25/8/1997	779,6	Αληθές
+  | 1016	8	21/4/1997	1559,2	Αληθές
+  | 1024	8	17/12/1997	2338,8	Αληθές
+  | 1032	8	13/8/1997	3118,4	Αληθές
+  | 1040	8	9/4/1997	3898	Αληθές
+  rows: 40
+
+RELATION CustomersOrders: Customers -> Orders on CustomerID=CustomerID 

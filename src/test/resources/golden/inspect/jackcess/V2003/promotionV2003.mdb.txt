@@ -1,0 +1,29 @@
+Source: promotionV2003.mdb (V2003)
+Text: charset UTF-16LE
+Tables: 1 local, 0 linked; relationships: 0
+
+Table jobDB1 (0 rows)
+  columns:
+    ID              LONG  default 0  decimal-places auto
+    MainNumber      LONG  default 0  decimal-places auto
+    PhaseNumber     DOUBLE  default 0  decimal-places 2
+    JobName         TEXT(255)  no-empty-string
+    PrevailingWage  TEXT(255)  no-empty-string
+    JobType         TEXT(255)  no-empty-string
+    Department      TEXT(255)  no-empty-string
+    PulledBy        TEXT(255)  no-empty-string
+    RequestBy       TEXT(255)  no-empty-string
+    FullNumber      DOUBLE  default 0  decimal-places 2
+  primary key: none
+
+Profile:
+  jobDB1: 0 rows scanned
+    JobName: empty-strings 0
+    PrevailingWage: empty-strings 0
+    JobType: empty-strings 0
+    Department: empty-strings 0
+    PulledBy: empty-strings 0
+    RequestBy: empty-strings 0
+
+Issues: 1
+  info NO_PRIMARY_KEY jobDB1: table has no primary key; targets create none
