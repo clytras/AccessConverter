@@ -75,7 +75,8 @@ class VerifyJdbcIT {
      * The most likely first attempt: MySQL 8 with MariaDB Connector/J, which uses no TLS unless asked, so a user MySQL
      * hasn't cached yet can't log in with {@code caching_sha2_password}. The error names the fix, and the fix works.
      */
-    @ParameterizedTest(name = "{0}")
+    // CI runs one image per job, so a MariaDB job has no MySQL image to run this on
+    @ParameterizedTest(name = "{0}", allowZeroInvocations = true)
     @MethodSource("mysqlImages")
     void mariaDbConnectorOnMySqlGetsTheFixItNeeds(String image) throws Exception {
         DatabaseServer server = DatabaseServer.of(image);
