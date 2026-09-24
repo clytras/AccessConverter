@@ -36,7 +36,7 @@ Table Customers (3 rows)
     UX_Code (Code) unique
     UX_Email (Email) unique ignore-nulls
 
-Table Files (2 rows)
+Table Files (3 rows)
   columns:
     FileID  AUTONUMBER_LONG
     Raw     BINARY(16)
@@ -191,8 +191,8 @@ Profile:
     Balance: max-digits 19 max-scale 4
     Discount: max-digits 6 max-scale 4
     Created: fraction-digits 0
-  Files: 2 rows scanned
-    FileID: nulls 0, max-autonumber 2
+  Files: 3 rows scanned
+    FileID: nulls 0, max-autonumber 3
   Order Details: 3 rows scanned
     OrderID: nulls 0
     ProductID: nulls 0

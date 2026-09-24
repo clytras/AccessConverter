@@ -129,6 +129,7 @@ public final class Models {
         private String description;
         private String calculated;
         private boolean hidden;
+        private ColumnModel element;
 
         private Column(String name, AccessType type) {
             this.name = name;
@@ -188,6 +189,12 @@ public final class Models {
             return this;
         }
 
+        /** A multi-value column's element type. */
+        public Column element(AccessType elementType) {
+            this.element = new Column("Value", elementType).at(0);
+            return this;
+        }
+
         public ColumnModel at(int ordinal) {
             return new ColumnModel(
                     name,
@@ -206,7 +213,8 @@ public final class Models {
                     false,
                     calculated,
                     false,
-                    hidden);
+                    hidden,
+                    element);
         }
     }
 }

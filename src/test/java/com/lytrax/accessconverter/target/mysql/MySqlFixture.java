@@ -10,6 +10,7 @@ import com.lytrax.accessconverter.report.IssueCode;
 import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.OpenOptions;
+import com.lytrax.accessconverter.target.ComplexTables;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.verify.VerifyResult;
 import java.io.IOException;
@@ -34,7 +35,7 @@ public final class MySqlFixture {
             Path source, Path output, OpenOptions open, ConvertOptions options, MySqlOptions mysql) {
         Issues issues = new Issues();
         try (AccessSource db = AccessSource.open(source, open, issues)) {
-            SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
+            SchemaModel model = ComplexTables.expand(SchemaExtractor.extract(db, ExtractOptions.ALL, issues), options);
             DataProfile profile = options.profile() ? DataProfiler.profile(db, model) : null;
             MySqlPlan plan = MySqlPlanner.plan(model, profile, options, mysql, issues);
             MySqlDumpWriter.write(db, plan, output, options, mysql, PRODUCER, issues);
@@ -70,8 +71,13 @@ public final class MySqlFixture {
 
         /** Compares a database the dump was loaded into with the source, as {@code verify --jdbc-url} does. */
         public VerifyResult verify(Connection db) {
+            return verify(db, file.toAbsolutePath().getParent());
+        }
+
+        /** As {@link #verify(Connection)}, finding {@code --binary files} paths under {@code dumpDirectory}. */
+        public VerifyResult verify(Connection db, Path dumpDirectory) {
             try (AccessSource access = AccessSource.open(source, open, new Issues())) {
-                return MySqlVerifier.verify(access, plan, db);
+                return MySqlVerifier.verify(access, plan, db, dumpDirectory);
             } catch (IOException e) {
                 throw new UncheckedIOException("verifying " + source, e);
             }

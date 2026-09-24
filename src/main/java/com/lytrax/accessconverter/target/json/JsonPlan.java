@@ -6,6 +6,7 @@ import com.lytrax.accessconverter.model.ForeignKeyModel;
 import com.lytrax.accessconverter.model.IndexModel;
 import com.lytrax.accessconverter.model.SchemaModel;
 import com.lytrax.accessconverter.model.TableModel;
+import com.lytrax.accessconverter.target.ConvertOptions;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -16,13 +17,15 @@ import java.util.Optional;
  *
  * @param linked linked tables, which are listed but have no data
  * @param profiled whether the data was profiled; without it {@code nullable} follows Access's own guarantees only
+ * @param options the options planned with: {@code --binary} and {@code --ole-extract} decide how values are spelled
  */
 public record JsonPlan(
         SchemaModel model,
         List<PlannedTable> tables,
         List<ForeignKeyModel> relationships,
         List<TableModel> linked,
-        boolean profiled) {
+        boolean profiled,
+        ConvertOptions options) {
 
     public JsonPlan {
         tables = List.copyOf(tables);
@@ -73,6 +76,35 @@ public record JsonPlan(
         public String name() {
             return source.name();
         }
+
+        /**
+         * A multi-value column's element as a column of its own (its values' type); a text element when Access's value
+         * table couldn't be read, since those values are then read as text.
+         */
+        public PlannedColumn element() {
+            ColumnModel element = source.element() != null
+                    ? source.element()
+                    : new ColumnModel(
+                            "Value",
+                            0,
+                            AccessType.MEMO,
+                            null,
+                            null,
+                            null,
+                            false,
+                            true,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            false,
+                            null,
+                            false,
+                            false,
+                            null);
+            return new PlannedColumn(element, 0, JsonType.of(element.type()), true);
+        }
     }
 
     /** How a column's values are spelled in JSON; the name is what the schema section says. */
@@ -99,13 +131,27 @@ public record JsonPlan(
         GUID,
         /** Base64 of the stored bytes. */
         BINARY,
-        /** Base64 of the OLE object's exact stored bytes (08). */
+        /**
+         * The OLE object's exact stored bytes (08), spelled as {@code binary}; with {@code --ole-extract} an object
+         * that adds the decoded kind, name, content type and content.
+         */
         OLE,
-        /** An attachment or multi-value cell: Access's complex id, until phase 5 inlines the values. */
+        /** An attachment cell: an array of {@code {fileName, fileType, size, data|file, url, timestamp, flags}}. */
+        ATTACHMENTS,
+        /** A multi-value cell: an array of values, each spelled as the column's {@code element} type. */
+        MULTI_VALUE,
+        /** An append-only memo's history ({@code --include-version-history}): an array of {@code {value, modified}}. */
+        VERSION_HISTORY,
+        /** A complex column of a kind Jackcess can't read: Access's complex id. */
         COMPLEX_ID;
 
         public String wireName() {
-            return this == COMPLEX_ID ? "complexId" : name().toLowerCase(Locale.ROOT);
+            return switch (this) {
+                case COMPLEX_ID -> "complexId";
+                case MULTI_VALUE -> "multiValue";
+                case VERSION_HISTORY -> "versionHistory";
+                default -> name().toLowerCase(Locale.ROOT);
+            };
         }
 
         public static JsonType of(AccessType type) {
@@ -124,7 +170,10 @@ public record JsonPlan(
                 case GUID, AUTONUMBER_GUID -> GUID;
                 case BINARY, UNSUPPORTED -> BINARY;
                 case OLE -> OLE;
-                case ATTACHMENT, MULTI_VALUE, VERSION_HISTORY, COMPLEX_UNSUPPORTED -> COMPLEX_ID;
+                case ATTACHMENT -> ATTACHMENTS;
+                case MULTI_VALUE -> MULTI_VALUE;
+                case VERSION_HISTORY -> VERSION_HISTORY;
+                case COMPLEX_UNSUPPORTED -> COMPLEX_ID;
             };
         }
     }

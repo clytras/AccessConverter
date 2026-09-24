@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.lytrax.accessconverter.fixtures.CorpusCase;
 import com.lytrax.accessconverter.report.Severity;
+import com.lytrax.accessconverter.target.BinaryMode;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.sqlite.SqliteFixture.Converted;
 import java.nio.file.Path;
@@ -36,6 +37,31 @@ class SqliteCorpusTest {
         }
         assertThat(converted.verified().differences()).isEmpty();
         assertThat(converted.verified().matches()).isTrue();
+        assertThat(converted.issues().list())
+                .as("errors in the conversion report")
+                .noneMatch(issue -> issue.severity() == Severity.ERROR);
+    }
+
+    /**
+     * 08's options on every database: OLE values decoded next to their raw bytes, every Binary, OLE and attachment
+     * value in a file of its own, and version history as child tables; the file is still consistent and verifies,
+     * files included.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("databases")
+    void convertsAndVerifiesWithFilesExtractionAndVersionHistory(CorpusCase database) {
+        Path output = dir.resolve(database.id().replace('/', '_') + "-files.sqlite3");
+        Converted converted = SqliteFixture.convert(
+                database.file(),
+                output,
+                database.options(),
+                ConvertOptions.DEFAULT.withBinary(BinaryMode.FILES, true, true),
+                SqliteOptions.DEFAULT);
+
+        try (Sqlite sqlite = converted.open()) {
+            sqlite.assertIsConsistent();
+        }
+        assertThat(converted.verified().differences()).isEmpty();
         assertThat(converted.issues().list())
                 .as("errors in the conversion report")
                 .noneMatch(issue -> issue.severity() == Severity.ERROR);

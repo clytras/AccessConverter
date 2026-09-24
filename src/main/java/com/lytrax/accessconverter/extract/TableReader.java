@@ -5,6 +5,7 @@ import com.healthmarketscience.jackcess.DataType;
 import com.healthmarketscience.jackcess.Index;
 import com.healthmarketscience.jackcess.PropertyMap;
 import com.healthmarketscience.jackcess.Table;
+import com.healthmarketscience.jackcess.impl.complex.MultiValueColumnInfoImpl;
 import com.lytrax.accessconverter.extract.IndexNormalizer.RawIndex;
 import com.lytrax.accessconverter.model.AccessType;
 import com.lytrax.accessconverter.model.CheckRule;
@@ -117,32 +118,14 @@ final class TableReader {
                     "calculated column exported as its stored values; expression " + calculated);
         }
 
-        Integer length =
-                switch (type) {
-                    case TEXT -> (int) column.getLengthInUnits();
-                    case BINARY -> (int) column.getLength();
-                    default -> null;
-                };
-        Integer precision =
-                switch (type) {
-                    case NUMERIC -> (int) column.getPrecision();
-                    case MONEY -> 19;
-                    default -> null;
-                };
-        Integer scale =
-                switch (type) {
-                    case NUMERIC -> (int) column.getScale();
-                    case MONEY -> 4;
-                    default -> null;
-                };
         Integer textFormat = props.integer(PropertyMap.TEXT_FORMAT_PROP);
         return new ColumnModel(
                 name,
                 column.getColumnIndex(),
                 type,
-                length,
-                precision,
-                scale,
+                length(type, column),
+                precision(type, column),
+                scale(type, column),
                 props.bool(PropertyMap.REQUIRED_PROP, false),
                 !type.isText() || props.bool(PropertyMap.ALLOW_ZERO_LEN_PROP, true),
                 defaultValue,
@@ -153,7 +136,68 @@ final class TableReader {
                 textFormat != null && textFormat == 1,
                 calculated,
                 column.isAppendOnly(),
-                column.isHidden());
+                column.isHidden(),
+                type == AccessType.MULTI_VALUE ? element(table, column, issues) : null);
+    }
+
+    /**
+     * A multi-value column's element: the {@code Value} column of Access's hidden value table, whose type the values
+     * have (a lookup of text, numbers, …). Only its storage matters; Access keeps no properties there.
+     */
+    private static ColumnModel element(String table, Column column, Issues issues) {
+        if (!(column.getComplexInfo() instanceof MultiValueColumnInfoImpl info) || info.getValueColumn() == null) {
+            issues.add(
+                    IssueCode.UNSUPPORTED_COLUMN_TYPE,
+                    table,
+                    column.getName(),
+                    "the multi-value column's value table can't be read; its values are exported as text");
+            return null;
+        }
+        Column value = info.getValueColumn();
+        AccessType type = type(value);
+        return new ColumnModel(
+                value.getName(),
+                0,
+                type,
+                length(type, value),
+                precision(type, value),
+                scale(type, value),
+                false,
+                true,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                null,
+                false,
+                false,
+                null);
+    }
+
+    private static Integer length(AccessType type, Column column) {
+        return switch (type) {
+            case TEXT -> (int) column.getLengthInUnits();
+            case BINARY -> (int) column.getLength();
+            default -> null;
+        };
+    }
+
+    private static Integer precision(AccessType type, Column column) {
+        return switch (type) {
+            case NUMERIC -> (int) column.getPrecision();
+            case MONEY -> 19;
+            default -> null;
+        };
+    }
+
+    private static Integer scale(AccessType type, Column column) {
+        return switch (type) {
+            case NUMERIC -> (int) column.getScale();
+            case MONEY -> 4;
+            default -> null;
+        };
     }
 
     /** Jackcess's type, refined. Complex columns also report isAutoNumber(): that never makes them identities (F-15). */

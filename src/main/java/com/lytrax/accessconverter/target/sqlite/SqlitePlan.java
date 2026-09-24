@@ -7,6 +7,8 @@ import com.lytrax.accessconverter.model.IndexModel;
 import com.lytrax.accessconverter.model.IndexModel.IndexColumn;
 import com.lytrax.accessconverter.model.SchemaModel;
 import com.lytrax.accessconverter.model.TableModel;
+import com.lytrax.accessconverter.target.ConvertOptions;
+import com.lytrax.accessconverter.target.PlanRules;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -17,9 +19,15 @@ import java.util.Optional;
  *
  * @param profile null when profiling was skipped, which forces the conservative choice everywhere
  * @param metadata null unless {@code --sqlite-metadata} asked for the Access metadata tables
+ * @param options the options planned with, which decide how binary values are stored (08)
  */
 public record SqlitePlan(
-        SchemaModel model, boolean strict, List<PlannedTable> tables, Metadata metadata, boolean profiled) {
+        SchemaModel model,
+        boolean strict,
+        List<PlannedTable> tables,
+        Metadata metadata,
+        boolean profiled,
+        ConvertOptions options) {
 
     public SqlitePlan {
         tables = List.copyOf(tables);
@@ -73,6 +81,8 @@ public record SqlitePlan(
      * @param sourceIndex the column's position in {@link PlannedTable#source()}'s column list, which is the
      *     position of its value in a row of the source stream
      * @param fractionDigits date/time columns: the fractional-second digits written
+     * @param olePart for an OLE column's companion ({@code --ole-extract}): the part of the decoded value at
+     *     {@code sourceIndex} it holds; null otherwise
      */
     public record PlannedColumn(
             ColumnModel source,
@@ -83,7 +93,8 @@ public record SqlitePlan(
             boolean collateNocase,
             String defaultSql,
             ValueForm form,
-            int fractionDigits) {
+            int fractionDigits,
+            PlanRules.OlePart olePart) {
 
         public PlannedColumn {
             Objects.requireNonNull(source, "source");
@@ -109,7 +120,11 @@ public record SqlitePlan(
         DATE_TEXT,
         TEXT,
         BLOB,
-        /** Access's per-row complex id; its values become child tables in a later phase (08). */
+        /** {@code --binary files}: a file's path relative to the output's directory (08). */
+        PATH,
+        /** {@code --binary omit}: the value's size in bytes (08). */
+        SIZE,
+        /** Access's per-row complex id, which the complex column's child table refers to (08). */
         COMPLEX_ID
     }
 

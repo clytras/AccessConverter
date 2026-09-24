@@ -9,6 +9,9 @@ import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.RowStream;
 import com.lytrax.accessconverter.target.AtomicOutput;
+import com.lytrax.accessconverter.target.BinaryCells;
+import com.lytrax.accessconverter.target.BinaryFiles;
+import com.lytrax.accessconverter.target.BinaryMode;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.RowSource;
 import com.lytrax.accessconverter.target.TableFailure;
@@ -19,7 +22,6 @@ import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedIndex;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedTable;
 import com.lytrax.accessconverter.value.CanonicalText;
 import com.lytrax.accessconverter.value.ComplexRef;
-import com.lytrax.accessconverter.value.OleValue;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -51,6 +53,7 @@ public final class SqliteWriter {
     private final Issues issues;
     private final List<TableResult> results = new ArrayList<>();
     private boolean tableFailed;
+    private BinaryFiles files;
 
     private SqliteWriter(
             RowSource source, SqlitePlan plan, ConvertOptions options, SqliteOptions sqlite, Issues issues) {
@@ -91,14 +94,25 @@ public final class SqliteWriter {
     }
 
     private WriteOutcome run(Path output, boolean integrityCheck) throws IOException {
-        AtomicOutput.write(output, partial -> {
-            try (Connection db = connect(partial)) {
-                build(db, integrityCheck);
-            } catch (SQLException e) {
-                throw new IOException("the SQLite output could not be written: " + e.getMessage(), e);
+        files = options.binary() == BinaryMode.FILES ? new BinaryFiles(output) : null;
+        try {
+            AtomicOutput.write(output, partial -> {
+                try (Connection db = connect(partial)) {
+                    build(db, integrityCheck);
+                } catch (SQLException e) {
+                    throw new IOException("the SQLite output could not be written: " + e.getMessage(), e);
+                }
+                return null;
+            });
+        } catch (IOException | RuntimeException e) {
+            if (files != null) {
+                files.discard();
             }
-            return null;
-        });
+            throw e;
+        }
+        if (files != null) {
+            files.commit();
+        }
         return new WriteOutcome(results, tableFailed);
     }
 
@@ -182,6 +196,7 @@ public final class SqliteWriter {
                 + "?, ".repeat(columns.size() - 1) + "?)";
         long read = 0;
         long written = 0;
+        BinaryCells cells = new BinaryCells(options, files, issues, table.source(), table.name());
         try (PreparedStatement statement = db.prepareStatement(sql)) {
             RowStream rows = source.of(table.source());
             int batch = 0;
@@ -190,7 +205,11 @@ public final class SqliteWriter {
                 read++;
                 for (int i = 0; i < columns.size(); i++) {
                     PlannedColumn column = columns.get(i);
-                    bind(statement, i + 1, table, column, row[column.sourceIndex()]);
+                    Object value = column.olePart() != null || BinaryCells.isPayload(column.source())
+                            ? cells.value(
+                                    column.source(), column.olePart(), column.sourceIndex(), column.name(), row, read)
+                            : row[column.sourceIndex()];
+                    bind(statement, i + 1, table, column, value);
                 }
                 statement.addBatch();
                 if (++batch == options.batchRows()) {
@@ -232,7 +251,9 @@ public final class SqliteWriter {
             case DECIMAL_NUMBER, DECIMAL_TEXT -> statement.setString(at, ((BigDecimal) value).toPlainString());
             case DATE_TEXT -> date(statement, at, table, column, (LocalDateTime) value);
             case TEXT -> statement.setString(at, (String) value);
-            case BLOB -> statement.setBytes(at, value instanceof OleValue ole ? ole.raw() : (byte[]) value);
+            case BLOB -> statement.setBytes(at, BinaryCells.bytes(value));
+            case PATH -> statement.setString(at, (String) value);
+            case SIZE -> statement.setLong(at, (Long) value);
             case COMPLEX_ID -> statement.setInt(at, ((ComplexRef) value).complexId());
         }
     }

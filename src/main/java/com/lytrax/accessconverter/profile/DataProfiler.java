@@ -159,8 +159,10 @@ public final class DataProfiler {
                 needsKeys = true;
             }
             for (ForeignKeyModel fk : model.relationships()) {
+                // A complex child table's rows are read from its parent's cells, so none can be an orphan
                 if (fk.status() == ForeignKeyModel.Status.EMIT
-                        && fk.childTable().equalsIgnoreCase(table.name())) {
+                        && fk.childTable().equalsIgnoreCase(table.name())
+                        && !table.isComplexChild()) {
                     fk.childColumns().forEach(this::scan);
                     foreignKeys.add(new ForeignKeyCheck(fk));
                     needsKeys = true;

@@ -326,9 +326,27 @@ public final class AccessSource implements AutoCloseable {
 
     /**
      * All rows of a local table, canonical values in column order, in primary-key order when there is one (03).
-     * A PK index Jackcess can't read (a collation it doesn't know) falls back to physical order, reported.
+     * A PK index Jackcess can't read (a collation it doesn't know) falls back to physical order, reported. A complex
+     * child table's rows follow its parent's order.
      */
     public RowStream rows(TableModel table) throws IOException {
+        return rows(table, false);
+    }
+
+    /**
+     * As {@link #rows(TableModel)}.
+     *
+     * @param complexValues attachment, multi-value and version-history cells carry their values ({@code
+     *     ComplexValues}), for a target that inlines them; otherwise only their complex id ({@code ComplexRef})
+     */
+    public RowStream rows(TableModel table, boolean complexValues) throws IOException {
+        if (table.isComplexChild()) {
+            return ComplexReader.childRows(file, orderedCursor(parentOf(table)), table, table.columns());
+        }
+        return RowStream.of(file, orderedCursor(table), table.columns(), complexValues);
+    }
+
+    private Cursor orderedCursor(TableModel table) throws IOException {
         Table jt = localTable(table);
         Cursor cursor = null;
         if (table.primaryKey() != null) {
@@ -342,15 +360,22 @@ public final class AccessSource implements AutoCloseable {
                         "rows in physical order: the primary-key index can't be read (" + indexFailure(e) + ")");
             }
         }
-        if (cursor == null) {
-            cursor = CursorBuilder.createCursor(jt);
-        }
-        return new RowStream(file, cursor, table.columns());
+        return cursor != null ? cursor : CursorBuilder.createCursor(jt);
     }
 
     /** Selected columns of a local table in physical order: the profiler's targeted pass. */
     public RowStream scan(TableModel table, List<ColumnModel> columns) throws IOException {
-        return new RowStream(file, CursorBuilder.createCursor(localTable(table)), columns);
+        if (table.isComplexChild()) {
+            return ComplexReader.childRows(
+                    file, CursorBuilder.createCursor(localTable(parentOf(table))), table, columns);
+        }
+        return RowStream.of(file, CursorBuilder.createCursor(localTable(table)), columns, false);
+    }
+
+    /** The Access table a complex child's values come from, with the key that orders it. */
+    private TableModel parentOf(TableModel child) {
+        return new TableModel(
+                child.complex().parentTable(), null, List.of(), child.complex().parentKey(), List.of(), null, null, 0);
     }
 
     /**
@@ -385,6 +410,9 @@ public final class AccessSource implements AutoCloseable {
     }
 
     private Table localTable(TableModel table) throws IOException {
+        if (table.isComplexChild()) {
+            throw new IllegalArgumentException(table.name() + " is made of complex values, not an Access table");
+        }
         if (table.isLinked()) {
             throw new IllegalArgumentException("linked table " + table.name() + " is not read");
         }

@@ -12,6 +12,7 @@ import static com.lytrax.accessconverter.model.Models.uniqueIgnoringNulls;
 import static com.lytrax.accessconverter.profile.Profiles.profile;
 import static com.lytrax.accessconverter.profile.Profiles.stats;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.lytrax.accessconverter.model.AccessType;
 import com.lytrax.accessconverter.model.ForeignKeyModel.Action;
@@ -19,6 +20,7 @@ import com.lytrax.accessconverter.model.SchemaModel;
 import com.lytrax.accessconverter.profile.DataProfile;
 import com.lytrax.accessconverter.report.IssueCode;
 import com.lytrax.accessconverter.report.Issues;
+import com.lytrax.accessconverter.target.ComplexTables;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -528,25 +530,52 @@ class SqlitePlannerTest {
     }
 
     @Test
-    void complexColumnsKeepTheirIdAndLoseTheirHiddenIndex() {
-        SchemaModel model = schema(table(
-                "T",
-                primaryKey("Id"),
-                List.of(unique("attach_index", "Files"), unique("history_index", "History")),
-                column("Id", AccessType.AUTONUMBER_LONG),
-                column("Files", AccessType.ATTACHMENT),
-                column("History", AccessType.VERSION_HISTORY),
-                column("Memo", AccessType.MEMO)));
+    void complexColumnsKeepTheirIdAndTheirHiddenIndexBecomesTheChildTablesKey() {
+        SchemaModel model = ComplexTables.expand(
+                schema(table(
+                        "T",
+                        primaryKey("Id"),
+                        List.of(unique("attach_index", "Files"), unique("history_index", "History")),
+                        column("Id", AccessType.AUTONUMBER_LONG),
+                        column("Files", AccessType.ATTACHMENT),
+                        column("History", AccessType.VERSION_HISTORY),
+                        column("Memo", AccessType.MEMO))),
+                ConvertOptions.DEFAULT);
         SqlitePlan plan = plan(model, profile().build());
 
         assertThat(plan.table("T").orElseThrow().columns())
                 .extracting(SqlitePlan.PlannedColumn::name)
                 .containsExactly("Id", "Files", "Memo");
         assertThat(planned(plan, "T", "Files").declaredType()).isEqualTo("INTEGER");
-        // Access's hidden unique index covers data that lives in a child table (F-16)
-        assertThat(plan.table("T").orElseThrow().indexes()).isEmpty();
+        // Access's hidden unique index on the complex id is the key the child table refers to (08); v2 put it on
+        // serialized attachment data (F-16)
+        assertThat(indexOf(plan, "T", "T_attach_index").unique()).isTrue();
+        SqlitePlan.PlannedTable child = plan.table("T_Files").orElseThrow();
+        assertThat(child.columns())
+                .extracting(SqlitePlan.PlannedColumn::name, SqlitePlan.PlannedColumn::declaredType)
+                .containsExactly(
+                        tuple("id", "INTEGER"),
+                        tuple("Files_ref", "INTEGER"),
+                        tuple("file_name", "VARCHAR(255)"),
+                        tuple("file_type", "VARCHAR(255)"),
+                        tuple("file_data", "BLOB"),
+                        tuple("file_size", "BIGINT"),
+                        tuple("file_url", "TEXT"),
+                        tuple("file_timestamp", "DATETIME"),
+                        tuple("file_flags", "INTEGER"));
+        assertThat(child.primaryKey().rowidAlias()).isTrue();
+        assertThat(child.foreignKeys()).singleElement().satisfies(fk -> {
+            assertThat(fk.childColumns()).containsExactly("Files_ref");
+            assertThat(fk.parentTable()).isEqualTo("T");
+            assertThat(fk.parentColumns()).containsExactly("Files");
+            assertThat(fk.onUpdate()).isEqualTo(Action.CASCADE);
+            assertThat(fk.onDelete()).isEqualTo(Action.CASCADE);
+        });
+        assertThat(plan.table("T_History"))
+                .as("version history waits for --include-version-history")
+                .isEmpty();
         assertThat(issues.list())
-                .anySatisfy(i -> assertThat(i.code()).isEqualTo(IssueCode.INDEX_SKIPPED_COMPLEX_COLUMN))
+                .noneSatisfy(i -> assertThat(i.code()).isEqualTo(IssueCode.INDEX_SKIPPED_COMPLEX_COLUMN))
                 .anySatisfy(i -> assertThat(i.code()).isEqualTo(IssueCode.VERSION_HISTORY_SKIPPED));
     }
 

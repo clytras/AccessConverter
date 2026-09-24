@@ -5,9 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.lytrax.accessconverter.fixtures.LocalSample;
 import com.lytrax.accessconverter.fixtures.LocalSamples;
 import com.lytrax.accessconverter.report.Severity;
+import com.lytrax.accessconverter.source.OpenOptions;
+import com.lytrax.accessconverter.target.BinaryMode;
+import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.mysql.MySqlFixture;
 import com.lytrax.accessconverter.target.mysql.MySqlFixture.Converted;
+import com.lytrax.accessconverter.target.mysql.MySqlOptions;
 import com.lytrax.accessconverter.verify.VerifyResult;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.time.Duration;
@@ -59,6 +64,22 @@ class MySqlLocalSamplesIT {
         try (Connection connection = server.connect(db)) {
             VerifyResult verified = converted.verify(connection);
             assertThat(verified.differences()).isEmpty();
+        }
+
+        // 08's options: OLE values decoded, the bytes in files, version history as child tables
+        Path files = Files.createDirectories(dir.resolve(image.replace(':', '-') + "-files"));
+        Path extended = files.resolve(sample.name() + ".sql");
+        Converted withFiles = MySqlFixture.convert(
+                source,
+                extended,
+                OpenOptions.DEFAULT,
+                ConvertOptions.DEFAULT.withBinary(BinaryMode.FILES, true, true),
+                MySqlOptions.of(server.dialect()));
+        assertThat(withFiles.issues().list()).noneMatch(issue -> issue.severity() == Severity.ERROR);
+        server.recreate(db);
+        assertThat(server.importDump(extended, db)).isEmpty();
+        try (Connection connection = server.connect(db)) {
+            assertThat(withFiles.verify(connection, files).differences()).isEmpty();
         }
     }
 }

@@ -191,6 +191,6 @@ class JsonTableErrorTest {
                                 t.indexes(),
                                 t.file()))
                 .toList();
-        return new JsonPlan(plan.model(), tables, plan.relationships(), plan.linked(), plan.profiled());
+        return new JsonPlan(plan.model(), tables, plan.relationships(), plan.linked(), plan.profiled(), plan.options());
     }
 }

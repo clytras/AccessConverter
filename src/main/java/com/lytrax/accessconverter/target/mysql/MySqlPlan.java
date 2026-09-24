@@ -6,6 +6,8 @@ import com.lytrax.accessconverter.model.ForeignKeyModel.Action;
 import com.lytrax.accessconverter.model.IndexModel;
 import com.lytrax.accessconverter.model.SchemaModel;
 import com.lytrax.accessconverter.model.TableModel;
+import com.lytrax.accessconverter.target.ConvertOptions;
+import com.lytrax.accessconverter.target.PlanRules;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -17,9 +19,15 @@ import java.util.stream.Stream;
  *
  * @param collation the table collation every text column inherits
  * @param profiled false when profiling was skipped, which forces the conservative choice everywhere
+ * @param options the options planned with, which decide how binary values are stored (08)
  */
 public record MySqlPlan(
-        SchemaModel model, MySqlDialect dialect, String collation, List<PlannedTable> tables, boolean profiled) {
+        SchemaModel model,
+        MySqlDialect dialect,
+        String collation,
+        List<PlannedTable> tables,
+        boolean profiled,
+        ConvertOptions options) {
 
     public MySqlPlan {
         tables = List.copyOf(tables);
@@ -88,6 +96,8 @@ public record MySqlPlan(
      * @param defaultSql the {@code DEFAULT} value as written, or null for none
      * @param comment the column comment, or null
      * @param fractionDigits date/time columns: the fractional-second digits the column keeps
+     * @param olePart for an OLE column's companion ({@code --ole-extract}): the part of the decoded value at
+     *     {@code sourceIndex} it holds; null otherwise
      */
     public record PlannedColumn(
             ColumnModel source,
@@ -100,7 +110,8 @@ public record MySqlPlan(
             boolean autoIncrement,
             String defaultSql,
             String comment,
-            int fractionDigits) {
+            int fractionDigits,
+            PlanRules.OlePart olePart) {
 
         public PlannedColumn {
             Objects.requireNonNull(source, "source");
@@ -124,7 +135,11 @@ public record MySqlPlan(
         TEXT,
         /** A {@code byte[]} (or an OLE value's raw bytes) as {@code X'…'}. */
         BYTES,
-        /** Access's per-row complex id; its values become child tables in a later phase (08). */
+        /** {@code --binary files}: a file's path relative to the dump's directory (08). */
+        PATH,
+        /** {@code --binary omit}: the value's size in bytes (08). */
+        SIZE,
+        /** Access's per-row complex id, which the complex column's child table refers to (08). */
         COMPLEX_ID
     }
 

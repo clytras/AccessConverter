@@ -30,17 +30,32 @@ public final class RowComparison {
      * @param sourceIndex where its value sits in a row of the source stream
      * @param fractionDigits date/time: the fractional-second digits the output keeps
      * @param stored what the output holds for a canonical value it can't store as it is (after
-     *     {@link #expectedValue}): a MySQL {@code DATETIME} has no year 10000
+     *     {@link #expectedValue}): a MySQL {@code DATETIME} has no year 10000, an OLE companion holds a decoded part,
+     *     {@code --binary omit} a byte count
+     * @param readBack the output's value as it compares with the source's: {@code --binary files} reads a path's file
      */
     public record Column(
-            String name, AccessType type, int sourceIndex, int fractionDigits, UnaryOperator<Object> stored) {
+            String name,
+            AccessType type,
+            int sourceIndex,
+            int fractionDigits,
+            UnaryOperator<Object> stored,
+            UnaryOperator<Object> readBack) {
 
         public Column(String name, AccessType type, int sourceIndex, int fractionDigits) {
             this(name, type, sourceIndex, fractionDigits, UnaryOperator.identity());
         }
 
+        public Column(String name, AccessType type, int sourceIndex, int fractionDigits, UnaryOperator<Object> stored) {
+            this(name, type, sourceIndex, fractionDigits, stored, UnaryOperator.identity());
+        }
+
         Object expected(Object[] row) {
             return stored.apply(expectedValue(row[sourceIndex]));
+        }
+
+        Object actual(Object value) {
+            return readBack.apply(value);
         }
     }
 
@@ -78,7 +93,7 @@ public final class RowComparison {
             for (int i = 0; i < columns.size(); i++) {
                 Column column = columns.get(i);
                 Object stored = column.expected(row);
-                Object read = actual.value(i);
+                Object read = column.actual(actual.value(i));
                 if (!ValueComparator.same(column.type(), stored, read, column.fractionDigits())) {
                     differences.add(new Difference(
                             table,
@@ -121,7 +136,7 @@ public final class RowComparison {
         while (actual.next()) {
             actualRows++;
             for (int i = 0; i < columns.size(); i++) {
-                values[i] = actual.value(i);
+                values[i] = columns.get(i).actual(actual.value(i));
             }
             Tally tally = tallies.get(digest(columns, values));
             if (tally == null || tally.count == 0) {

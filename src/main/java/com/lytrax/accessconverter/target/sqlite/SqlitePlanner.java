@@ -18,6 +18,7 @@ import com.lytrax.accessconverter.profile.DataProfile.ColumnStats;
 import com.lytrax.accessconverter.profile.DataProfile.RelationshipProfile;
 import com.lytrax.accessconverter.report.IssueCode;
 import com.lytrax.accessconverter.report.Issues;
+import com.lytrax.accessconverter.target.BinaryCells;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.IdentifierPolicy;
 import com.lytrax.accessconverter.target.PlanRules;
@@ -92,7 +93,7 @@ public final class SqlitePlanner {
             draft.indexes();
         }
         List<PlannedTable> tables = drafts.stream().map(TableDraft::freeze).toList();
-        return new SqlitePlan(model, sqlite.strict(), tables, metadata, profile != null);
+        return new SqlitePlan(model, sqlite.strict(), tables, metadata, profile != null, options);
     }
 
     // ---------------------------------------------------------------- relationships
@@ -210,10 +211,15 @@ public final class SqlitePlanner {
             this.name = names.register(source.name(), "table " + source.name(), "table", issues, source.name());
             Set<String> required = PlanRules.requiredColumns(source);
             Set<String> keyColumns = PlanRules.primaryKeyColumns(source);
-            for (PlanRules.WrittenColumn written : rules.writtenColumns(source)) {
+            for (PlanRules.WrittenColumn written : rules.writtenColumns(source, true)) {
                 ColumnModel column = written.column();
                 columns.add(new ColumnDraft(
-                        source, column, written.sourceIndex(), required.contains(column.name()), keyColumns));
+                        source,
+                        column,
+                        written.sourceIndex(),
+                        written.olePart(),
+                        required.contains(column.name()),
+                        keyColumns));
             }
             primaryKey();
             if (source.description() != null) {
@@ -345,7 +351,7 @@ public final class SqlitePlanner {
             if (indexColumns == null) {
                 return false;
             }
-            if (rules.skipsComplexIndex(source, index)) {
+            if (rules.skipsComplexIndex(source, index, true)) {
                 return false; // F-16
             }
             String where = null;
@@ -479,6 +485,7 @@ public final class SqlitePlanner {
         private final TableModel table;
         private final ColumnModel source;
         private final int sourceIndex;
+        private final PlanRules.OlePart olePart;
         private final Kind kind;
         private final ValueForm form;
         private final int fractionDigits;
@@ -489,14 +496,25 @@ public final class SqlitePlanner {
         private boolean rowidAlias;
         private String defaultSql;
 
-        ColumnDraft(TableModel table, ColumnModel source, int sourceIndex, boolean required, Set<String> keyColumns) {
+        ColumnDraft(
+                TableModel table,
+                ColumnModel source,
+                int sourceIndex,
+                PlanRules.OlePart olePart,
+                boolean required,
+                Set<String> keyColumns) {
             this.table = table;
             this.source = source;
             this.sourceIndex = sourceIndex;
+            this.olePart = olePart;
             this.name = source.name();
             this.kind = kind(source.type());
             boolean decimalAsText = source.type().isExactNumeric() && decimalAsText();
-            this.form = form(source.type(), decimalAsText);
+            this.form = switch (BinaryCells.storage(source, options)) {
+                case PATH -> ValueForm.PATH;
+                case SIZE -> ValueForm.SIZE;
+                case VALUE -> form(source.type(), decimalAsText);
+            };
             this.fractionDigits = fractionDigits();
             this.nocase = sqlite.nocase() && kind == Kind.TEXT;
             this.notNull = rules.notNull(table, source, required, keyColumns.contains(source.name()));
@@ -661,11 +679,17 @@ public final class SqlitePlanner {
             }
             if (sqlite.strict()) {
                 return switch (form) {
-                    case BOOLEAN_INT, INTEGER, LONG, COMPLEX_ID -> "INTEGER";
+                    case BOOLEAN_INT, INTEGER, LONG, SIZE, COMPLEX_ID -> "INTEGER";
                     case REAL, REAL_FROM_FLOAT -> "REAL";
-                    case DECIMAL_NUMBER, DECIMAL_TEXT, DATE_TEXT, TEXT -> "TEXT";
+                    case DECIMAL_NUMBER, DECIMAL_TEXT, DATE_TEXT, TEXT, PATH -> "TEXT";
                     case BLOB -> "BLOB";
                 };
+            }
+            if (form == ValueForm.PATH) {
+                return "VARCHAR(" + BinaryCells.PATH_LENGTH + ")";
+            }
+            if (form == ValueForm.SIZE) {
+                return "BIGINT";
             }
             return switch (source.type()) {
                 case BOOLEAN -> "BOOLEAN";
@@ -691,7 +715,16 @@ public final class SqlitePlanner {
 
         PlannedColumn freeze() {
             return new PlannedColumn(
-                    source, sourceIndex, name, declaredType(), notNull, nocase, defaultSql, form, fractionDigits);
+                    source,
+                    sourceIndex,
+                    name,
+                    declaredType(),
+                    notNull,
+                    nocase,
+                    defaultSql,
+                    form,
+                    fractionDigits,
+                    olePart);
         }
     }
 

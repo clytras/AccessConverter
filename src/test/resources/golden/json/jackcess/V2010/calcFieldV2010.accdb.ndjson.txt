@@ -9,7 +9,8 @@
     "bigint": "string",
     "decimals": "string",
     "hyperlinks": "string",
-    "binary": "base64"
+    "binary": "base64",
+    "ole": "raw"
   },
   "source": {
     "file": "calcFieldV2010.accdb",

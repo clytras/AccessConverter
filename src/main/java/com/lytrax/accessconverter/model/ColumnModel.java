@@ -17,6 +17,8 @@ import java.util.Objects;
  * @param calculatedExpression the Access expression of a calculated column; its values are exported as stored
  * @param appendOnly a memo with version history
  * @param hidden a system-maintained column, such as replication's {@code s_GUID}
+ * @param element a multi-value column's element: the column of Access's hidden value table that holds each value
+ *     (named {@code Value}), with its type, length, precision and scale; null for every other column
  */
 public record ColumnModel(
         String name,
@@ -35,7 +37,8 @@ public record ColumnModel(
         boolean richText,
         String calculatedExpression,
         boolean appendOnly,
-        boolean hidden) {
+        boolean hidden,
+        ColumnModel element) {
 
     public ColumnModel {
         Objects.requireNonNull(name, "name");

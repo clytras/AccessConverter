@@ -110,7 +110,7 @@ class SqliteTableErrorTest {
         WriteOutcome outcome = convert(output, OnTableError.FAIL, "no such table", issues);
 
         assertThat(outcome.tableFailed()).isFalse();
-        assertThat(outcome.rowsWritten()).isEqualTo(18);
+        assertThat(outcome.rowsWritten()).isEqualTo(19);
         assertThat(issues.list()).noneMatch(i -> i.severity() == Severity.ERROR);
     }
 

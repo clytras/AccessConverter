@@ -1,6 +1,7 @@
 package com.lytrax.accessconverter.cli;
 
 import com.lytrax.accessconverter.extract.ExtractOptions;
+import com.lytrax.accessconverter.target.BinaryMode;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.ConvertOptions.OnTableError;
 import com.lytrax.accessconverter.target.mysql.MySqlDialect;
@@ -67,8 +68,32 @@ final class PlanOptions {
                     + " than it). utf8mb4_bin is also safe, but compares case.")
     String collation;
 
+    @Option(
+            names = "--binary",
+            paramLabel = "<mode>",
+            defaultValue = "inline",
+            description =
+                    "Where the bytes of Binary, OLE and attachment values go: inline (in the output, the default),"
+                            + " files (one file each under <output>-files/, the output holding its relative path) or omit"
+                            + " (dropped; the output holds each value's size in bytes).")
+    BinaryMode binary;
+
+    @Option(
+            names = "--ole-extract",
+            description = "Also decode OLE values: their kind (package, embedded, link, compound, raw), name, content"
+                    + " type and content, next to the raw bytes (SQL: <column>__kind, __name, __mime, __content;"
+                    + " JSON: an object).")
+    boolean oleExtract;
+
+    @Option(
+            names = "--include-version-history",
+            description = "Write the version history of append-only memos (SQL: a child table per column; JSON: an"
+                    + " array), which is skipped otherwise.")
+    boolean includeVersionHistory;
+
     ConvertOptions convertOptions(OnTableError onTableError, int batchRows) {
-        return new ConvertOptions(!noProfile, includeHidden, onTableError, batchRows);
+        return new ConvertOptions(!noProfile, includeHidden, onTableError, batchRows)
+                .withBinary(binary == null ? BinaryMode.INLINE : binary, oleExtract, includeVersionHistory);
     }
 
     /** The MySQL options the plan depends on, with the ones that only shape the dump. */
@@ -118,6 +143,9 @@ final class PlanOptions {
         described.put("sqliteStrict", String.valueOf(sqliteStrict));
         described.put("sqliteNocase", String.valueOf(sqliteNocase));
         described.put("sqliteMetadata", String.valueOf(sqliteMetadata));
+        described.put("binary", binary == null ? "inline" : binary.label());
+        described.put("oleExtract", String.valueOf(oleExtract));
+        described.put("includeVersionHistory", String.valueOf(includeVersionHistory));
         if (collation != null) {
             described.put("collation", collation);
         }

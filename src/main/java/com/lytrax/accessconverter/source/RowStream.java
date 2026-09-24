@@ -18,18 +18,52 @@ import java.util.Set;
  * accumulated: memory doesn't grow with the table (03, Streaming).
  */
 public final class RowStream implements Iterator<Object[]> {
+
+    /** Produces the next canonical row, or null after the last one. */
+    @FunctionalInterface
+    interface Producer {
+        Object[] next() throws IOException;
+    }
+
     private final Path file;
-    private final Cursor cursor;
+    private final String what;
     private final List<ColumnModel> columns;
-    private final Set<String> names = new LinkedHashSet<>();
-    private Row next;
+    private final Producer producer;
+    private Object[] next;
     private boolean done;
 
-    RowStream(Path file, Cursor cursor, List<ColumnModel> columns) {
+    RowStream(Path file, String what, List<ColumnModel> columns, Producer producer) {
         this.file = file;
-        this.cursor = cursor;
+        this.what = what;
         this.columns = List.copyOf(columns);
-        this.columns.forEach(c -> names.add(c.name()));
+        this.producer = producer;
+    }
+
+    /**
+     * The rows of a cursor, each value made canonical.
+     *
+     * @param complexValues read the values of attachment, multi-value and version-history cells too ({@link
+     *     ComplexReader}), instead of only their complex id
+     */
+    static RowStream of(Path file, Cursor cursor, List<ColumnModel> columns, boolean complexValues) {
+        Set<String> names = new LinkedHashSet<>();
+        columns.forEach(c -> names.add(c.name()));
+        List<ColumnModel> copy = List.copyOf(columns);
+        return new RowStream(file, "table " + cursor.getTable().getName(), copy, () -> {
+            Row row = cursor.getNextRow(names);
+            if (row == null) {
+                return null;
+            }
+            Object[] values = new Object[copy.size()];
+            for (int i = 0; i < values.length; i++) {
+                ColumnModel column = copy.get(i);
+                Object raw = row.get(column.name());
+                values[i] = complexValues && ComplexReader.readsValues(column.type())
+                        ? ComplexReader.cell(column, raw)
+                        : AccessValues.canonical(column.type(), raw);
+            }
+            return values;
+        });
     }
 
     public List<ColumnModel> columns() {
@@ -40,10 +74,9 @@ public final class RowStream implements Iterator<Object[]> {
     public boolean hasNext() {
         if (next == null && !done) {
             try {
-                next = cursor.getNextRow(names);
+                next = producer.next();
             } catch (IOException | RuntimeException e) {
-                throw new UncheckedIOException(SourceException.readFailed(
-                        file, "table " + cursor.getTable().getName(), e));
+                throw new UncheckedIOException(SourceException.readFailed(file, what, e));
             }
             done = next == null;
         }
@@ -55,11 +88,7 @@ public final class RowStream implements Iterator<Object[]> {
         if (!hasNext()) {
             throw new NoSuchElementException();
         }
-        Object[] values = new Object[columns.size()];
-        for (int i = 0; i < values.length; i++) {
-            ColumnModel column = columns.get(i);
-            values[i] = AccessValues.canonical(column.type(), next.get(column.name()));
-        }
+        Object[] values = next;
         next = null;
         return values;
     }

@@ -47,6 +47,13 @@ final class JdbcOptions {
                     + " out of the process list.")
     char[] password;
 
+    @Option(
+            names = "--dump-directory",
+            paramLabel = "<dir>",
+            description = "With --binary files: the directory the dump was written in, which the stored paths are"
+                    + " relative to (default: the current directory).")
+    Path dumpDirectory;
+
     boolean given() {
         return url != null;
     }

@@ -1,12 +1,23 @@
 package com.lytrax.accessconverter.target.json;
 
 import com.lytrax.accessconverter.model.AccessType;
+import com.lytrax.accessconverter.model.ColumnModel;
 import com.lytrax.accessconverter.model.SchemaModel;
 import com.lytrax.accessconverter.source.AccessSource;
+import com.lytrax.accessconverter.target.BinaryCells;
+import com.lytrax.accessconverter.target.BinaryMode;
+import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.json.JsonPlan.PlannedColumn;
 import com.lytrax.accessconverter.target.json.JsonPlan.PlannedTable;
 import com.lytrax.accessconverter.target.json.JsonValues.Hyperlink;
+import com.lytrax.accessconverter.value.AttachmentValue;
+import com.lytrax.accessconverter.value.CanonicalText;
+import com.lytrax.accessconverter.value.ComplexValues;
+import com.lytrax.accessconverter.value.OleContent;
+import com.lytrax.accessconverter.value.OleValue;
+import com.lytrax.accessconverter.value.VersionValue;
 import com.lytrax.accessconverter.verify.RowComparison;
+import com.lytrax.accessconverter.verify.ValueComparator;
 import com.lytrax.accessconverter.verify.VerifyResult;
 import com.lytrax.accessconverter.verify.VerifyResult.Difference;
 import java.io.BufferedReader;
@@ -60,6 +71,8 @@ public final class JsonVerifier {
     private final JsonPlan plan;
     private final VerifyResult.Collector differences = new VerifyResult.Collector();
     private Encoding encoding = Encoding.DEFAULT;
+    /** The directory the output is in, which {@code --binary files} paths are relative to. */
+    private Path outputDirectory;
 
     private JsonVerifier(AccessSource source, JsonPlan plan) {
         this.source = source;
@@ -69,6 +82,7 @@ public final class JsonVerifier {
     /** @param output a JSON document, or an ndjson directory */
     public static VerifyResult verify(AccessSource source, JsonPlan plan, Path output) throws IOException {
         JsonVerifier verifier = new JsonVerifier(source, plan);
+        verifier.outputDirectory = output.toAbsolutePath().normalize().getParent();
         try {
             if (Files.isDirectory(output)) {
                 verifier.ndjson(output);
@@ -102,8 +116,8 @@ public final class JsonVerifier {
     }
 
     /** The spellings the file says it uses. */
-    private record Encoding(String rows, String bigint, String decimals, String hyperlinks) {
-        static final Encoding DEFAULT = new Encoding("object", "number", "number", "string");
+    private record Encoding(String rows, String bigint, String decimals, String hyperlinks, String binary, String ole) {
+        static final Encoding DEFAULT = new Encoding("object", "number", "number", "string", "base64", "raw");
 
         static Encoding of(Object tree) {
             if (!(tree instanceof Map<?, ?> map)) {
@@ -113,7 +127,9 @@ public final class JsonVerifier {
                     text(map.get("rows"), DEFAULT.rows),
                     text(map.get("bigint"), DEFAULT.bigint),
                     text(map.get("decimals"), DEFAULT.decimals),
-                    text(map.get("hyperlinks"), DEFAULT.hyperlinks));
+                    text(map.get("hyperlinks"), DEFAULT.hyperlinks),
+                    text(map.get("binary"), DEFAULT.binary),
+                    text(map.get("ole"), DEFAULT.ole));
         }
 
         private static String text(Object value, String otherwise) {
@@ -205,6 +221,9 @@ public final class JsonVerifier {
         same(null, "formatVersion", String.valueOf(JsonFormat.VERSION), text(header.get("formatVersion")));
         same(null, "layout", layout, header.get("layout"));
         encoding = Encoding.of(header.get("encoding"));
+        // --binary and --ole-extract are planning options: the file must be spelled as the conversion was asked to
+        same(null, "encoding.binary", JsonWriter.binaryEncoding(plan.options().binary()), encoding.binary());
+        same(null, "encoding.ole", plan.options().oleExtract() ? "extracted" : "raw", encoding.ole());
         if (header.get("source") instanceof Map<?, ?> src) {
             SchemaModel.Source expected = plan.model().source();
             same(null, "source.fileFormat", expected.fileFormat(), src.get("fileFormat"));
@@ -291,17 +310,25 @@ public final class JsonVerifier {
 
     private void compareRows(PlannedTable table, Rows rows) throws IOException {
         List<RowComparison.Column> columns = new ArrayList<>();
+        ConvertOptions options = plan.options();
         for (PlannedColumn column : table.columns()) {
+            ColumnModel source = column.source();
+            if (fingerprinted(column)) {
+                // Nested values compare as a fingerprint both sides are reduced to, independently of the writer
+                columns.add(new RowComparison.Column(
+                        column.name(), AccessType.MEMO, column.sourceIndex(), 9, v -> expectedFingerprint(column, v)));
+                continue;
+            }
             UnaryOperator<Object> stored = column.type() == JsonPlan.JsonType.HYPERLINK
                             && encoding.hyperlinks().equals("object")
                     ? v -> v == null ? null : Hyperlink.parse((String) v)
-                    : UnaryOperator.identity();
-            columns.add(
-                    new RowComparison.Column(column.name(), column.source().type(), column.sourceIndex(), 9, stored));
+                    : v -> BinaryCells.expected(source, null, v, options);
+            columns.add(new RowComparison.Column(
+                    column.name(), BinaryCells.comparedType(source, options), column.sourceIndex(), 9, stored));
         }
         try {
             differences.rows(
-                    RowComparison.ordered(table.name(), columns, source.rows(table.source()), rows, differences));
+                    RowComparison.ordered(table.name(), columns, source.rows(table.source(), true), rows, differences));
         } catch (SQLException e) {
             throw new IllegalStateException("not reached: nothing here is SQL", e);
         }
@@ -454,6 +481,7 @@ public final class JsonVerifier {
         return switch (column.type()) {
             case BOOLEAN -> json instanceof Boolean ? json : wrong("a boolean", json);
             case UINT8, INT16, INT32, COMPLEX_ID -> integer(json);
+            case ATTACHMENTS, MULTI_VALUE, VERSION_HISTORY -> actualFingerprint(column, json);
             case INT64 ->
                 encoding.bigint().equals("string")
                         ? (json instanceof String s && PLAIN_NUMBER.matcher(s).matches() ? s : wrong("a string", json))
@@ -492,7 +520,20 @@ public final class JsonVerifier {
                 }
                 yield json instanceof String ? json : wrong("a string", json);
             }
-            case BINARY, OLE -> {
+            case BINARY -> binary(json);
+            case OLE -> plan.options().oleExtract() ? actualFingerprint(column, json) : binary(json);
+        };
+    }
+
+    // ---------------------------------------------------------------- binary and nested values (08)
+
+    /**
+     * Bytes as {@code encoding.binary} spells them: base64 is decoded, {@code {file, size}} reads the file (which must
+     * be under the output's directory and have that size), {@code {size}} is the byte count.
+     */
+    private Object binary(Object json) {
+        return switch (plan.options().binary()) {
+            case INLINE -> {
                 if (json instanceof String s) {
                     try {
                         yield Base64.getDecoder().decode(s);
@@ -502,7 +543,262 @@ public final class JsonVerifier {
                 }
                 yield wrong("a base64 string", json);
             }
+            case FILES -> {
+                if (json instanceof Map<?, ?> map
+                        && new ArrayList<>(map.keySet()).equals(List.of("file", "size"))
+                        && map.get("file") instanceof String path
+                        && map.get("size") instanceof JsonNumber size) {
+                    Object bytes = file(path);
+                    yield bytes instanceof byte[] b && !Long.toString(b.length).equals(size.text())
+                            ? wrong("the size of " + path + " (" + b.length + ")", json)
+                            : bytes;
+                }
+                yield wrong("{file, size}", json);
+            }
+            case OMIT -> {
+                if (json instanceof Map<?, ?> map
+                        && new ArrayList<>(map.keySet()).equals(List.of("size"))
+                        && map.get("size") instanceof JsonNumber size
+                        && size.text().matches("\\d+")) {
+                    yield Long.parseLong(size.text());
+                }
+                yield wrong("{size}", json);
+            }
         };
+    }
+
+    /** A file an output path leads to, which must be under the output's directory. */
+    private Object file(String path) {
+        Path file = outputDirectory.resolve(path).normalize();
+        if (!file.startsWith(outputDirectory) || !Files.isRegularFile(file)) {
+            return wrong("a file under " + outputDirectory, path);
+        }
+        try {
+            return Files.readAllBytes(file);
+        } catch (IOException e) {
+            return wrong("a readable file", path);
+        }
+    }
+
+    /** Whether a column's values are nested: an attachment, multi-value, version-history or extracted OLE value. */
+    private boolean fingerprinted(PlannedColumn column) {
+        return switch (column.type()) {
+            case ATTACHMENTS, MULTI_VALUE, VERSION_HISTORY -> true;
+            case OLE -> plan.options().oleExtract();
+            default -> false;
+        };
+    }
+
+    /**
+     * A nested source value reduced to text that equals {@link #actualFingerprint} of its correct spelling: every
+     * field in order, bytes by SHA-256 (or by size under {@code --binary omit}), numbers and dates normalized as
+     * {@link ValueComparator} compares them.
+     */
+    private Object expectedFingerprint(PlannedColumn column, Object value) {
+        if (value == null) {
+            return null;
+        }
+        Fingerprint f = new Fingerprint();
+        switch (value) {
+            case OleValue ole -> {
+                OleContent content = BinaryCells.decoded(ole);
+                f.add(bytes(ole.raw()))
+                        .add(content.decoded() ? content.kind().label() : null)
+                        .add(content.name())
+                        .add(content.mime())
+                        .add(bytes(content.content()));
+            }
+            case ComplexValues cell -> {
+                for (Object item : cell.items()) {
+                    switch (column.type()) {
+                        case ATTACHMENTS -> {
+                            AttachmentValue a = (AttachmentValue) item;
+                            f.add(a.fileName())
+                                    .add(a.fileType())
+                                    .add(a.size() == null ? null : a.size().toString())
+                                    .add(plan.options().binary() == BinaryMode.OMIT ? "-" : bytes(a.data()))
+                                    .add(a.url())
+                                    .add(ValueComparator.normalized(AccessType.SHORT_DATE_TIME, a.timestamp(), 9))
+                                    .add(a.flags() == null ? null : a.flags().toString());
+                        }
+                        case MULTI_VALUE -> {
+                            PlannedColumn element = column.element();
+                            f.add(ValueComparator.normalized(element.source().type(), item, 9));
+                        }
+                        default -> {
+                            VersionValue v = (VersionValue) item;
+                            f.add(v.value())
+                                    .add(ValueComparator.normalized(AccessType.SHORT_DATE_TIME, v.modified(), 9));
+                        }
+                    }
+                    f.end();
+                }
+            }
+            default -> {
+                return wrong("a nested value", value);
+            }
+        }
+        return f.toString();
+    }
+
+    /** The JSON spelling of a nested value reduced as {@link #expectedFingerprint} reduces the source's. */
+    private Object actualFingerprint(PlannedColumn column, Object json) {
+        Fingerprint f = new Fingerprint();
+        if (column.type() == JsonPlan.JsonType.OLE) {
+            if (!(json instanceof Map<?, ?> map)
+                    || !new ArrayList<>(map.keySet()).equals(List.of("raw", "kind", "name", "mime", "content"))) {
+                return wrong("{raw, kind, name, mime, content}", json);
+            }
+            Object raw = map.get("raw") == null ? wrong("raw bytes", null) : binary(map.get("raw"));
+            Object content = map.get("content") == null ? null : binary(map.get("content"));
+            if (raw instanceof WrongKind || content instanceof WrongKind) {
+                return raw instanceof WrongKind ? raw : content;
+            }
+            Object kind = map.get("kind");
+            if (kind != null
+                    && Arrays.stream(OleContent.Kind.values())
+                            .noneMatch(k -> k.label().equals(kind))) {
+                return wrong("an OLE kind", kind);
+            }
+            if (!nullableStrings(map, "kind", "name", "mime")) {
+                return wrong("text or null", json);
+            }
+            return f.add(bytesOf(raw))
+                    .add((String) kind)
+                    .add((String) map.get("name"))
+                    .add((String) map.get("mime"))
+                    .add(bytesOf(content))
+                    .toString();
+        }
+        if (!(json instanceof List<?> items)) {
+            return wrong("an array", json);
+        }
+        for (Object item : items) {
+            switch (column.type()) {
+                case ATTACHMENTS -> {
+                    List<String> keys = new ArrayList<>(List.of("fileName", "fileType", "size"));
+                    switch (plan.options().binary()) {
+                        case INLINE -> keys.add("data");
+                        case FILES -> keys.add("file");
+                        case OMIT -> {}
+                    }
+                    keys.addAll(List.of("url", "timestamp", "flags"));
+                    if (!(item instanceof Map<?, ?> map) || !new ArrayList<>(map.keySet()).equals(keys)) {
+                        return wrong("an attachment " + keys, item);
+                    }
+                    if (!nullableStrings(map, "fileName", "fileType", "url")
+                            || !nullableNumber(map.get("size"))
+                            || !nullableNumber(map.get("flags"))) {
+                        return wrong("an attachment's fields", item);
+                    }
+                    Object data =
+                            switch (plan.options().binary()) {
+                                case INLINE -> map.get("data") == null ? null : binary(map.get("data"));
+                                case FILES ->
+                                    map.get("file") == null
+                                            ? null
+                                            : map.get("file") instanceof String path
+                                                    ? file(path)
+                                                    : wrong("a path", map.get("file"));
+                                case OMIT -> "-";
+                            };
+                    Object timestamp = dateTime(map.get("timestamp"));
+                    if (data instanceof WrongKind || timestamp instanceof WrongKind) {
+                        return data instanceof WrongKind ? data : timestamp;
+                    }
+                    f.add((String) map.get("fileName"))
+                            .add((String) map.get("fileType"))
+                            .add(text(map.get("size")))
+                            .add(data instanceof String omitted ? omitted : bytesOf(data))
+                            .add((String) map.get("url"))
+                            .add((String) timestamp)
+                            .add(text(map.get("flags")));
+                }
+                case MULTI_VALUE -> {
+                    PlannedColumn element = column.element();
+                    Object decoded = decode(element, item);
+                    if (decoded instanceof WrongKind) {
+                        return decoded;
+                    }
+                    f.add(ValueComparator.normalized(element.source().type(), decoded, 9));
+                }
+                default -> {
+                    if (!(item instanceof Map<?, ?> map)
+                            || !new ArrayList<>(map.keySet()).equals(List.of("value", "modified"))
+                            || !nullableStrings(map, "value")) {
+                        return wrong("a version {value, modified}", item);
+                    }
+                    Object modified = dateTime(map.get("modified"));
+                    if (modified instanceof WrongKind) {
+                        return modified;
+                    }
+                    f.add((String) map.get("value")).add((String) modified);
+                }
+            }
+            f.end();
+        }
+        return f.toString();
+    }
+
+    /** A Date/Time spelled as 07 says, normalized; null stays null. */
+    private static Object dateTime(Object json) {
+        if (json == null) {
+            return null;
+        }
+        return json instanceof String s && DATE_TIME.matcher(s).matches()
+                ? ValueComparator.normalized(AccessType.SHORT_DATE_TIME, s, 9)
+                : wrong("a date-time", json);
+    }
+
+    private static boolean nullableStrings(Map<?, ?> map, String... keys) {
+        return Arrays.stream(keys).allMatch(k -> map.get(k) == null || map.get(k) instanceof String);
+    }
+
+    private static boolean nullableNumber(Object json) {
+        return json == null || (json instanceof JsonNumber n && n.text().matches("-?\\d+"));
+    }
+
+    /** Bytes as a fingerprint field: their SHA-256, or their size under {@code --binary omit}. */
+    private String bytes(byte[] value) {
+        if (value == null) {
+            return null;
+        }
+        return plan.options().binary() == BinaryMode.OMIT
+                ? "size " + value.length
+                : "sha256 " + CanonicalText.sha256(value);
+    }
+
+    /** The field for bytes decoded from the output: bytes, or the byte count of {@code {size}}. */
+    private String bytesOf(Object decoded) {
+        return switch (decoded) {
+            case null -> null;
+            case byte[] b -> "sha256 " + CanonicalText.sha256(b);
+            case Long size -> "size " + size;
+            default -> String.valueOf(decoded);
+        };
+    }
+
+    /** Fields joined so that no two different sequences give the same text: each length-prefixed. */
+    private static final class Fingerprint {
+        private final StringBuilder text = new StringBuilder();
+
+        Fingerprint add(String field) {
+            if (field == null) {
+                text.append('~');
+            } else {
+                text.append(field.length()).append(':').append(field);
+            }
+            return this;
+        }
+
+        void end() {
+            text.append(';');
+        }
+
+        @Override
+        public String toString() {
+            return text.toString();
+        }
     }
 
     private static Object integer(Object json) {

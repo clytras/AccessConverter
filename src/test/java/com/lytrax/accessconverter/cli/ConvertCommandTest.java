@@ -31,7 +31,7 @@ class ConvertCommandTest {
         assertThat(cli.err()).isEmpty();
         Path output = dir.resolve("copy.sqlite3");
         assertThat(output).exists();
-        assertThat(cli.out()).contains("copy.accdb (V2010) -> ", "11 tables, 18 rows", "1 warning");
+        assertThat(cli.out()).contains("copy.accdb (V2010) -> ", "11 tables, 19 rows", "1 warning");
         assertThat(cli.out()).contains("PRAGMA foreign_keys = ON");
         Path report = dir.resolve("copy.sqlite3.report.json");
         assertThat(report).exists();

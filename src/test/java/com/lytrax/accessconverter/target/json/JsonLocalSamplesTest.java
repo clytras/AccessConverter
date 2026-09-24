@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.lytrax.accessconverter.fixtures.LocalSample;
 import com.lytrax.accessconverter.fixtures.LocalSamples;
 import com.lytrax.accessconverter.report.Severity;
+import com.lytrax.accessconverter.source.OpenOptions;
+import com.lytrax.accessconverter.target.BinaryMode;
+import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.json.JsonFixture.Converted;
 import com.lytrax.accessconverter.target.json.JsonOptions.Layout;
 import java.nio.file.Path;
@@ -35,6 +38,17 @@ class JsonLocalSamplesTest {
             assertThat(JsonSchemaCheck.errors(output)).isEmpty();
             assertThat(converted.verify().differences()).isEmpty();
         }
+        // 08's options: OLE objects, files, version history
+        Path output = dir.resolve(sample.name() + "-files.json");
+        Converted converted = JsonFixture.convert(
+                sample.path(),
+                output,
+                OpenOptions.DEFAULT,
+                ConvertOptions.DEFAULT.withBinary(BinaryMode.FILES, true, true),
+                JsonOptions.DEFAULT);
+        assertThat(converted.issues().list()).noneMatch(issue -> issue.severity() == Severity.ERROR);
+        assertThat(JsonSchemaCheck.errors(output)).isEmpty();
+        assertThat(converted.verify().differences()).isEmpty();
     }
 
     @Test

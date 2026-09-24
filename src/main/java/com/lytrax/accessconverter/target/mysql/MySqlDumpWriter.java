@@ -8,6 +8,9 @@ import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.RowStream;
 import com.lytrax.accessconverter.target.AtomicOutput;
+import com.lytrax.accessconverter.target.BinaryCells;
+import com.lytrax.accessconverter.target.BinaryFiles;
+import com.lytrax.accessconverter.target.BinaryMode;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.RowSource;
 import com.lytrax.accessconverter.target.TableFailure;
@@ -17,7 +20,6 @@ import com.lytrax.accessconverter.target.mysql.MySqlPlan.PlannedForeignKey;
 import com.lytrax.accessconverter.target.mysql.MySqlPlan.PlannedTable;
 import com.lytrax.accessconverter.value.CanonicalText;
 import com.lytrax.accessconverter.value.ComplexRef;
-import com.lytrax.accessconverter.value.OleValue;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -64,6 +66,7 @@ public final class MySqlDumpWriter {
     private final Issues issues;
     private final List<TableResult> results = new ArrayList<>();
     private boolean tableFailed;
+    private BinaryFiles files;
     private final java.util.Set<String> failedTables = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 
     private MySqlDumpWriter(
@@ -105,14 +108,25 @@ public final class MySqlDumpWriter {
             Issues issues)
             throws IOException {
         MySqlDumpWriter writer = new MySqlDumpWriter(source, plan, options, mysql, producer, issues);
-        AtomicOutput.write(output, partial -> {
-            try (Writer out = new BufferedWriter(
-                    new OutputStreamWriter(Files.newOutputStream(partial), StandardCharsets.UTF_8.newEncoder()),
-                    WRITE_BUFFER)) {
-                writer.dump(out);
+        writer.files = options.binary() == BinaryMode.FILES ? new BinaryFiles(output) : null;
+        try {
+            AtomicOutput.write(output, partial -> {
+                try (Writer out = new BufferedWriter(
+                        new OutputStreamWriter(Files.newOutputStream(partial), StandardCharsets.UTF_8.newEncoder()),
+                        WRITE_BUFFER)) {
+                    writer.dump(out);
+                }
+                return null;
+            });
+        } catch (IOException | RuntimeException e) {
+            if (writer.files != null) {
+                writer.files.discard();
             }
-            return null;
-        });
+            throw e;
+        }
+        if (writer.files != null) {
+            writer.files.commit();
+        }
         return new WriteOutcome(writer.results, writer.tableFailed);
     }
 
@@ -230,11 +244,12 @@ public final class MySqlDumpWriter {
         long written = 0;
         try {
             Batches batches = new Batches(out, table);
+            BinaryCells cells = new BinaryCells(options, files, issues, table.source(), table.name());
             RowStream rows = source.of(table.source());
             while (rows.hasNext()) {
                 Object[] row = rows.next();
                 read++;
-                batches.add(row(table, row));
+                batches.add(row(table, cells, row, read));
             }
             batches.flush();
             written = read;
@@ -309,13 +324,14 @@ public final class MySqlDumpWriter {
                         null,
                         "an INSERT of " + largest + " bytes is over MariaDB's default max_allowed_packet of 16 MiB"
                                 + " (MySQL 8's is 64 MiB): raise max_allowed_packet to at least " + largest
-                                + " on the server and the client, or keep large binary values out of the dump");
+                                + " on the server and the client, or convert with --binary files, which keeps binary"
+                                + " values out of the dump");
             }
         }
     }
 
     /** One row as {@code (v1, v2, …)}. Nothing is substituted: a NULL stays NULL. */
-    private StringBuilder row(PlannedTable table, Object[] row) {
+    private StringBuilder row(PlannedTable table, BinaryCells cells, Object[] row, long ordinal) throws IOException {
         StringBuilder tuple = new StringBuilder(64).append('(');
         List<PlannedColumn> columns = table.columns();
         for (int i = 0; i < columns.size(); i++) {
@@ -323,7 +339,10 @@ public final class MySqlDumpWriter {
                 tuple.append(", ");
             }
             PlannedColumn column = columns.get(i);
-            value(tuple, table, column, row[column.sourceIndex()]);
+            Object value = column.olePart() != null || BinaryCells.isPayload(column.source())
+                    ? cells.value(column.source(), column.olePart(), column.sourceIndex(), column.name(), row, ordinal)
+                    : row[column.sourceIndex()];
+            value(tuple, table, column, value);
         }
         return tuple.append(')');
     }
@@ -359,7 +378,9 @@ public final class MySqlDumpWriter {
             }
             case DATETIME -> out.append(date(table, column, (LocalDateTime) value));
             case TEXT -> MySqlLiterals.string(out, text(table, column, (String) value));
-            case BYTES -> MySqlLiterals.bytes(out, value instanceof OleValue ole ? ole.raw() : (byte[]) value);
+            case BYTES -> MySqlLiterals.bytes(out, BinaryCells.bytes(value));
+            case PATH -> MySqlLiterals.string(out, (String) value);
+            case SIZE -> out.append((long) (Long) value);
             case COMPLEX_ID -> out.append(((ComplexRef) value).complexId());
         }
     }

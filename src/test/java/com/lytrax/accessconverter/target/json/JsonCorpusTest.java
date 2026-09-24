@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.lytrax.accessconverter.fixtures.CorpusCase;
 import com.lytrax.accessconverter.report.Severity;
+import com.lytrax.accessconverter.target.BinaryMode;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.json.JsonFixture.Converted;
 import com.lytrax.accessconverter.target.json.JsonOptions.Hyperlinks;
@@ -35,17 +36,22 @@ class JsonCorpusTest {
     static Path dir;
 
     enum Variant {
-        DOCUMENT(JsonOptions.DEFAULT),
-        NDJSON_ALTERNATIVES(JsonOptions.DEFAULT
-                .withLayout(Layout.NDJSON)
-                .withRows(Rows.ARRAY)
-                .withStrings()
-                .withHyperlinks(Hyperlinks.OBJECT));
+        DOCUMENT(JsonOptions.DEFAULT, ConvertOptions.DEFAULT),
+        /** Every alternative spelling, and 08's options: OLE objects, byte counts, version history. */
+        NDJSON_ALTERNATIVES(
+                JsonOptions.DEFAULT
+                        .withLayout(Layout.NDJSON)
+                        .withRows(Rows.ARRAY)
+                        .withStrings()
+                        .withHyperlinks(Hyperlinks.OBJECT),
+                ConvertOptions.DEFAULT.withBinary(BinaryMode.OMIT, true, true));
 
         final JsonOptions options;
+        final ConvertOptions convert;
 
-        Variant(JsonOptions options) {
+        Variant(JsonOptions options, ConvertOptions convert) {
             this.options = options;
+            this.convert = convert;
         }
     }
 
@@ -78,7 +84,7 @@ class JsonCorpusTest {
         String name = variant + "_" + database.id().replaceAll("[^A-Za-z0-9.]", "_") + suffix
                 + (variant.options.layout() == Layout.DOCUMENT ? ".json" : "");
         return JsonFixture.convert(
-                database.file(), dir.resolve(name), database.options(), ConvertOptions.DEFAULT, variant.options);
+                database.file(), dir.resolve(name), database.options(), variant.convert, variant.options);
     }
 
     static void assertSameOutput(Path first, Path second) throws IOException {

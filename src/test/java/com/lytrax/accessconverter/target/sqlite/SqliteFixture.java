@@ -10,6 +10,7 @@ import com.lytrax.accessconverter.report.IssueCode;
 import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.OpenOptions;
+import com.lytrax.accessconverter.target.ComplexTables;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.verify.VerifyResult;
 import java.io.IOException;
@@ -34,7 +35,7 @@ public final class SqliteFixture {
             Path source, Path output, OpenOptions open, ConvertOptions options, SqliteOptions sqlite) {
         Issues issues = new Issues();
         try (AccessSource db = AccessSource.open(source, open, issues)) {
-            SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
+            SchemaModel model = ComplexTables.expand(SchemaExtractor.extract(db, ExtractOptions.ALL, issues), options);
             DataProfile profile = options.profile() ? DataProfiler.profile(db, model) : null;
             SqlitePlan plan = SqlitePlanner.plan(model, profile, options, sqlite, issues);
             SqliteWriter.write(db, plan, output, options, sqlite, true, issues);

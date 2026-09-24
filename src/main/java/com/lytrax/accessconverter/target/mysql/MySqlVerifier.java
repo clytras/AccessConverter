@@ -4,6 +4,8 @@ import static com.lytrax.accessconverter.target.mysql.MySqlLiterals.identifier;
 
 import com.lytrax.accessconverter.model.ForeignKeyModel.Action;
 import com.lytrax.accessconverter.source.AccessSource;
+import com.lytrax.accessconverter.target.BinaryCells;
+import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.mysql.MySqlPlan.KeyPart;
 import com.lytrax.accessconverter.target.mysql.MySqlPlan.PlannedColumn;
 import com.lytrax.accessconverter.target.mysql.MySqlPlan.PlannedForeignKey;
@@ -15,6 +17,7 @@ import com.lytrax.accessconverter.verify.VerifyResult.Collector;
 import com.lytrax.accessconverter.verify.VerifyResult.Difference;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -50,15 +53,28 @@ public final class MySqlVerifier {
     private final AccessSource source;
     private final MySqlPlan plan;
     private final Collector differences = new Collector();
+    private final Path dumpDirectory;
 
-    private MySqlVerifier(AccessSource source, MySqlPlan plan) {
+    private MySqlVerifier(AccessSource source, MySqlPlan plan, Path dumpDirectory) {
         this.source = source;
         this.plan = plan;
+        this.dumpDirectory = dumpDirectory;
     }
 
     /** @param db a connection whose current database holds the imported dump */
     public static VerifyResult verify(AccessSource source, MySqlPlan plan, Connection db) throws IOException {
-        MySqlVerifier verifier = new MySqlVerifier(source, plan);
+        return verify(source, plan, db, Path.of(""));
+    }
+
+    /**
+     * As {@link #verify(AccessSource, MySqlPlan, Connection)}.
+     *
+     * @param dumpDirectory with {@code --binary files}: the directory the dump was written in, which the stored paths
+     *     are relative to
+     */
+    public static VerifyResult verify(AccessSource source, MySqlPlan plan, Connection db, Path dumpDirectory)
+            throws IOException {
+        MySqlVerifier verifier = new MySqlVerifier(source, plan, dumpDirectory);
         try {
             verifier.run(db);
         } catch (SQLException e) {
@@ -379,10 +395,30 @@ public final class MySqlVerifier {
 
     private void data(Connection db, PlannedTable table) throws SQLException, IOException {
         List<PlannedColumn> columns = table.columns();
+        ConvertOptions options = plan.options();
         List<RowComparison.Column> compared = columns.stream()
                 .map(c -> new RowComparison.Column(
-                        c.name(), c.source().type(), c.sourceIndex(), c.fractionDigits(), MySqlVerifier::stored))
+                        c.name(),
+                        BinaryCells.comparedType(c.source(), options),
+                        c.sourceIndex(),
+                        c.fractionDigits(),
+                        value -> stored(BinaryCells.expected(c.source(), c.olePart(), value, options)),
+                        value -> BinaryCells.readBack(value, c.source(), options, dumpDirectory)))
                 .toList();
+        if (table.source().isComplexChild()) {
+            // Its rows come in the parent's order, its key is Access's value id: compare regardless of order
+            try (Statement statement = db.createStatement();
+                    ResultSet rows = statement.executeQuery(select(table, false))) {
+                differences.rows(RowComparison.unordered(
+                        table.name(),
+                        compared,
+                        new int[] {0},
+                        source.rows(table.source()),
+                        output(rows, columns),
+                        differences));
+            }
+            return;
+        }
         Collector ordered = new Collector();
         try (Statement statement = db.createStatement();
                 ResultSet rows = statement.executeQuery(select(table, true))) {
@@ -418,7 +454,9 @@ public final class MySqlVerifier {
                     .filter(c -> c.name().equals(part.column()))
                     .findFirst()
                     .orElseThrow();
-            if (column.form() == MySqlPlan.ValueForm.TEXT || column.form() == MySqlPlan.ValueForm.BYTES) {
+            if (column.form() == MySqlPlan.ValueForm.TEXT
+                    || column.form() == MySqlPlan.ValueForm.BYTES
+                    || column.form() == MySqlPlan.ValueForm.PATH) {
                 return false;
             }
         }
@@ -467,10 +505,10 @@ public final class MySqlVerifier {
     private static Object read(ResultSet rows, int at, PlannedColumn column) throws SQLException {
         Object value =
                 switch (column.form()) {
-                    case BOOLEAN, INTEGER, COMPLEX_ID -> rows.getLong(at);
+                    case BOOLEAN, INTEGER, SIZE, COMPLEX_ID -> rows.getLong(at);
                     case DECIMAL -> rows.getBigDecimal(at);
                     case FLOAT, DOUBLE -> rows.getDouble(at);
-                    case DATETIME, TEXT -> rows.getString(at);
+                    case DATETIME, TEXT, PATH -> rows.getString(at);
                     case BYTES -> rows.getBytes(at);
                 };
         return rows.wasNull() ? null : value;

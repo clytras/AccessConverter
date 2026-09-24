@@ -27,11 +27,13 @@ import java.util.TreeSet;
 public final class JsonPlanner {
 
     private final SchemaModel model;
+    private final ConvertOptions options;
     private final PlanRules rules;
     private final FileNames files = new FileNames();
 
     private JsonPlanner(SchemaModel model, DataProfile profile, ConvertOptions options, Issues issues) {
         this.model = model;
+        this.options = options;
         this.rules = new PlanRules(profile, options, issues, "JSON");
     }
 
@@ -59,7 +61,7 @@ public final class JsonPlanner {
                 relationships.add(fk);
             }
         }
-        return new JsonPlan(model, tables, relationships, linked, rules.profiled());
+        return new JsonPlan(model, tables, relationships, linked, rules.profiled(), options);
     }
 
     private PlannedTable table(TableModel table) {
@@ -77,7 +79,7 @@ public final class JsonPlanner {
         List<IndexModel> indexes = new ArrayList<>();
         for (IndexModel index : table.indexes()) {
             // An index on a column that isn't written (a hidden one, reported as such) describes nothing in the file
-            if (written.containsAll(index.columnNames()) && !rules.skipsComplexIndex(table, index)) {
+            if (written.containsAll(index.columnNames()) && !rules.skipsComplexIndex(table, index, false)) {
                 indexes.add(index);
             }
         }

@@ -8,7 +8,8 @@
     "bigint": "number",
     "decimals": "number",
     "hyperlinks": "string",
-    "binary": "base64"
+    "binary": "base64",
+    "ole": "raw"
   },
   "source": {
     "file": "blobV2007.accdb",
@@ -47,7 +48,7 @@
           },
           {
             "name": "attach_data",
-            "type": "complexId",
+            "type": "attachments",
             "accessType": "ATTACHMENT",
             "nullable": false,
             "required": false

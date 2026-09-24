@@ -15,7 +15,11 @@ import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.RowStream;
 import com.lytrax.accessconverter.target.AtomicOutput;
+import com.lytrax.accessconverter.target.BinaryCells;
+import com.lytrax.accessconverter.target.BinaryFiles;
+import com.lytrax.accessconverter.target.BinaryMode;
 import com.lytrax.accessconverter.target.ConvertOptions;
+import com.lytrax.accessconverter.target.PlanRules;
 import com.lytrax.accessconverter.target.RowSource;
 import com.lytrax.accessconverter.target.TableFailure;
 import com.lytrax.accessconverter.target.WriteOutcome;
@@ -26,8 +30,12 @@ import com.lytrax.accessconverter.target.json.JsonOptions.Rows;
 import com.lytrax.accessconverter.target.json.JsonPlan.PlannedColumn;
 import com.lytrax.accessconverter.target.json.JsonPlan.PlannedTable;
 import com.lytrax.accessconverter.target.json.JsonValues.Hyperlink;
+import com.lytrax.accessconverter.value.AttachmentValue;
 import com.lytrax.accessconverter.value.ComplexRef;
+import com.lytrax.accessconverter.value.ComplexValues;
+import com.lytrax.accessconverter.value.OleContent;
 import com.lytrax.accessconverter.value.OleValue;
+import com.lytrax.accessconverter.value.VersionValue;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -66,6 +74,12 @@ public final class JsonWriter {
     private final Issues issues;
     private final List<TableResult> results = new ArrayList<>();
     private boolean tableFailed;
+    private BinaryFiles files;
+    /** The table and row being written, for file names and reports. */
+    private BinaryCells cells;
+
+    private Object[] currentRow;
+    private long currentOrdinal;
 
     private JsonWriter(
             RowSource source, JsonPlan plan, ConvertOptions options, JsonOptions json, String producer, Issues issues) {
@@ -90,7 +104,8 @@ public final class JsonWriter {
             String producer,
             Issues issues)
             throws IOException {
-        return write(source::rows, plan, output, options, json, producer, issues);
+        // JSON inlines attachment, multi-value and version-history values, so their cells are read with them (08)
+        return write(t -> source.rows(t, true), plan, output, options, json, producer, issues);
     }
 
     /** As {@link #write}, reading the rows from somewhere else; for the {@code --on-table-error} test. */
@@ -104,16 +119,27 @@ public final class JsonWriter {
             Issues issues)
             throws IOException {
         JsonWriter writer = new JsonWriter(source, plan, options, json, producer, issues);
-        if (json.layout() == Layout.DOCUMENT) {
-            AtomicOutput.write(output, partial -> {
-                writer.document(partial);
-                return null;
-            });
-        } else {
-            AtomicOutput.writeDirectory(output, JsonWriter::isNdjsonFile, partial -> {
-                writer.ndjson(partial);
-                return null;
-            });
+        writer.files = options.binary() == BinaryMode.FILES ? new BinaryFiles(output) : null;
+        try {
+            if (json.layout() == Layout.DOCUMENT) {
+                AtomicOutput.write(output, partial -> {
+                    writer.document(partial);
+                    return null;
+                });
+            } else {
+                AtomicOutput.writeDirectory(output, JsonWriter::isNdjsonFile, partial -> {
+                    writer.ndjson(partial);
+                    return null;
+                });
+            }
+        } catch (IOException | RuntimeException e) {
+            if (writer.files != null) {
+                writer.files.discard();
+            }
+            throw e;
+        }
+        if (writer.files != null) {
+            writer.files.commit();
         }
         return new WriteOutcome(writer.results, writer.tableFailed);
     }
@@ -211,7 +237,8 @@ public final class JsonWriter {
         g.writeStringProperty("bigint", lower(json.bigint()));
         g.writeStringProperty("decimals", lower(json.decimals()));
         g.writeStringProperty("hyperlinks", lower(json.hyperlinks()));
-        g.writeStringProperty("binary", "base64");
+        g.writeStringProperty("binary", binaryEncoding(options.binary()));
+        g.writeStringProperty("ole", options.oleExtract() ? "extracted" : "raw");
         g.writeEndObject();
         SchemaModel.Source src = plan.model().source();
         g.writeObjectPropertyStart("source");
@@ -337,7 +364,28 @@ public final class JsonWriter {
         if (c.hidden()) {
             g.writeBooleanProperty("hidden", true);
         }
+        if (planned.type() == JsonPlan.JsonType.MULTI_VALUE) {
+            PlannedColumn element = planned.element();
+            g.writeObjectPropertyStart("element");
+            g.writeStringProperty("type", element.type().wireName());
+            g.writeStringProperty("accessType", accessType(element.source().type()));
+            if (element.source().length() != null) {
+                g.writeNumberProperty("length", element.source().length());
+            }
+            if (element.source().precision() != null) {
+                g.writeNumberProperty("precision", element.source().precision());
+            }
+            if (element.source().scale() != null) {
+                g.writeNumberProperty("scale", element.source().scale());
+            }
+            g.writeEndObject();
+        }
         g.writeEndObject();
+    }
+
+    /** The {@code encoding.binary} spelling of a {@code --binary} mode. */
+    static String binaryEncoding(BinaryMode mode) {
+        return mode == BinaryMode.INLINE ? "base64" : mode.label();
     }
 
     /** Jackcess's type name. An autonumber is its storage type, LONG or GUID; {@code autoNumber} says which kind. */
@@ -469,11 +517,14 @@ public final class JsonWriter {
         long written = 0;
         boolean ndjson = json.layout() == Layout.NDJSON;
         JsonGenerator g = JsonFormat.FACTORY.createGenerator(ObjectWriteContext.empty(), out.stream);
+        cells = new BinaryCells(options, files, issues, table.source(), table.name());
         try {
             RowStream rows = source.of(table.source());
             while (rows.hasNext()) {
                 Object[] row = rows.next();
                 read++;
+                currentRow = row;
+                currentOrdinal = read;
                 if (!ndjson) {
                     g.writeRaw(read == 1 ? indent : separator + indent);
                 }
@@ -580,10 +631,204 @@ public final class JsonWriter {
                     g.writeEndObject();
                 }
             }
-            case BINARY -> g.writeBinary((byte[]) value);
-            case OLE -> g.writeBinary(((OleValue) value).raw());
+            case BINARY -> binary(g, table, column.name(), column.name(), rowKey(), null, (byte[]) value);
+            case OLE -> ole(g, table, column, (OleValue) value);
+            case ATTACHMENTS -> attachments(g, table, column, (ComplexValues) value);
+            case MULTI_VALUE -> {
+                PlannedColumn element = column.element();
+                g.writeStartArray();
+                for (Object item : ((ComplexValues) value).items()) {
+                    value(g, table, element, item);
+                }
+                g.writeEndArray();
+            }
+            case VERSION_HISTORY -> {
+                g.writeStartArray();
+                for (Object item : ((ComplexValues) value).items()) {
+                    VersionValue version = (VersionValue) item;
+                    g.writeStartObject();
+                    g.writeName("value");
+                    nullableText(g, table, column, version.value());
+                    g.writeName("modified");
+                    dateTime(g, version.modified());
+                    g.writeEndObject();
+                }
+                g.writeEndArray();
+            }
             case COMPLEX_ID -> g.writeNumber(((ComplexRef) value).complexId());
         }
+    }
+
+    private String rowKey() {
+        return cells.rowKey(currentRow, currentOrdinal);
+    }
+
+    private static void dateTime(JsonGenerator g, LocalDateTime value) {
+        if (value == null) {
+            g.writeNull();
+        } else {
+            g.writeString(JsonValues.dateTime(value));
+        }
+    }
+
+    /**
+     * Bytes as {@code --binary} says (08): base64 inline, {@code {file, size}} in files mode, {@code {size}} in omit
+     * mode. Null stays null.
+     *
+     * @param directory the column's directory in files mode
+     * @param stem the file name's row part
+     * @param name the data's own file name, or null
+     */
+    private void binary(
+            JsonGenerator g,
+            PlannedTable table,
+            String column,
+            String directory,
+            String stem,
+            String name,
+            byte[] bytes) {
+        if (bytes == null) {
+            g.writeNull();
+            return;
+        }
+        switch (options.binary()) {
+            case INLINE -> g.writeBinary(bytes);
+            case FILES -> {
+                g.writeStartObject();
+                g.writeStringProperty("file", file(table, column, directory, stem, name, bytes));
+                g.writeNumberProperty("size", bytes.length);
+                g.writeEndObject();
+            }
+            case OMIT -> {
+                omitted(table, column);
+                g.writeStartObject();
+                g.writeNumberProperty("size", bytes.length);
+                g.writeEndObject();
+            }
+        }
+    }
+
+    private String file(PlannedTable table, String column, String directory, String stem, String name, byte[] bytes) {
+        try {
+            return files.write(table.name(), directory, stem, name, bytes);
+        } catch (IOException e) {
+            // A write failure, not a read failure: TABLE_WRITE_FAILED
+            throw new IllegalStateException(
+                    "writing a file for " + table.name() + "." + column + " failed: " + e.getMessage(), e);
+        }
+    }
+
+    private void omitted(PlannedTable table, String column) {
+        issues.add(
+                IssueCode.BINARY_OMITTED,
+                table.name(),
+                column,
+                "the bytes are not written (--binary omit); the output holds each value's size in bytes");
+    }
+
+    /** An OLE value: its raw bytes, or with {@code --ole-extract} an object with what decoding found (08). */
+    private void ole(JsonGenerator g, PlannedTable table, PlannedColumn column, OleValue value) {
+        if (!options.oleExtract()) {
+            binary(g, table, column.name(), column.name(), rowKey(), null, value.raw());
+            return;
+        }
+        OleContent content = BinaryCells.decoded(value);
+        if (!content.decoded()) {
+            issues.add(
+                    IssueCode.OLE_UNDECODABLE,
+                    table.name(),
+                    column.name(),
+                    "OLE values that can't be decoded keep only their raw bytes; the first: " + content.problem(),
+                    rowKey());
+        }
+        g.writeStartObject();
+        g.writeName("raw");
+        binary(g, table, column.name(), column.name(), rowKey(), null, value.raw());
+        g.writeName("kind");
+        if (content.decoded()) {
+            g.writeString(content.kind().label());
+        } else {
+            g.writeNull();
+        }
+        g.writeName("name");
+        nullableText(g, table, column, content.name());
+        g.writeName("mime");
+        nullableText(g, table, column, content.mime());
+        g.writeName("content");
+        binary(
+                g,
+                table,
+                column.name(),
+                column.name() + PlanRules.OlePart.CONTENT.suffix(),
+                rowKey(),
+                content.kind() == OleContent.Kind.PACKAGE ? content.name() : null,
+                content.content());
+        g.writeEndObject();
+    }
+
+    /**
+     * An attachment cell: one object per file, in Access's order (08). The file's bytes are {@code data} (base64),
+     * {@code file} (a path) or absent ({@code --binary omit}); {@code size} is always there.
+     */
+    private void attachments(JsonGenerator g, PlannedTable table, PlannedColumn column, ComplexValues value) {
+        g.writeStartArray();
+        int n = 0;
+        for (Object item : value.items()) {
+            AttachmentValue attachment = (AttachmentValue) item;
+            n++;
+            g.writeStartObject();
+            g.writeName("fileName");
+            nullableText(g, table, column, attachment.fileName());
+            g.writeName("fileType");
+            nullableText(g, table, column, attachment.fileType());
+            g.writeName("size");
+            if (attachment.size() == null) {
+                g.writeNull();
+            } else {
+                g.writeNumber(attachment.size());
+            }
+            switch (options.binary()) {
+                case INLINE -> {
+                    g.writeName("data");
+                    if (attachment.data() == null) {
+                        g.writeNull();
+                    } else {
+                        g.writeBinary(attachment.data());
+                    }
+                }
+                case FILES -> {
+                    g.writeName("file");
+                    if (attachment.data() == null) {
+                        g.writeNull();
+                    } else {
+                        g.writeString(file(
+                                table,
+                                column.name(),
+                                column.name(),
+                                rowKey() + "-" + n,
+                                attachment.fileName(),
+                                attachment.data()));
+                    }
+                }
+                case OMIT -> {
+                    if (attachment.data() != null) {
+                        omitted(table, column.name());
+                    }
+                }
+            }
+            g.writeName("url");
+            nullableText(g, table, column, attachment.url());
+            g.writeName("timestamp");
+            dateTime(g, attachment.timestamp());
+            g.writeName("flags");
+            if (attachment.flags() == null) {
+                g.writeNull();
+            } else {
+                g.writeNumber(attachment.flags());
+            }
+            g.writeEndObject();
+        }
+        g.writeEndArray();
     }
 
     /** JSON has no NaN or Infinity: written as null and reported. */

@@ -47,13 +47,14 @@
     "encoding": {
       "type": "object",
       "description": "How values are spelled in this file.",
-      "required": ["rows", "bigint", "decimals", "hyperlinks", "binary"],
+      "required": ["rows", "bigint", "decimals", "hyperlinks", "binary", "ole"],
       "properties": {
         "rows": { "enum": ["object", "array"], "description": "object: {\"column\": value, …}; array: [value, …] in schema column order." },
         "bigint": { "enum": ["number", "string"], "description": "Large Number (int64) values." },
         "decimals": { "enum": ["number", "string"], "description": "Currency and Decimal values, always exact and never in exponent form." },
         "hyperlinks": { "enum": ["string", "object"], "description": "string: display#address#subaddress#screentip as Access stores it; object: #/$defs/hyperlink." },
-        "binary": { "const": "base64", "description": "Binary and OLE values: standard base64 (RFC 4648, padded, no line breaks)." }
+        "binary": { "enum": ["base64", "files", "omit"], "description": "Binary, OLE and attachment bytes (--binary). base64: standard base64 (RFC 4648, padded, no line breaks); files: #/$defs/binaryFile, a file under <output>-files/; omit: #/$defs/binarySize, the byte count only." },
+        "ole": { "enum": ["raw", "extracted"], "description": "OLE values (--ole-extract). raw: the stored bytes, spelled as encoding.binary says; extracted: #/$defs/oleObject." }
       },
       "additionalProperties": false
     },
@@ -98,7 +99,7 @@
       "properties": {
         "name": { "type": "string" },
         "type": {
-          "enum": ["boolean", "uint8", "int16", "int32", "int64", "decimal", "float32", "float64", "datetime", "string", "hyperlink", "guid", "binary", "ole", "complexId"],
+          "enum": ["boolean", "uint8", "int16", "int32", "int64", "decimal", "float32", "float64", "datetime", "string", "hyperlink", "guid", "binary", "ole", "attachments", "multiValue", "versionHistory", "complexId"],
           "description": "How the column's values are spelled; see the format documentation."
         },
         "accessType": {
@@ -119,9 +120,25 @@
         "richText": { "const": true },
         "calculatedExpression": { "type": "string" },
         "appendOnly": { "const": true },
-        "hidden": { "const": true }
+        "hidden": { "const": true },
+        "element": {
+          "type": "object",
+          "description": "multiValue only: the type of each value in the array.",
+          "required": ["type", "accessType"],
+          "properties": {
+            "type": { "enum": ["boolean", "uint8", "int16", "int32", "int64", "decimal", "float32", "float64", "datetime", "string", "guid", "binary"] },
+            "accessType": { "type": "string" },
+            "length": { "type": "integer", "minimum": 0 },
+            "precision": { "type": "integer", "minimum": 1 },
+            "scale": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "if": { "properties": { "type": { "const": "multiValue" } } },
+      "then": { "required": ["element"] },
+      "else": { "not": { "required": ["element"] } }
     },
     "default": {
       "type": "object",
@@ -208,8 +225,89 @@
       "description": "One value. Its spelling follows the column's type: see the format documentation.",
       "oneOf": [
         { "type": ["null", "boolean", "number", "string"] },
-        { "$ref": "#/$defs/hyperlink" }
+        { "$ref": "#/$defs/hyperlink" },
+        { "$ref": "#/$defs/binaryFile" },
+        { "$ref": "#/$defs/binarySize" },
+        { "$ref": "#/$defs/oleObject" },
+        {
+          "type": "array",
+          "description": "An attachments, multiValue or versionHistory cell: its values in Access's order.",
+          "items": {
+            "oneOf": [
+              { "type": ["null", "boolean", "number", "string"] },
+              { "$ref": "#/$defs/attachment" },
+              { "$ref": "#/$defs/version" }
+            ]
+          }
+        }
       ]
+    },
+    "base64": { "type": "string", "pattern": "^[A-Za-z0-9+/]*={0,2}$" },
+    "binaryFile": {
+      "type": "object",
+      "description": "encoding.binary files: the file holding the bytes, relative to the output's directory with forward slashes, and its size.",
+      "required": ["file", "size"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "size": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "binarySize": {
+      "type": "object",
+      "description": "encoding.binary omit: the bytes are left out; their count stays. An empty value is 0, a NULL value null.",
+      "required": ["size"],
+      "properties": { "size": { "type": "integer", "minimum": 0 } },
+      "additionalProperties": false
+    },
+    "bytes": {
+      "oneOf": [{ "$ref": "#/$defs/base64" }, { "$ref": "#/$defs/binaryFile" }, { "$ref": "#/$defs/binarySize" }]
+    },
+    "oleObject": {
+      "type": "object",
+      "description": "encoding.ole extracted: the raw bytes and what decoding them found. kind is null when the value couldn't be decoded.",
+      "required": ["raw", "kind", "name", "mime", "content"],
+      "properties": {
+        "raw": { "$ref": "#/$defs/bytes" },
+        "kind": { "enum": ["package", "embedded", "link", "compound", "raw", null] },
+        "name": { "type": ["string", "null"], "description": "package: the file name; embedded and compound: the OLE class; link: the link path; raw: null." },
+        "mime": {
+          "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^[a-z]+/[a-z0-9.+-]+$" }],
+          "description": "The content's type from its bytes' magic number only, never from a name; null when not recognized. raw: sniffed from the raw bytes."
+        },
+        "content": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/bytes" }],
+          "description": "package: the embedded file; embedded and compound: the object's bytes; link and raw: null."
+        }
+      },
+      "additionalProperties": false
+    },
+    "attachment": {
+      "type": "object",
+      "description": "One file of an attachments cell. Its bytes are data (base64), file (a path) or absent (encoding.binary omit); size is always there.",
+      "required": ["fileName", "fileType", "size", "url", "timestamp", "flags"],
+      "properties": {
+        "fileName": { "type": ["string", "null"] },
+        "fileType": { "type": ["string", "null"] },
+        "size": { "type": ["integer", "null"], "minimum": 0 },
+        "data": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/base64" }] },
+        "file": { "type": ["string", "null"] },
+        "url": { "type": ["string", "null"] },
+        "timestamp": { "type": ["string", "null"] },
+        "flags": { "type": ["integer", "null"] }
+      },
+      "additionalProperties": false,
+      "not": { "required": ["data", "file"] }
+    },
+    "version": {
+      "type": "object",
+      "description": "One entry of a versionHistory cell (--include-version-history).",
+      "required": ["value", "modified"],
+      "properties": {
+        "value": { "type": ["string", "null"] },
+        "modified": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
     },
     "hyperlink": {
       "type": "object",

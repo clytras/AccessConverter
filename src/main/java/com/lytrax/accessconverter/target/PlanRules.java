@@ -78,20 +78,65 @@ public final class PlanRules {
 
     // ---------------------------------------------------------------- columns
 
-    /** A column that is written, and where its value sits in a row of the source stream. */
-    public record WrittenColumn(ColumnModel column, int sourceIndex) {}
+    /**
+     * A column that is written, and where its value sits in a row of the source stream.
+     *
+     * @param olePart for a companion column of an OLE column ({@code --ole-extract} in the SQL targets): which part of
+     *     the decoded value it holds; the value at {@code sourceIndex} is then the OLE value. Null otherwise.
+     */
+    public record WrittenColumn(ColumnModel column, int sourceIndex, OlePart olePart) {
+        public WrittenColumn(ColumnModel column, int sourceIndex) {
+            this(column, sourceIndex, null);
+        }
+    }
+
+    /** The parts of a decoded OLE value that the SQL targets write next to the raw column (08). */
+    public enum OlePart {
+        KIND("__kind"),
+        NAME("__name"),
+        MIME("__mime"),
+        CONTENT("__content");
+
+        private final String suffix;
+
+        OlePart(String suffix) {
+            this.suffix = suffix;
+        }
+
+        public String suffix() {
+            return suffix;
+        }
+    }
 
     /**
-     * The columns written to the output, in Access order: all of them except version history and, unless
-     * {@code --include-hidden}, Access's own hidden columns (04). Primary-key columns are always written.
+     * The columns written to the output, in Access order: all of them except, unless asked for, version history
+     * ({@code --include-version-history}) and Access's own hidden columns ({@code --include-hidden}) (04, 08). Primary-key
+     * columns are always written.
      */
     public List<WrittenColumn> writtenColumns(TableModel table) {
+        return writtenColumns(table, false);
+    }
+
+    /**
+     * As {@link #writtenColumns(TableModel)}.
+     *
+     * @param oleCompanions with {@code --ole-extract}, follow each OLE column with its {@code __kind}, {@code __name},
+     *     {@code __mime} and {@code __content} columns (the SQL targets; JSON writes an object instead)
+     */
+    public List<WrittenColumn> writtenColumns(TableModel table, boolean oleCompanions) {
         Set<String> keyColumns = primaryKeyColumns(table);
+        Set<String> names = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        table.columns().forEach(c -> names.add(c.name()));
         List<WrittenColumn> written = new ArrayList<>();
         for (int i = 0; i < table.columns().size(); i++) {
             ColumnModel column = table.columns().get(i);
             if (!skip(table, column, keyColumns.contains(column.name()))) {
                 written.add(new WrittenColumn(column, i));
+                if (oleCompanions && options.oleExtract() && column.type() == AccessType.OLE) {
+                    for (OlePart part : OlePart.values()) {
+                        written.add(new WrittenColumn(companion(column, part, names), i, part));
+                    }
+                }
             }
         }
         if (written.isEmpty()) {
@@ -101,6 +146,43 @@ public final class PlanRules {
             }
         }
         return written;
+    }
+
+    /**
+     * An OLE column's companion: {@code <col>__kind} and the rest, named apart from every column of the table. The
+     * name and MIME columns are Long Text, so no link path or file name is ever too long for them.
+     */
+    private static ColumnModel companion(ColumnModel ole, OlePart part, Set<String> names) {
+        String name = ole.name() + part.suffix();
+        for (int n = 2; names.contains(name); n++) {
+            name = ole.name() + part.suffix() + "_" + n;
+        }
+        names.add(name);
+        AccessType type =
+                switch (part) {
+                    case KIND -> AccessType.TEXT;
+                    case NAME, MIME -> AccessType.MEMO;
+                    case CONTENT -> AccessType.BINARY;
+                };
+        return new ColumnModel(
+                name,
+                ole.ordinal(),
+                type,
+                part == OlePart.KIND ? 16 : null,
+                null,
+                null,
+                false,
+                true,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                null,
+                false,
+                false,
+                null);
     }
 
     public static Set<String> primaryKeyColumns(TableModel table) {
@@ -116,11 +198,15 @@ public final class PlanRules {
             return false;
         }
         if (column.type() == AccessType.VERSION_HISTORY) {
+            if (options.versionHistory()) {
+                return false;
+            }
             issues.add(
                     IssueCode.VERSION_HISTORY_SKIPPED,
                     table.name(),
                     column.name(),
-                    "the append-only memo's version history is not written; the memo itself is");
+                    "the append-only memo's version history is not written; the memo itself is. Pass"
+                            + " --include-version-history to write it");
             return true;
         }
         if (column.hidden() && !options.includeHidden()) {
@@ -155,8 +241,12 @@ public final class PlanRules {
      * primary keys) plus Required columns whose profiled NULL count is zero.
      */
     public boolean notNull(TableModel table, ColumnModel column, boolean required, boolean inPrimaryKey) {
-        boolean guaranteed =
-                column.type() == AccessType.BOOLEAN || column.type().isAutoNumber() || inPrimaryKey;
+        // A complex child's ref is its parent's complex id, which every child row is read from (08)
+        boolean guaranteed = column.type() == AccessType.BOOLEAN
+                || column.type().isAutoNumber()
+                || inPrimaryKey
+                || (table.isComplexChild()
+                        && column.name().equals(table.complex().refColumn()));
         if (!guaranteed && !required) {
             return false;
         }
@@ -348,15 +438,18 @@ public final class PlanRules {
     }
 
     /**
-     * Access's hidden index on an attachment or multi-value column indexes values that become child tables, which
-     * aren't in the output (F-16): such an index is skipped.
+     * Access's hidden unique index on an attachment or multi-value column indexes values that JSON inlines as arrays,
+     * so there it is skipped (F-16). In the SQL targets the column holds its complex id, which the child table's
+     * foreign key refers to, so the index is a real key and stays; only a complex column without a child table (an
+     * unsupported kind) loses it.
      *
+     * @param childTables whether the target writes complex columns as child tables ({@link ComplexTables})
      * @return whether the index is skipped
      */
-    public boolean skipsComplexIndex(TableModel table, IndexModel index) {
+    public boolean skipsComplexIndex(TableModel table, IndexModel index, boolean childTables) {
         ColumnModel complex = index.columnNames().stream()
                 .map(name -> table.column(name).orElse(null))
-                .filter(c -> c != null && c.type().isComplex())
+                .filter(c -> c != null && c.type().isComplex() && !(childTables && ComplexTables.expands(c, options)))
                 .findFirst()
                 .orElse(null);
         if (complex == null) {
@@ -368,7 +461,8 @@ public final class PlanRules {
                 index.name(),
                 "index skipped: " + complex.name() + " is an Access "
                         + complex.type().name().toLowerCase(Locale.ROOT).replace('_', ' ')
-                        + " column, whose values become child tables");
+                        + " column, whose values "
+                        + (childTables ? "have no child table" : "are written inline as an array"));
         return true;
     }
 }

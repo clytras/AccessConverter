@@ -12,6 +12,9 @@ import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.report.Severity;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.OpenOptions;
+import com.lytrax.accessconverter.target.BinaryFiles;
+import com.lytrax.accessconverter.target.BinaryMode;
+import com.lytrax.accessconverter.target.ComplexTables;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.ConvertOptions.OnTableError;
 import com.lytrax.accessconverter.target.WriteOutcome;
@@ -222,6 +225,11 @@ final class ConvertCommand implements Callable<Integer> {
             spec.commandLine().getErr().println("error: " + out + " exists; pass --overwrite to replace it");
             return ExitCodes.FAILED;
         }
+        Path filesDirectory = BinaryFiles.directoryOf(out);
+        if (plan.binary == BinaryMode.FILES && Files.exists(filesDirectory) && !overwrite) {
+            spec.commandLine().getErr().println("error: " + filesDirectory + " exists; pass --overwrite to replace it");
+            return ExitCodes.FAILED;
+        }
         OpenOptions openOptions = source.toOpenOptions();
         ConvertOptions options = plan.convertOptions(onTableError, batchRows());
         Issues issues = new Issues();
@@ -233,14 +241,16 @@ final class ConvertCommand implements Callable<Integer> {
             model = SchemaExtractor.extract(db, plan.extractOptions(), issues);
             timings.put("extract", since(started));
 
+            // The SQL targets write attachment and multi-value columns as child tables, profiled like any table (08)
+            SchemaModel planned = to == Target.json ? model : ComplexTables.expand(model, options);
             started = System.nanoTime();
-            DataProfile profile = options.profile() ? DataProfiler.profile(db, model) : null;
+            DataProfile profile = options.profile() ? DataProfiler.profile(db, planned) : null;
             timings.put("profile", since(started));
 
             tables = switch (to) {
-                case sqlite -> sqlite(db, model, profile, out, options, issues, timings);
-                case mysql, mariadb -> mysql(db, model, profile, out, options, issues, timings);
-                case json -> json(db, model, profile, out, options, issues, timings);
+                case sqlite -> sqlite(db, planned, profile, out, options, issues, timings);
+                case mysql, mariadb -> mysql(db, planned, profile, out, options, issues, timings);
+                case json -> json(db, planned, profile, out, options, issues, timings);
             };
         }
         ConversionReport conversionReport = new ConversionReport(

@@ -8,7 +8,8 @@
     "bigint": "number",
     "decimals": "number",
     "hyperlinks": "string",
-    "binary": "base64"
+    "binary": "base64",
+    "ole": "raw"
   },
   "source": {
     "file": "gr97.mdb",

@@ -9,6 +9,7 @@ import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.report.Severity;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.OpenOptions;
+import com.lytrax.accessconverter.target.ComplexTables;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.ConvertOptions.OnTableError;
 import com.lytrax.accessconverter.target.json.JsonPlan;
@@ -127,9 +128,11 @@ final class VerifyCommand implements Callable<Integer> {
         SchemaModel model;
         try (AccessSource db = AccessSource.open(input, options, issues)) {
             model = SchemaExtractor.extract(db, plan.extractOptions(), issues);
-            DataProfile profile = convert.profile() ? DataProfiler.profile(db, model) : null;
+            SchemaModel expanded = ComplexTables.expand(model, convert);
+            DataProfile profile = convert.profile() ? DataProfiler.profile(db, expanded) : null;
             // The issues of planning again are the conversion's, not the verification's: they go nowhere
-            SqlitePlan planned = SqlitePlanner.plan(model, profile, convert, plan.sqliteOptions(false), new Issues());
+            SqlitePlan planned =
+                    SqlitePlanner.plan(expanded, profile, convert, plan.sqliteOptions(false), new Issues());
             result = SqliteVerifier.verify(db, planned, output);
         }
         return print(model, output + " (SQLite)", result, issues);
@@ -170,11 +173,13 @@ final class VerifyCommand implements Callable<Integer> {
             }
             plan.check(Target.of(dialect), spec.commandLine());
             model = SchemaExtractor.extract(access, plan.extractOptions(), issues);
-            DataProfile profile = convert.profile() ? DataProfiler.profile(access, model) : null;
+            SchemaModel expanded = ComplexTables.expand(model, convert);
+            DataProfile profile = convert.profile() ? DataProfiler.profile(access, expanded) : null;
             MySqlOptions mysql = plan.mysqlOptions(dialect, false, null, MySqlOptions.DEFAULT_BATCH_BYTES, false);
             // The issues of planning again are the conversion's, not the verification's: they go nowhere
-            MySqlPlan planned = MySqlPlanner.plan(model, profile, convert, mysql, new Issues());
-            result = MySqlVerifier.verify(access, planned, db);
+            MySqlPlan planned = MySqlPlanner.plan(expanded, profile, convert, mysql, new Issues());
+            result = MySqlVerifier.verify(
+                    access, planned, db, jdbc.dumpDirectory == null ? Path.of("") : jdbc.dumpDirectory);
         } catch (SQLException e) {
             throw new IOException("reading the database failed: " + e.getMessage(), e);
         }

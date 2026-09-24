@@ -10,6 +10,7 @@ import static com.lytrax.accessconverter.model.Models.unique;
 import static com.lytrax.accessconverter.profile.Profiles.profile;
 import static com.lytrax.accessconverter.profile.Profiles.stats;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.lytrax.accessconverter.model.AccessType;
 import com.lytrax.accessconverter.model.ForeignKeyModel.Action;
@@ -18,6 +19,8 @@ import com.lytrax.accessconverter.model.SchemaModel;
 import com.lytrax.accessconverter.profile.DataProfile;
 import com.lytrax.accessconverter.report.IssueCode;
 import com.lytrax.accessconverter.report.Issues;
+import com.lytrax.accessconverter.target.BinaryMode;
+import com.lytrax.accessconverter.target.ComplexTables;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.mysql.MySqlPlan.KeyPart;
 import com.lytrax.accessconverter.target.mysql.MySqlPlan.PlannedColumn;
@@ -548,6 +551,75 @@ class MySqlPlannerTest {
     }
 
     // ---------------------------------------------------------------- helpers
+
+    @Test
+    void complexColumnsBecomeChildTablesReferringToTheirUniqueComplexId() {
+        SchemaModel model = ComplexTables.expand(
+                schema(table(
+                        "T",
+                        primaryKey("Id"),
+                        List.of(unique("files_index", "Files"), unique("tags_index", "Tags")),
+                        column("Id", AccessType.AUTONUMBER_LONG),
+                        column("Files", AccessType.ATTACHMENT),
+                        Models.column("Tags", AccessType.MULTI_VALUE).element(AccessType.INT))),
+                ConvertOptions.DEFAULT);
+        MySqlPlan plan =
+                MySqlPlanner.plan(model, null, ConvertOptions.DEFAULT, MySqlOptions.of(MySqlDialect.MARIADB), issues);
+
+        PlannedTable parent = plan.table("T").orElseThrow();
+        assertThat(parent.column("Files").orElseThrow().type()).isEqualTo("INT");
+        assertThat(parent.indexes())
+                .extracting(PlannedIndex::name, PlannedIndex::unique)
+                .contains(tuple("files_index", true), tuple("tags_index", true));
+        assertThat(plan.table("T_Files").orElseThrow().createTableSql())
+                .contains(
+                        "`id` INT NOT NULL", "`Files_ref` INT NOT NULL", "`file_data` LONGBLOB", "PRIMARY KEY (`id`)");
+        assertThat(plan.table("T_Tags")
+                        .orElseThrow()
+                        .column("value")
+                        .orElseThrow()
+                        .type())
+                .isEqualTo("SMALLINT");
+        assertThat(plan.table("T_Tags").orElseThrow().foreignKeySql())
+                .isEqualTo("ALTER TABLE `T_Tags`\n  ADD CONSTRAINT `T_Tags` FOREIGN KEY (`Tags_ref`) REFERENCES `T`"
+                        + " (`Tags`) ON DELETE CASCADE ON UPDATE CASCADE");
+        assertThat(issues.list()).noneMatch(i -> i.code() == IssueCode.INDEX_SKIPPED_COMPLEX_COLUMN);
+    }
+
+    @Test
+    void binaryModesAndOleCompanionsDecideTheColumnTypes() {
+        SchemaModel model = schema(table(
+                "T",
+                primaryKey("Id"),
+                column("Id", AccessType.LONG),
+                column("Bin", AccessType.BINARY).length(16),
+                Models.column("Ole", AccessType.OLE).defaultValue("\"x\"")));
+        for (BinaryMode mode : BinaryMode.values()) {
+            ConvertOptions options = ConvertOptions.DEFAULT.withBinary(mode, true, false);
+            PlannedTable table = MySqlPlanner.plan(
+                            model, null, options, MySqlOptions.of(MySqlDialect.MYSQL), new Issues())
+                    .table("T")
+                    .orElseThrow();
+            String bytes =
+                    switch (mode) {
+                        case INLINE -> "LONGBLOB";
+                        case FILES -> "VARCHAR(1024)";
+                        case OMIT -> "BIGINT";
+                    };
+            assertThat(table.columns())
+                    .extracting(PlannedColumn::name, PlannedColumn::type)
+                    .as(mode.label())
+                    .containsExactly(
+                            tuple("Id", "INT"),
+                            tuple("Bin", mode == BinaryMode.INLINE ? "VARBINARY(16)" : bytes),
+                            tuple("Ole", bytes),
+                            tuple("Ole__kind", "VARCHAR(16)"),
+                            tuple("Ole__name", "LONGTEXT"),
+                            tuple("Ole__mime", "LONGTEXT"),
+                            tuple("Ole__content", bytes));
+            assertThat(table.column("Ole").orElseThrow().defaultSql()).isNull();
+        }
+    }
 
     private MySqlPlan plan(SchemaModel model, DataProfile data, MySqlDialect dialect) {
         return MySqlPlanner.plan(model, data, ConvertOptions.DEFAULT, MySqlOptions.of(dialect), issues);

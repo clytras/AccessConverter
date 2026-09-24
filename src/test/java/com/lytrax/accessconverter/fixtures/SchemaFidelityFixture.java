@@ -209,6 +209,8 @@ final class SchemaFidelityFixture {
         byte[] png = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0x0D, 'I', 'H', 'D', 'R'};
         files.addRow(Column.AUTO_NUMBER, raw, packaged, png);
         files.addRow(Column.AUTO_NUMBER, null, null, null);
+        // Empty values, which are not NULL: Binary round-trips as X'' (08), and an empty OLE value (F-13b)
+        files.addRow(Column.AUTO_NUMBER, new byte[0], new byte[0], null);
     }
 
     private static void wideTable(Database db) throws IOException {

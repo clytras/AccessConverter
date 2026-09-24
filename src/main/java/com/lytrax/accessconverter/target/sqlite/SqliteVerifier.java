@@ -3,6 +3,8 @@ package com.lytrax.accessconverter.target.sqlite;
 import com.lytrax.accessconverter.model.ForeignKeyModel.Action;
 import com.lytrax.accessconverter.model.IndexModel.IndexColumn;
 import com.lytrax.accessconverter.source.AccessSource;
+import com.lytrax.accessconverter.target.BinaryCells;
+import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedColumn;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedForeignKey;
 import com.lytrax.accessconverter.target.sqlite.SqlitePlan.PlannedIndex;
@@ -32,6 +34,7 @@ public final class SqliteVerifier {
 
     private final SqlitePlan plan;
     private final AccessSource source;
+    private Path outputDirectory;
     private final VerifyResult.Collector differences = new VerifyResult.Collector();
 
     private SqliteVerifier(AccessSource source, SqlitePlan plan) {
@@ -41,6 +44,7 @@ public final class SqliteVerifier {
 
     public static VerifyResult verify(AccessSource source, SqlitePlan plan, Path output) throws IOException {
         SqliteVerifier verifier = new SqliteVerifier(source, plan);
+        verifier.outputDirectory = output.toAbsolutePath().getParent();
         try (Connection db = DriverManager.getConnection("jdbc:sqlite:" + output.toAbsolutePath())) {
             verifier.run(db);
         } catch (SQLException e) {
@@ -286,32 +290,45 @@ public final class SqliteVerifier {
 
     /**
      * Compares every value of a table. The output is read in rowid order, which is the order the rows were written
-     * in, so the two streams line up without sorting either side.
+     * in, so the two streams line up without sorting either side. A complex child table's rowid is Access's value id,
+     * not the order its values were read in, so its rows are compared regardless of order.
      */
     private void data(Connection db, PlannedTable table) throws SQLException, IOException {
         List<PlannedColumn> columns = table.columns();
         List<String> names = columns.stream().map(PlannedColumn::name).toList();
+        ConvertOptions options = plan.options();
         List<RowComparison.Column> compared = columns.stream()
-                .map(c -> new RowComparison.Column(c.name(), c.source().type(), c.sourceIndex(), c.fractionDigits()))
+                .map(c -> new RowComparison.Column(
+                        c.name(),
+                        BinaryCells.comparedType(c.source(), options),
+                        c.sourceIndex(),
+                        c.fractionDigits(),
+                        value -> BinaryCells.expected(c.source(), c.olePart(), value, options),
+                        value -> BinaryCells.readBack(value, c.source(), options, outputDirectory)))
                 .toList();
         try (Statement statement = db.createStatement();
                 ResultSet actual = statement.executeQuery(SqliteIntrospector.selectAll(table.name(), names))) {
-            differences.rows(RowComparison.ordered(
-                    table.name(),
-                    compared,
-                    source.rows(table.source()),
-                    new RowComparison.OutputRows() {
-                        @Override
-                        public boolean next() throws SQLException {
-                            return actual.next();
-                        }
+            RowComparison.OutputRows rows = new RowComparison.OutputRows() {
+                @Override
+                public boolean next() throws SQLException {
+                    return actual.next();
+                }
 
-                        @Override
-                        public Object value(int column) throws SQLException {
-                            return actual.getObject(column + 1);
-                        }
-                    },
-                    differences));
+                @Override
+                public Object value(int column) throws SQLException {
+                    return actual.getObject(column + 1);
+                }
+            };
+            if (table.source().isComplexChild()) {
+                int[] key = table.primaryKey() == null
+                        ? java.util.stream.IntStream.range(0, columns.size()).toArray()
+                        : new int[] {0};
+                differences.rows(RowComparison.unordered(
+                        table.name(), compared, key, source.rows(table.source()), rows, differences));
+            } else {
+                differences.rows(
+                        RowComparison.ordered(table.name(), compared, source.rows(table.source()), rows, differences));
+            }
         }
     }
 }

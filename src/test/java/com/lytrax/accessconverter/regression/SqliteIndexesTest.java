@@ -54,17 +54,24 @@ class SqliteIndexesTest {
     }
 
     @Test
-    void theHiddenIndexOnAComplexColumnIsLeftOut() {
+    void theHiddenIndexOnAComplexColumnIsARealKeyOfItsComplexId() {
         Converted converted = SqliteFixture.convert(
                 CorpusFile.get("jackcess/V2010/complexDataV2010.accdb").file(), dir.resolve("complex.sqlite3"));
         try (Sqlite sqlite = converted.open()) {
             // v2 made this a UNIQUE index over serialized attachment JSON, and the first duplicate lost the rows
-            // (SQLite's own index for the text primary key stays, and has no CREATE statement of its own)
-            assertThat(sqlite.strings("SELECT name FROM sqlite_schema WHERE type = 'index' AND sql IS NOT NULL"))
-                    .isEmpty();
+            // (F-16). Now it's unique on Access's complex id, which the child tables' foreign keys refer to (08).
+            assertThat(sqlite.strings("SELECT sql FROM sqlite_schema WHERE type = 'index' AND tbl_name = 'Table1'"
+                            + " AND sql IS NOT NULL ORDER BY name"))
+                    .containsExactly(
+                            "CREATE UNIQUE INDEX \"Table1_attach-data_071D71EDD53D45A1A9089929F06857D9\" ON \"Table1\""
+                                    + " (\"attach-data\")",
+                            "CREATE UNIQUE INDEX \"Table1_multi-value-data_F4C67B0F60124C1989D5583C00CF76E2\" ON"
+                                    + " \"Table1\" (\"multi-value-data\")");
             assertThat(sqlite.value("SELECT count(*) FROM Table1")).isEqualTo(4);
+            sqlite.assertIsConsistent();
         }
-        assertThat(converted.issues(IssueCode.INDEX_SKIPPED_COMPLEX_COLUMN)).hasSize(2);
+        assertThat(converted.issues(IssueCode.INDEX_SKIPPED_COMPLEX_COLUMN)).isEmpty();
+        assertThat(converted.verified().matches()).isTrue();
     }
 
     @Test

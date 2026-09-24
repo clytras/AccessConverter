@@ -19,6 +19,7 @@ import com.lytrax.accessconverter.profile.DataProfile.RelationshipProfile;
 import com.lytrax.accessconverter.profile.KeyText;
 import com.lytrax.accessconverter.report.IssueCode;
 import com.lytrax.accessconverter.report.Issues;
+import com.lytrax.accessconverter.target.BinaryCells;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.IdentifierPolicy;
 import com.lytrax.accessconverter.target.PlanRules;
@@ -92,6 +93,7 @@ public final class MySqlPlanner {
     private static final String INDENT = "  ";
 
     private final SchemaModel model;
+    private final ConvertOptions options;
     private final MySqlOptions mysql;
     private final Issues issues;
     private final PlanRules rules;
@@ -104,6 +106,7 @@ public final class MySqlPlanner {
     private MySqlPlanner(
             SchemaModel model, DataProfile profile, ConvertOptions options, MySqlOptions mysql, Issues issues) {
         this.model = model;
+        this.options = options;
         this.mysql = mysql;
         this.issues = issues;
         this.rules = new PlanRules(profile, options, issues, mysql.dialect().displayName());
@@ -142,7 +145,7 @@ public final class MySqlPlanner {
             draft.checks();
         }
         List<PlannedTable> tables = drafts.stream().map(TableDraft::freeze).toList();
-        return new MySqlPlan(model, mysql.dialect(), mysql.effectiveCollation(), tables, rules.profiled());
+        return new MySqlPlan(model, mysql.dialect(), mysql.effectiveCollation(), tables, rules.profiled(), options);
     }
 
     /**
@@ -351,12 +354,13 @@ public final class MySqlPlanner {
             indexNames.register("PRIMARY", "PRIMARY", "index", issues, source.name());
             Set<String> required = PlanRules.requiredColumns(source);
             Set<String> keyColumns = PlanRules.primaryKeyColumns(source);
-            for (PlanRules.WrittenColumn written : rules.writtenColumns(source)) {
+            for (PlanRules.WrittenColumn written : rules.writtenColumns(source, true)) {
                 ColumnModel column = written.column();
                 columns.add(new ColumnDraft(
                         this,
                         column,
                         written.sourceIndex(),
+                        written.olePart(),
                         required.contains(column.name()),
                         keyColumns.contains(column.name())));
             }
@@ -412,7 +416,7 @@ public final class MySqlPlanner {
 
         /** Plans an index; returns whether it is written. */
         private boolean index(IndexModel index, String preferred, boolean unique) {
-            if (columnsOf(index.columnNames()) == null || rules.skipsComplexIndex(source, index)) {
+            if (columnsOf(index.columnNames()) == null || rules.skipsComplexIndex(source, index, true)) {
                 return false;
             }
             indexes.add(key(
@@ -1082,6 +1086,10 @@ public final class MySqlPlanner {
         private final TableDraft table;
         private final ColumnModel source;
         private final int sourceIndex;
+        private final PlanRules.OlePart olePart;
+        /** How a Binary, OLE or attachment value is stored (08): the bytes, a file's path or the byte count. */
+        private final BinaryCells.Storage storage;
+
         private final String name;
         private final ValueForm form;
         private final int fractionDigits;
@@ -1098,17 +1106,29 @@ public final class MySqlPlanner {
         /** Compared with {@code utf8mb4_bin} rather than the table's collation. */
         private boolean binary;
 
-        ColumnDraft(TableDraft table, ColumnModel source, int sourceIndex, boolean required, boolean inPrimaryKey) {
+        ColumnDraft(
+                TableDraft table,
+                ColumnModel source,
+                int sourceIndex,
+                PlanRules.OlePart olePart,
+                boolean required,
+                boolean inPrimaryKey) {
             this.table = table;
             this.source = source;
             this.sourceIndex = sourceIndex;
+            this.olePart = olePart;
+            this.storage = BinaryCells.storage(source, options);
             this.name = table.columnNames.register(
                     source.name(),
                     "column " + table.source.name() + "." + source.name(),
                     "column",
                     issues,
                     table.source.name());
-            this.form = form(source.type());
+            this.form = switch (storage) {
+                case PATH -> ValueForm.PATH;
+                case SIZE -> ValueForm.SIZE;
+                case VALUE -> form(source.type());
+            };
             this.fractionDigits = fractionDigits();
             this.decimal = source.type().isExactNumeric() ? decimalType() : null;
             this.notNull = rules.notNull(table.source, source, required, inPrimaryKey);
@@ -1119,12 +1139,21 @@ public final class MySqlPlanner {
                 }
                 case MEMO, HYPERLINK -> shape = Shape.LONGTEXT;
                 case GUID, AUTONUMBER_GUID -> shape = Shape.CHAR;
-                case BINARY -> {
-                    shape = Shape.VARBINARY;
-                    length = source.length() == null ? 510 : source.length();
-                }
+                // A Binary without a length (an attachment's data, an OLE value's content) holds bytes of any size
+                case BINARY -> shape = source.length() == null ? Shape.LONGBLOB : Shape.VARBINARY;
                 case OLE, UNSUPPORTED -> shape = Shape.LONGBLOB;
                 default -> shape = Shape.FIXED;
+            }
+            if (source.type() == AccessType.BINARY) {
+                length = source.length() == null ? 0 : source.length();
+            }
+            switch (storage) {
+                case PATH -> {
+                    shape = Shape.VARCHAR;
+                    length = BinaryCells.PATH_LENGTH;
+                }
+                case SIZE -> shape = Shape.FIXED;
+                case VALUE -> {}
             }
             if (source.isCalculated()) {
                 comments.add("Access expression: " + source.calculatedExpression());
@@ -1166,6 +1195,9 @@ public final class MySqlPlanner {
         }
 
         private String fixedType() {
+            if (storage == BinaryCells.Storage.SIZE) {
+                return "BIGINT";
+            }
             return switch (source.type()) {
                 // BOOLEAN is TINYINT(1) without MySQL's display-width deprecation warning 1681
                 case BOOLEAN -> "BOOLEAN";
@@ -1274,6 +1306,9 @@ public final class MySqlPlanner {
         }
 
         long fixedBytes() {
+            if (storage == BinaryCells.Storage.SIZE) {
+                return 8;
+            }
             return switch (source.type()) {
                 case BOOLEAN, BYTE -> 1;
                 case INT -> 2;
@@ -1329,7 +1364,11 @@ public final class MySqlPlanner {
                 comments.add("Access default: " + value.raw());
                 return null;
             }
-            Rendered rendered = MySqlExpressions.defaultClause(value.expr(), shape());
+            Rendered rendered = storage == BinaryCells.Storage.VALUE
+                    ? MySqlExpressions.defaultClause(value.expr(), shape())
+                    : Rendered.mismatch("the column holds "
+                            + (storage == BinaryCells.Storage.PATH ? "a file's path" : "a byte count")
+                            + " (--binary " + options.binary().label() + "), not the value");
             if (rendered.isPresent() || rendered.problem() == null) {
                 return rendered.sql();
             }
@@ -1360,7 +1399,8 @@ public final class MySqlPlanner {
                     autoIncrement,
                     defaultSql,
                     comment,
-                    fractionDigits);
+                    fractionDigits,
+                    olePart);
         }
     }
 

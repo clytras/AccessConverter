@@ -8,7 +8,8 @@
     "bigint": "number",
     "decimals": "number",
     "hyperlinks": "string",
-    "binary": "base64"
+    "binary": "base64",
+    "ole": "raw"
   },
   "source": {
     "file": "attachments.accdb",
@@ -40,7 +41,7 @@
           },
           {
             "name": "Attachments",
-            "type": "complexId",
+            "type": "attachments",
             "accessType": "ATTACHMENT",
             "nullable": false,
             "required": false
@@ -70,9 +71,9 @@
   },
   "data": {
     "Table1": [
-      {"ID":1,"Comment":"0 Attachments","Attachments":1},
-      {"ID":2,"Comment":"1 Attachment","Attachments":2},
-      {"ID":3,"Comment":"3 Attachments","Attachments":3}
+      {"ID":1,"Comment":"0 Attachments","Attachments":[]},
+      {"ID":2,"Comment":"1 Attachment","Attachments":[{"fileName":"attachment1.txt","fileType":"txt","size":12,"data":"QXR0YWNobWVudCAx","url":null,"timestamp":null,"flags":null}]},
+      {"ID":3,"Comment":"3 Attachments","Attachments":[{"fileName":"attachment1.txt","fileType":"txt","size":12,"data":"QXR0YWNobWVudCAx","url":null,"timestamp":null,"flags":null},{"fileName":"attachment2.txt","fileType":"txt","size":12,"data":"QXR0YWNobWVudCAy","url":null,"timestamp":null,"flags":null},{"fileName":"attachment3.txt","fileType":"txt","size":12,"data":"QXR0YWNobWVudCAz","url":null,"timestamp":null,"flags":null}]}
     ]
   }
 }
