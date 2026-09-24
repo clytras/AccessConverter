@@ -16,6 +16,7 @@ import com.lytrax.accessconverter.report.Severity;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.RowStream;
 import com.lytrax.accessconverter.source.SourceException;
+import com.lytrax.accessconverter.target.BinaryMode;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.ConvertOptions.OnTableError;
 import com.lytrax.accessconverter.target.RowSource;
@@ -112,6 +113,69 @@ class SqliteTableErrorTest {
         assertThat(outcome.tableFailed()).isFalse();
         assertThat(outcome.rowsWritten()).isEqualTo(19);
         assertThat(issues.list()).noneMatch(i -> i.severity() == Severity.ERROR);
+    }
+
+    /**
+     * A failed table is empty, and so are its files (08, --binary files): {@code Files} fails at its second row after
+     * the first wrote its files, because {@code Raw} is planned NOT NULL and that row holds NULL.
+     */
+    @Test
+    void aTableThatFailsLeavesNoFilesBehind() throws IOException {
+        Path output = dir.resolve("files.sqlite3");
+        Issues issues = new Issues();
+        ConvertOptions options =
+                new ConvertOptions(true, false, OnTableError.CONTINUE, 1).withBinary(BinaryMode.FILES, true, false);
+        try (AccessSource db = AccessSource.open(GeneratedFixture.SCHEMA_FIDELITY.path())) {
+            SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
+            SqlitePlan plan =
+                    SqlitePlanner.plan(model, DataProfiler.profile(db, model), options, SqliteOptions.DEFAULT, issues);
+            WriteOutcome outcome =
+                    SqliteWriter.write(db::rows, required(plan), output, options, SqliteOptions.DEFAULT, false, issues);
+            assertThat(outcome.tableFailed()).isTrue();
+        }
+
+        try (Sqlite sqlite = Sqlite.open(output)) {
+            assertThat(sqlite.value("SELECT count(*) FROM Files")).isEqualTo(0);
+        }
+        assertThat(dir.resolve("files.sqlite3-files/Files")).doesNotExist();
+        assertThat(issues.list())
+                .filteredOn(i -> i.code() == IssueCode.TABLE_WRITE_FAILED)
+                .singleElement()
+                .satisfies(i -> assertThat(i.table()).isEqualTo("Files"));
+        assertThat(issues.list()).noneMatch(i -> i.code() == IssueCode.BINARY_FILES_NOT_REMOVED);
+    }
+
+    /** The plan with {@code Files.Raw} NOT NULL, which the second row contradicts. */
+    private static SqlitePlan required(SqlitePlan plan) {
+        List<SqlitePlan.PlannedTable> tables = plan.tables().stream()
+                .map(t -> !t.name().equals("Files")
+                        ? t
+                        : new SqlitePlan.PlannedTable(
+                                t.source(),
+                                t.name(),
+                                t.columns().stream()
+                                        .map(c -> !c.name().equals("Raw")
+                                                ? c
+                                                : new SqlitePlan.PlannedColumn(
+                                                        c.source(),
+                                                        c.sourceIndex(),
+                                                        c.name(),
+                                                        c.declaredType(),
+                                                        true,
+                                                        c.collateNocase(),
+                                                        c.defaultSql(),
+                                                        c.form(),
+                                                        c.fractionDigits(),
+                                                        c.olePart()))
+                                        .toList(),
+                                t.primaryKey(),
+                                t.indexes(),
+                                t.foreignKeys(),
+                                t.autoIncrementColumn(),
+                                t.sequenceSeed(),
+                                t.createTableSql()))
+                .toList();
+        return new SqlitePlan(plan.model(), plan.strict(), tables, plan.metadata(), plan.profiled(), plan.options());
     }
 
     private WriteOutcome convert(Path output, OnTableError onError, String failing, Issues issues) throws IOException {

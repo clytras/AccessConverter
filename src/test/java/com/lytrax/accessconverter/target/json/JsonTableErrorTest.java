@@ -15,6 +15,7 @@ import com.lytrax.accessconverter.report.Severity;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.RowStream;
 import com.lytrax.accessconverter.source.SourceException;
+import com.lytrax.accessconverter.target.BinaryMode;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.ConvertOptions.OnTableError;
 import com.lytrax.accessconverter.target.RowSource;
@@ -103,6 +104,60 @@ class JsonTableErrorTest {
         if (layout == Layout.DOCUMENT) {
             assertThat(Files.readString(output)).contains("\"Order Details\": [],\n    \"Orders\": [\n");
         }
+    }
+
+    /**
+     * A failed table is empty, and so are its files (08, --binary files): {@code Files} fails at its second row after
+     * the first wrote its three files, because {@code Raw} is planned as required and that row holds NULL.
+     */
+    @ParameterizedTest
+    @EnumSource(Layout.class)
+    void aTableThatFailsLeavesNoFilesBehind(Layout layout) throws IOException {
+        Path output = dir.resolve("files" + extension(layout));
+        Issues issues = new Issues();
+        ConvertOptions options = new ConvertOptions(
+                        true, false, OnTableError.CONTINUE, ConvertOptions.DEFAULT_BATCH_ROWS)
+                .withBinary(BinaryMode.FILES, true, false);
+        try (AccessSource db = AccessSource.open(GeneratedFixture.SCHEMA_FIDELITY.path())) {
+            SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
+            JsonPlan plan =
+                    required(JsonPlanner.plan(model, DataProfiler.profile(db, model), options, issues), "Files", "Raw");
+            WriteOutcome outcome = JsonWriter.write(
+                    db::rows,
+                    plan,
+                    output,
+                    options,
+                    JsonOptions.DEFAULT.withLayout(layout),
+                    JsonFixture.PRODUCER,
+                    issues);
+            assertThat(outcome.tableFailed()).isTrue();
+        }
+
+        assertThat(rows(output, layout, "Files")).isEmpty();
+        assertThat(output.resolveSibling(output.getFileName() + "-files/Files")).doesNotExist();
+        assertThat(issues.list())
+                .filteredOn(i -> i.code() == IssueCode.TABLE_WRITE_FAILED)
+                .singleElement()
+                .satisfies(i -> assertThat(i.table()).isEqualTo("Files"));
+        assertThat(issues.list()).noneMatch(i -> i.code() == IssueCode.BINARY_FILES_NOT_REMOVED);
+    }
+
+    private static JsonPlan required(JsonPlan plan, String table, String column) {
+        List<PlannedTable> tables = plan.tables().stream()
+                .map(t -> !t.name().equals(table)
+                        ? t
+                        : new PlannedTable(
+                                t.source(),
+                                t.columns().stream()
+                                        .map(c -> c.name().equals(column)
+                                                ? new PlannedColumn(c.source(), c.sourceIndex(), c.type(), false)
+                                                : c)
+                                        .toList(),
+                                t.primaryKey(),
+                                t.indexes(),
+                                t.file()))
+                .toList();
+        return new JsonPlan(plan.model(), tables, plan.relationships(), plan.linked(), plan.profiled(), plan.options());
     }
 
     @ParameterizedTest

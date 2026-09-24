@@ -259,6 +259,9 @@ public final class MySqlDumpWriter {
             tableFailed = true;
             failedTables.add(table.name());
             out.write("ROLLBACK;\n");
+            if (files != null) {
+                files.discardTable(table.name(), issues);
+            }
             TableFailure.handle(issues, options, table.name(), 0, e);
         }
         results.add(new TableResult(table.name(), read, written));

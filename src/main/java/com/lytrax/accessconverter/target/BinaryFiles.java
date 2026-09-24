@@ -2,6 +2,8 @@ package com.lytrax.accessconverter.target;
 
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 
+import com.lytrax.accessconverter.report.IssueCode;
+import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.value.MimeSniffer;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -97,6 +99,31 @@ public final class BinaryFiles {
         deleteTree(directory);
         if (created) {
             Files.move(partial, directory, ATOMIC_MOVE);
+        }
+    }
+
+    /**
+     * Removes the files of a table that failed and is left empty (03, Error handling), so no bytes stay on disk for rows
+     * the output doesn't have. A table's files are all under its own directory. What can't be removed is reported,
+     * never left behind quietly.
+     *
+     * @param table the table as the output names it, as passed to {@link #write}
+     */
+    public void discardTable(String table, Issues issues) {
+        Table dir = byTable.remove(table);
+        if (dir == null) {
+            return;
+        }
+        Path files = partial.resolve(dir.name);
+        try {
+            deleteTree(files);
+        } catch (IOException e) {
+            issues.add(
+                    IssueCode.BINARY_FILES_NOT_REMOVED,
+                    table,
+                    null,
+                    "the table failed and is empty, but its files under " + directory.getFileName() + "/" + dir.name
+                            + " could not all be removed: " + e.getMessage());
         }
     }
 

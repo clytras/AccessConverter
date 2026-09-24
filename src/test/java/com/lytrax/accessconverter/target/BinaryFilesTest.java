@@ -3,12 +3,18 @@ package com.lytrax.accessconverter.target;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.lytrax.accessconverter.report.IssueCode;
+import com.lytrax.accessconverter.report.Issues;
+import com.lytrax.accessconverter.report.Severity;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -118,6 +124,46 @@ class BinaryFilesTest {
         try (Stream<Path> left = Files.list(dir)) {
             assertThat(left).isEmpty();
         }
+    }
+
+    @Test
+    void aDiscardedTableLosesItsFilesAndOnlyThose() throws IOException {
+        BinaryFiles files = new BinaryFiles(dir.resolve("db.json"));
+        files.write("Failed", "C", "1", "x.txt", bytes("gone"));
+        files.write("Kept", "C", "1", "x.txt", bytes("kept"));
+        Issues issues = new Issues();
+        files.discardTable("Failed", issues);
+        files.discardTable("Never written", issues);
+        files.commit();
+
+        assertThat(issues.isEmpty()).isTrue();
+        assertThat(dir.resolve("db.json-files/Failed")).doesNotExist();
+        assertThat(dir.resolve("db.json-files/Kept/C/1-x.txt")).hasContent("kept");
+    }
+
+    @Test
+    void filesThatCantBeRemovedAreReported() throws IOException {
+        BinaryFiles files = new BinaryFiles(dir.resolve("db.json"));
+        files.write("Failed", "C", "1", "x.txt", bytes("stuck"));
+        Path table = dir.resolve("db.json-files.partial/Failed");
+        Issues issues = new Issues();
+        try {
+            Files.createSymbolicLink(table.resolve("link"), Files.createDirectories(dir.resolve("elsewhere")));
+            files.discardTable("Failed", issues);
+        } catch (IOException | UnsupportedOperationException e) {
+            // No symbolic links without a privilege on Windows, where an open file can't be deleted instead
+            try (FileChannel open = FileChannel.open(table.resolve("C/1-x.txt"), StandardOpenOption.READ)) {
+                files.discardTable("Failed", issues);
+            }
+            Assumptions.assumeTrue(Files.exists(table.resolve("C/1-x.txt")), "this OS deletes open files");
+        }
+
+        assertThat(issues.list()).singleElement().satisfies(i -> {
+            assertThat(i.code()).isEqualTo(IssueCode.BINARY_FILES_NOT_REMOVED);
+            assertThat(i.severity()).isEqualTo(Severity.ERROR);
+            assertThat(i.table()).isEqualTo("Failed");
+            assertThat(i.message()).contains("db.json-files/Failed");
+        });
     }
 
     @Test

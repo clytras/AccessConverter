@@ -15,6 +15,7 @@ import com.lytrax.accessconverter.report.Severity;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.RowStream;
 import com.lytrax.accessconverter.source.SourceException;
+import com.lytrax.accessconverter.target.BinaryMode;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.ConvertOptions.OnTableError;
 import com.lytrax.accessconverter.target.RowSource;
@@ -23,6 +24,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -76,6 +78,74 @@ class MySqlTableErrorTest {
                 .hasMessageContaining("reading table Customers failed");
         assertThat(output).doesNotExist();
         assertThat(output.resolveSibling("fail.sql.partial")).doesNotExist();
+    }
+
+    /**
+     * A failed table loads empty, and its files are gone too (08, --binary files): {@code Files} fails at its second row
+     * after the first wrote its files, because {@code Raw} is planned NOT NULL and that row holds NULL.
+     */
+    @Test
+    void aTableThatFailsLeavesNoFilesBehind() throws IOException {
+        Path output = dir.resolve("files.sql");
+        Issues issues = new Issues();
+        ConvertOptions options =
+                new ConvertOptions(true, false, OnTableError.CONTINUE, 1).withBinary(BinaryMode.FILES, true, false);
+        MySqlOptions mysql = MySqlOptions.of(MySqlDialect.MARIADB);
+        try (AccessSource db = AccessSource.open(GeneratedFixture.SCHEMA_FIDELITY.path())) {
+            SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
+            MySqlPlan plan = MySqlPlanner.plan(model, DataProfiler.profile(db, model), options, mysql, issues);
+            WriteOutcome outcome = MySqlDumpWriter.write(
+                    db::rows, required(plan), output, options, mysql, MySqlFixture.PRODUCER, issues);
+            assertThat(outcome.tableFailed()).isTrue();
+        }
+
+        assertThat(Files.readString(output, StandardCharsets.UTF_8)).contains("ROLLBACK;");
+        assertThat(dir.resolve("files.sql-files/Files")).doesNotExist();
+        assertThat(issues.list())
+                .filteredOn(i -> i.code() == IssueCode.TABLE_WRITE_FAILED)
+                .singleElement()
+                .satisfies(i -> assertThat(i.table()).isEqualTo("Files"));
+        assertThat(issues.list()).noneMatch(i -> i.code() == IssueCode.BINARY_FILES_NOT_REMOVED);
+    }
+
+    /** The plan with {@code Files.Raw} NOT NULL, which the second row contradicts. */
+    private static MySqlPlan required(MySqlPlan plan) {
+        List<MySqlPlan.PlannedTable> tables = plan.tables().stream()
+                .map(t -> !t.name().equals("Files")
+                        ? t
+                        : new MySqlPlan.PlannedTable(
+                                t.source(),
+                                t.name(),
+                                t.columns().stream()
+                                        .map(c -> !c.name().equals("Raw")
+                                                ? c
+                                                : new MySqlPlan.PlannedColumn(
+                                                        c.source(),
+                                                        c.sourceIndex(),
+                                                        c.name(),
+                                                        c.type(),
+                                                        c.collation(),
+                                                        c.form(),
+                                                        true,
+                                                        c.autoIncrement(),
+                                                        c.defaultSql(),
+                                                        c.comment(),
+                                                        c.fractionDigits(),
+                                                        c.olePart()))
+                                        .toList(),
+                                t.primaryKey(),
+                                t.inlineIndexes(),
+                                t.indexes(),
+                                t.checks(),
+                                t.foreignKeys(),
+                                t.comment(),
+                                t.autoIncrementSeed(),
+                                t.createTableSql(),
+                                t.indexSql(),
+                                t.checkSql(),
+                                t.foreignKeySql()))
+                .toList();
+        return new MySqlPlan(plan.model(), plan.dialect(), plan.collation(), tables, plan.profiled(), plan.options());
     }
 
     private WriteOutcome convert(Path output, OnTableError onError, String failing, Issues issues) throws IOException {

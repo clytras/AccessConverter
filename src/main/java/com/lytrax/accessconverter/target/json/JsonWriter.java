@@ -539,6 +539,9 @@ public final class JsonWriter {
             tableFailed = true;
             g.close(); // AUTO_CLOSE_CONTENT is off: this only flushes, and the cut below removes it
             out.truncate(start);
+            if (files != null) {
+                files.discardTable(table.name(), issues);
+            }
             TableFailure.handle(issues, options, table.name(), 0, e);
         }
         results.add(new TableResult(table.name(), read, written));

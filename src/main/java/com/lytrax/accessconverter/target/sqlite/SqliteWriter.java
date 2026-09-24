@@ -183,6 +183,9 @@ public final class SqliteWriter {
         } catch (IOException | SQLException | RuntimeException e) {
             db.rollback();
             tableFailed = true;
+            if (files != null) {
+                files.discardTable(table.name(), issues);
+            }
             TableFailure.handle(issues, options, table.name(), counts[1], e);
         }
         results.add(new TableResult(table.name(), counts[0], counts[1]));

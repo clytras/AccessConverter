@@ -149,8 +149,8 @@ public final class PlanRules {
     }
 
     /**
-     * An OLE column's companion: {@code <col>__kind} and the rest, named apart from every column of the table. The
-     * name and MIME columns are Long Text, so no link path or file name is ever too long for them.
+     * An OLE column's companion: {@code <col>__kind} and the rest, named apart from every column of the table. The name
+     * is Long Text, so no link path or class name is ever too long for it; the MIME type is one this tool generates.
      */
     private static ColumnModel companion(ColumnModel ole, OlePart part, Set<String> names) {
         String name = ole.name() + part.suffix();
@@ -160,15 +160,20 @@ public final class PlanRules {
         names.add(name);
         AccessType type =
                 switch (part) {
-                    case KIND -> AccessType.TEXT;
-                    case NAME, MIME -> AccessType.MEMO;
+                    case KIND, MIME -> AccessType.TEXT;
+                    case NAME -> AccessType.MEMO;
                     case CONTENT -> AccessType.BINARY;
                 };
         return new ColumnModel(
                 name,
                 ole.ordinal(),
                 type,
-                part == OlePart.KIND ? 16 : null,
+                switch (part) {
+                    case KIND -> 16;
+                    // A type from MimeSniffer's closed list: short, so it can be indexed and sorted
+                    case MIME -> 255;
+                    default -> null;
+                },
                 null,
                 null,
                 false,

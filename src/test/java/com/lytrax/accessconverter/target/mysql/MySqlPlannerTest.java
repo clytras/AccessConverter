@@ -615,7 +615,7 @@ class MySqlPlannerTest {
                             tuple("Ole", bytes),
                             tuple("Ole__kind", "VARCHAR(16)"),
                             tuple("Ole__name", "LONGTEXT"),
-                            tuple("Ole__mime", "LONGTEXT"),
+                            tuple("Ole__mime", "VARCHAR(255)"),
                             tuple("Ole__content", bytes));
             assertThat(table.column("Ole").orElseThrow().defaultSql()).isNull();
         }
