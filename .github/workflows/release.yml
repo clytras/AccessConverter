@@ -2,11 +2,18 @@ name: Release
 
 # A tag v<version> builds, smoke-tests and publishes 3.x: the shaded jar, a runtime image per platform (no Java
 # needed), the container image, SHA256SUMS and build-provenance attestations, as a draft release to review and
-# publish by hand. Run it by hand (workflow_dispatch) for a dry run that builds and tests everything and publishes
-# nothing but the workflow's own artifacts.
+# publish by hand. A push that changes the packaging, or a run by hand, is a dry run: it builds and tests
+# everything and publishes nothing but the workflow's own artifacts. (Path filters don't apply to tags.)
 on:
   push:
     tags: ['v*']
+    # A change to the packaging is dry-run before any tag needs it
+    branches: [master, v3]
+    paths:
+      - 'packaging/**'
+      - Dockerfile
+      - .dockerignore
+      - .github/workflows/release.yml
   workflow_dispatch:
 
 permissions:
