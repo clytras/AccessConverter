@@ -25,14 +25,14 @@ final class PlanOptions {
 
     @Option(
             names = "--tables",
-            paramLabel = "<glob,…>",
+            paramLabel = "<glob>",
             split = ",",
             description = "Only these tables (glob patterns, * and ? allowed).")
     List<String> tables;
 
     @Option(
             names = "--exclude-tables",
-            paramLabel = "<glob,…>",
+            paramLabel = "<glob>",
             split = ",",
             description = "Leave these tables out (glob patterns).")
     List<String> excludeTables;
@@ -43,7 +43,9 @@ final class PlanOptions {
                     + " left out and exact decimals are stored as text.")
     boolean noProfile;
 
-    @Option(names = "--include-hidden", description = "Also write Access's own hidden columns (s_GUID, s_Lineage, …).")
+    @Option(
+            names = "--include-hidden",
+            description = "Also write Access's own hidden columns (s_GUID, s_Lineage and the like).")
     boolean includeHidden;
 
     @Option(names = "--sqlite-strict", description = "SQLite: emit STRICT tables (needs SQLite 3.37 to read).")

@@ -51,7 +51,7 @@ import picocli.CommandLine.Spec;
         mixinStandardHelpOptions = true,
         sortOptions = false,
         description = {
-            "Compare a converted output with its Access source (09): the schema it should have, and every value.",
+            "Compare a converted output with its Access source: the schema it should have, and every value.",
             "The conversion is planned again from the source, so pass the same options the conversion used.",
             "A MySQL or MariaDB output is the database the dump was imported into: give --jdbc-url (and"
                     + " --jdbc-driver, since no JDBC driver is bundled) instead of <output>.",

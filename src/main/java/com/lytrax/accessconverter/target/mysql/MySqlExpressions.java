@@ -89,7 +89,7 @@ public final class MySqlExpressions {
             case SHORT_DATE_TIME, EXT_DATE_TIME -> date(expr, column.fractionDigits());
             case TEXT, MEMO, HYPERLINK -> text(expr, column);
             case GUID, AUTONUMBER_GUID -> guid(expr);
-            case BINARY, OLE, UNSUPPORTED -> Rendered.mismatch("a binary column takes no default value (F-17)");
+            case BINARY, OLE, UNSUPPORTED -> Rendered.mismatch("a binary column takes no default value");
         };
     }
 

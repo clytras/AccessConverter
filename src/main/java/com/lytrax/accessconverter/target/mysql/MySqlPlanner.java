@@ -622,7 +622,7 @@ public final class MySqlPlanner {
                     source.name(),
                     accessName,
                     "plain index on " + accessName + ": MySQL only generates values for an AUTO_INCREMENT column that"
-                            + " starts an index, and this autonumber isn't the primary key (F-35)");
+                            + " starts an index, and this autonumber isn't the primary key");
         }
 
         private static boolean startsWith(PlannedIndex index, ColumnDraft column) {
@@ -646,7 +646,7 @@ public final class MySqlPlanner {
                         this::rowBytes,
                         needed -> "the"
                                 + " table's rows could take up to " + needed + " bytes, over MySQL's " + MAX_ROW_BYTES
-                                + "-byte row limit (F-18)");
+                                + "-byte row limit");
             }
             long inline = inlineBytes();
             if (inline > MAX_INLINE_BYTES) {
