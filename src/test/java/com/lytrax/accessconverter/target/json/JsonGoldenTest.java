@@ -13,6 +13,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.io.TempDir;
@@ -81,8 +82,12 @@ class JsonGoldenTest {
         Path output = convert(database, options, "-ndjson");
         StringBuilder text = new StringBuilder();
         List<Path> files;
+        // schema.json first, then by name as a plain string: Path's own order ignores case on Windows only
         try (Stream<Path> listed = Files.list(output)) {
-            files = listed.sorted().toList();
+            files = listed.sorted(Comparator.comparing(
+                                    (Path f) -> !f.getFileName().toString().equals(JsonFormat.NDJSON_SCHEMA_FILE))
+                            .thenComparing(f -> f.getFileName().toString()))
+                    .toList();
         }
         for (Path file : files) {
             text.append("==> ").append(file.getFileName()).append(" <==\n").append(read(file));
