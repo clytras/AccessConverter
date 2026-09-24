@@ -1,0 +1,17 @@
+#!/bin/sh
+# AccessConverter: runs the Java runtime bundled next to this script, never an installed one.
+# ACCESSCONVERTER_JAVA_OPTS adds JVM options, e.g. ACCESSCONVERTER_JAVA_OPTS=-Xmx4g.
+
+# Follow symbolic links, so a link in /usr/local/bin finds the image
+self=$0
+while [ -h "$self" ]; do
+    link=$(readlink "$self")
+    case "$link" in
+        /*) self=$link ;;
+        *) self=$(dirname "$self")/$link ;;
+    esac
+done
+home=$(cd "$(dirname "$self")/.." && pwd -P)
+
+# shellcheck disable=SC2086 # the options are meant to be split into words
+exec "$home/runtime/bin/java" $ACCESSCONVERTER_JAVA_OPTS -jar "$home/lib/accessconverter.jar" "$@"

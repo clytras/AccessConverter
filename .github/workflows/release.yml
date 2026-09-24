@@ -1,0 +1,229 @@
+name: Release
+
+# A tag v<version> builds, smoke-tests and publishes 3.x: the shaded jar, a runtime image per platform (no Java
+# needed), the container image, SHA256SUMS and build-provenance attestations, as a draft release to review and
+# publish by hand. Run it by hand (workflow_dispatch) for a dry run that builds and tests everything and publishes
+# nothing but the workflow's own artifacts.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  IMAGE: ghcr.io/clytras/accessconverter
+  PUBLISH: ${{ github.ref_type == 'tag' }}
+
+jobs:
+  jar:
+    name: jar and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - uses: actions/cache@v6
+        with:
+          path: |
+            target/fixtures/jackcess
+            target/fixtures/jackcess-encrypt
+            target/fixtures/mdb-reader
+          key: corpus-${{ hashFiles('src/test/resources/fixtures/corpus.tsv', 'src/test/java/**/fixtures/CorpusFile.java') }}
+      - id: version
+        name: Version
+        run: |
+          version=$(./mvnw -B -q -ntp help:evaluate -Dexpression=project.version -DforceStdout)
+          if [[ "$GITHUB_REF_TYPE" == tag && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::the tag $GITHUB_REF_NAME doesn't match the project version $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - run: ./mvnw -B -ntp verify
+      - run: |
+          mkdir dist
+          cp "target/accessconverter-${{ steps.version.outputs.version }}.jar" dist/
+      - uses: actions/upload-artifact@v7
+        with:
+          name: jar
+          path: dist/
+          if-no-files-found: error
+
+  image:
+    name: runtime image (${{ matrix.platform }})
+    needs: jar
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {platform: linux-x64, os: ubuntu-24.04}
+          - {platform: linux-aarch64, os: ubuntu-24.04-arm}
+          - {platform: windows-x64, os: windows-2025}
+          - {platform: macos-x64, os: macos-15-intel}
+          - {platform: macos-aarch64, os: macos-15}
+    env:
+      VERSION: ${{ needs.jar.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      # jlink and the jmods of this platform's JDK
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/download-artifact@v8
+        with:
+          name: jar
+          path: dist/
+      - name: Build
+        run: bash packaging/build-image.sh "dist/accessconverter-$VERSION.jar" "$VERSION" ${{ matrix.platform }} dist
+      # The zip as users get it, unpacked where no Java is installed (Linux: a bare Ubuntu container) or where any
+      # Java but the image's own fails loudly (macOS and Windows have JDKs installed: a poisoned java comes first
+      # on the PATH, JAVA_HOME points nowhere and the JDKs are off the PATH)
+      - name: Smoke test
+        run: |
+          name="accessconverter-$VERSION-${{ matrix.platform }}"
+          mkdir unpacked
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            7z x -bso0 -ounpacked "dist/$name.zip"
+          else
+            unzip -q "dist/$name.zip" -d unpacked
+          fi
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            docker run --rm -v "$PWD:/src" -w /src ubuntu:24.04 bash -c \
+              "apt-get -qq update && apt-get -qq install -y curl > /dev/null && ! command -v java \
+               && bash packaging/smoke-test.sh unpacked/$name target/smoke"
+          else
+            mkdir poison
+            printf '#!/bin/sh\necho "a Java outside the image was run" >&2\nexit 97\n' > poison/java
+            printf '@echo a Java outside the image was run 1>&2\r\n@exit /b 97\r\n' > poison/java.cmd
+            chmod +x poison/java
+            PATH="$PWD/poison:$(tr ':' '\n' <<< "$PATH" | grep -viE 'java|jdk|temurin' | paste -sd: -)"
+            export JAVA_HOME=/nonexistent
+            if java -version 2> /dev/null; then
+              echo "::error::java is still reachable"
+              exit 1
+            fi
+            bash packaging/smoke-test.sh "unpacked/$name" target/smoke
+          fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: image-${{ matrix.platform }}
+          path: dist/*.zip
+          if-no-files-found: error
+
+  container:
+    name: container image
+    needs: jar
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.jar.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: jar
+          path: target/
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      # Each architecture is loaded and smoke-tested before anything is pushed; arm64 runs under emulation
+      - name: Smoke test
+        run: |
+          for arch in amd64 arm64; do
+            docker buildx build --platform "linux/$arch" --build-arg "JAR=target/accessconverter-$VERSION.jar" \
+              --load -t "accessconverter:smoke-$arch" .
+            bash packaging/smoke-test.sh "docker:accessconverter:smoke-$arch" "target/smoke-$arch"
+          done
+      - if: env.PUBLISH == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ env.PUBLISH }}
+      - id: push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          build-args: JAR=target/accessconverter-${{ env.VERSION }}.jar
+          push: ${{ env.PUBLISH == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - if: env.PUBLISH == 'true'
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+  release:
+    name: draft release
+    needs: [jar, image, container]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.jar.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist/
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum -- *.jar *.zip > SHA256SUMS
+          cat SHA256SUMS
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            dist/*.jar
+            dist/*.zip
+      # A draft: the maintainer reviews the artifacts and publishes the release
+      - name: Draft release
+        run: |
+          cat > notes.md << EOF
+          AccessConverter $VERSION.
+
+          - Runtime images (no Java needed): unzip, then run \`bin/accessconverter\` (\`bin\\accessconverter.cmd\` on Windows).
+          - Jar: \`java -jar accessconverter-$VERSION.jar\` with Java 21 or later.
+          - Container: \`docker run --rm -u "\$(id -u):\$(id -g)" -v "\$PWD:/data" $IMAGE:$VERSION --help\`
+          - Upgrading from 2.x: [migration notes](https://github.com/clytras/AccessConverter/blob/$GITHUB_REF_NAME/docs/migrating-from-v2.md).
+
+          Check a download with \`sha256sum -c SHA256SUMS --ignore-missing\`, or its provenance with
+          \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`.
+          EOF
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "AccessConverter $VERSION" \
+            --notes-file notes.md dist/*.jar dist/*.zip dist/SHA256SUMS
