@@ -1,101 +1,348 @@
 # AccessConverter
-A Microsoft Access database conversion tool to convert old and new Access database formats to some other popular SQL based databases and formats. It is built with [Jackess](http://jackcess.sourceforge.net/), a Java library for reading and writing MS Access databases. It supports Access 97 and all versions 2000-2013.
 
-## Online Application
-An online application that uses AccessConverter to convert databases can be found here https://lytrax.io/blog/tools/access-converter.
+Converts Microsoft Access databases (`.mdb`, `.mde`, `.accdb`, `.accde`, `.accdr`) to **MySQL/MariaDB dumps**,
+**SQLite** and **JSON**, on Linux, Windows and macOS.
 
-## Dependencies
-- JRE JavaSE 17
-- Apache Commons IO 2.5 ([commons-io-2.5](https://commons.apache.org/proper/commons-io/download_io.cgi))
-- Apache Commons Codec 1.17.1 ([commons-coded-1.17.1](https://commons.apache.org/codec/download_codec.cgi))
-- Apache Commons Lang 3.6 ([commons-lang3-3.15.0](https://commons.apache.org/proper/commons-lang/download_lang.cgi))
-- Apache Commons Text 1.3 ([commons-text-1.3](https://commons.apache.org/proper/commons-text/download_text.cgi))
-- Apache Commons Logging 1.2 ([commons-logging-1.2](https://commons.apache.org/proper/commons-logging/download_logging.cgi))
-- Google Gson 2.11.0 ([gson-2.11.0](https://github.com/google/gson))
-- SQLite JDBC Driver 3.46.0 ([sqlite-jdbc-3.46.0](https://github.com/xerial/sqlite-jdbc))
-- JSR 353 (JSON Processing) 1.0.2 ([javax.json-1.0.2](https://docs.oracle.com/javaee/7/api/javax/json/package-summary.html))
-- Jackcess 4.0.7 ([jackcess-4.0.7](https://jackcess.sourceforge.net/))
+- **Exact values, or a report that says otherwise.** Every value round-trips exactly: currency and decimals keep
+  their scale, dates keep their precision, bytes stay bytes, NULL stays NULL. Anything that can't be exported
+  exactly is named in the conversion report, with a reason and a count.
+- **The schema, as far as the target can enforce it.** Primary keys, unique and plain indexes, foreign keys with
+  their cascade rules, NOT NULL, defaults, validation rules as CHECK constraints, and descriptions as comments. A
+  constraint is written only when the data already satisfies it and the target enforces it no more strictly than
+  Access did, so the data Access accepted always imports.
+- **Every Access version Jackcess reads:** Access 97 through Microsoft 365, including password-protected and
+  encrypted databases, and Access 97 files in any Windows code page (Greek, Cyrillic, Japanese, …).
+- **Verifiable.** `accessconverter verify` reads the output back and compares its schema and every value with the
+  Access database.
 
-## Usage
-It is a command line tool and it accepts arguments. The output result on the screen can be either JSON, JSON prettified or normal (human readable) output. It creates a log file for each conversion that contains the conversion result along with all input parameters and conversion errors.
+AccessConverter is built on [Jackcess](https://jackcess.sourceforge.io/). The online converter at
+[lytrax.io](https://lytrax.io/blog/tools/access-converter) runs it.
 
-| Parameter | Accepts      | Description |
-| --- | ------------- | --- |
-| `--output-result` | `json`<br>`json-pretty`<br>`normal` | The console output format.<br>Can be JSON, JSON prettified or normal (human readable) output |
-| `--access-file` | `"<path>"` | The input access database file (*mdb*, *accdb*) |
-| `--log-file` | `"<path>"` | The output log file |
-| `--zip-file` | `"<path>"` | The output zip archive file that contains the converted file |
-| `--output-file` | `"<path>"` | The output file with the converted data (*.json*, *.sql*, *.sqlite3*, etc.) |
-| `--files-mode` | `file-relative`<br>`file-absolute`<br>`inline`<br>`reference` | The strategy to follow regarding attachment and OLE files.<br>`file-relative`/`file-absolute` will both save the files to the filesystem inside a path under a directory named after the DB + "-files". `file-absolute` will store the absolute path in the path table record, `file-relative` will store the relative path.<br>`inline` will store the data into the DB table or the output file with all the data encoded to Base64.<br>`reference` will store the file record, but it won't store any data.<br>Default behavior is `reference` |
-| `--task` | `convert-json`<br>`convert-mysql-dump`<br>`convert-sqlite` | The task to perform.<br>Convert to JSON or MySQL dump or SQLite |
-| `--json-data` | `assoc`<br>`array` | Either to use associative arrays or simple indexed tables for the JSON data |
-| `-json-columns` | | Add extended columns information for each table |
-| `-mysql-drop-tables` | | Add `DROP TABLE IF EXISTS` for each table |
-| `-compress` | | Compress the output file to a zip archive file |
-| `-no-log` | | Does not generate a log file |
-| `-show-progress` | | Displays progress status (Current table name, records inserted and total progress percentage) |
-| `-overwrite-existing-files` | | Will overwrite existing file when exporting files to filesystem for attachments and OLE objects. |
+Upgrading from 2.x? The command line, the outputs and the result format all changed: see
+[Migrating from AccessConverter 2](docs/migrating-from-v2.md).
 
+## Install
 
-## Examples
-**Convert a .accdb file to JSON**
+**Runtime image (no Java needed).** Download the zip for your platform from the
+[releases](https://github.com/clytras/AccessConverter/releases), unzip it anywhere and run
+`bin/accessconverter` (`bin\accessconverter.cmd` on Windows):
 
-*Output file will have the same filename as the access file and it will be saved at the same location*
+| Platform | File |
+| --- | --- |
+| Linux x64 / arm64 | `accessconverter-3.0.0-linux-x64.zip`, `accessconverter-3.0.0-linux-aarch64.zip` |
+| Windows x64 | `accessconverter-3.0.0-windows-x64.zip` |
+| macOS Intel / Apple silicon | `accessconverter-3.0.0-macos-x64.zip`, `accessconverter-3.0.0-macos-aarch64.zip` |
 
-    java -jar AccessConverter.jar --access-file "/home/test/somedb.accdb" --task convert-json --json-data assoc -json-columns
+Each holds its own Java runtime and never uses an installed one. On macOS, a zip downloaded with a browser is
+quarantined; clear that once with `xattr -dr com.apple.quarantine accessconverter-3.0.0-macos-*`. To pass JVM
+options (a larger heap, say), set `ACCESSCONVERTER_JAVA_OPTS=-Xmx4g`.
 
-**Convert a .accdb file to MySQL dump file**
+**Jar.** With Java 21 or later: `java -jar accessconverter-3.0.0.jar …`.
 
-*Use different files and location for both output and log files. Console output JSON pretty-print result*
+**Locale.** Java takes the encoding of file names and of standard output from the locale. Under a POSIX locale
+(`LANG` unset or `C`, common for services and cron jobs), a file whose name isn't ASCII can't be opened and non-ASCII
+text on standard output turns into `?`. Run AccessConverter with a UTF-8 locale, such as `LANG=C.UTF-8`; the
+container image sets one.
 
-    java -jar AccessConverter.jar --access-file "/home/test/somedb.accdb" --task convert-mysql-dump --output-file "/home/sql/somedb_dump.sql" --log-file "/home/logs/somedb.log" -mysql-drop-tables --output-result json-pretty
+**Container.** `ghcr.io/clytras/accessconverter:3` works on the current directory, mounted at `/data`:
 
-## Changelog
+```sh
+docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/data" ghcr.io/clytras/accessconverter:3 convert Shop.accdb --to sqlite
+```
 
-### Update 24/5/2018 (v1.1)
+**Checking a download.** Every release has `SHA256SUMS` (`sha256sum -c SHA256SUMS --ignore-missing`) and a
+build-provenance attestation (`gh attestation verify <file> --repo clytras/AccessConverter`).
 
-- Added SQL code logging on errors
-- Replaces *org.apache.commons.lang3.StrBuilder* with *org.apache.commons.text.TextStringBuilder* due to deprecation of the first
+**From source.** `./mvnw -B package` builds `target/accessconverter-<version>.jar`; `./mvnw -B verify` also runs the
+tests.
 
-### Update 29/5/2018 (v1.1.1)
+## Quick start
 
-- Fixed SQLite names conversion by enclosing all names (tables/fields) using the grave accent character "`"
-- Fixed when an INSERT error would break the entire transaction. Now each row is inserted individually
-- Added progress status when using the flag parameter "-show-progress"
+```sh
+accessconverter convert Shop.accdb --to sqlite            # Shop.sqlite3
+accessconverter convert Shop.accdb --to mysql             # Shop.sql, for MySQL 8.0.13 or later
+accessconverter convert Shop.accdb --to mariadb           # Shop.sql, for MariaDB 10.11 or later
+accessconverter convert Shop.accdb --to json              # Shop.json
+accessconverter inspect Shop.accdb                        # what's in the database, and what the conversion will say
+accessconverter verify  Shop.accdb Shop.sqlite3           # compare an output with its source
+```
 
-### Update 1/8/2024 (v2.0)
+Each conversion prints a summary and writes the conversion report next to the output (`Shop.sqlite3.report.json`).
 
-- JRE JavaSE 17
-- Multiple primary keys (MySQL, SQLite)
-- Unique and plain indexes (MySQL, SQLite)
-- Relationships with foreign keys (MySQL, SQLite)
-- Attachment files (MySQL, SQLite, JSON)
-- OLE files (MySQL, SQLite, JSON)
-- Better performance using SQLite batch updates and FileWriter for dumping data to files
-- Update Jackcess to v4, SQLite to v3.46.0 and more packages
+## Commands
+
+```
+accessconverter convert <input> --to sqlite|mysql|mariadb|json [-o <output>] [options]
+accessconverter inspect <input> [--profile] [--format text|json] [-o <file>]
+accessconverter verify  <input> [<output>] [options]
+```
+
+`-h`/`--help` on any command lists its options; `-V`/`--version` prints the version; `-v`/`--verbose` logs
+Jackcess's warnings and prints stack traces on errors.
+
+### Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success. |
+| `1` | Success with warnings: the output is complete and correct, and the report names what differs from Access (a constraint left out, a value that doesn't fit, …). |
+| `2` | Failed: the database can't be read (not an Access file, a wrong or missing password, a damaged file), a table failed, or `verify` found a difference. Unless `--on-table-error continue` was given, no output is left behind. |
+| `64` | Usage error: an unknown option, a missing value, an unknown charset. |
+
+A database that can't be read prints one line on standard error, `error: <file>: <reason>`, and nothing on standard
+output.
+
+### `convert`
+
+| Option | Meaning |
+| --- | --- |
+| `<input>` | The Access database. |
+| `--to <target>` | `sqlite`, `mysql`, `mariadb` or `json`. Required. |
+| `-o`, `--output <file>` | Default: the input's name with the target's extension (`.sqlite3`, `.sql`, `.json`) next to the input; for `--json-layout ndjson`, a directory named `<input>-ndjson`. |
+| `--overwrite` | Replace an existing output instead of failing. |
+| `--report <file>` | Where the conversion report goes. Default: `<output>.report.json`. |
+| `--no-report` | Don't write the report file; the issues are still printed. |
+| `--format-result text\|json` | How the result is printed on standard output. `json` prints the conversion report itself, for scripts. Default `text`. |
+| `--on-table-error fail\|continue` | A table that can't be read or written. `fail` (default) deletes the output; `continue` finishes the other tables, leaves the failed one empty and still exits 2. |
+| `--verify` | SQLite and JSON: after writing, compare the output's schema and every value with the source (SQLite also checks its integrity). For a dump, import it and run `verify --jdbc-url`. |
+| `--tables <glob>[,<glob>...]` | Only these tables (`*` and `?` allowed). Relationships to a table left out are skipped and reported. |
+| `--exclude-tables <glob>[,<glob>...]` | Leave these tables out. |
+| `--no-profile` | Skip the pass that reads the data before writing. Faster, but every constraint that depends on the data is left out, and SQLite stores exact decimals as text. |
+| `--include-hidden` | Also write Access's own hidden columns (`s_GUID`, `s_Lineage` and the like). |
+| `--binary inline\|files\|omit` | Where the bytes of Binary, OLE and attachment values go (see [Binary data](#binary-data-ole-objects-and-attachments)). Default `inline`. |
+| `--ole-extract` | Also decode OLE objects (see [Binary data](#binary-data-ole-objects-and-attachments)). |
+| `--include-version-history` | Write the version history of append-only memos, which is skipped otherwise. |
+| `--password[=<password>]` | The password of a protected or encrypted database (see [Passwords](#passwords-and-encrypted-databases)). |
+| `--charset <name>` | Access 97 only: decode text with this charset instead of the code page in the file's header (see [Access 97 text](#access-97-text)). |
+| `--batch-rows <n>` | SQLite, MySQL/MariaDB: rows per insert batch. Default 1000. |
+| `--batch-bytes <n>` | MySQL/MariaDB: the largest `INSERT` statement in bytes; a single larger row gets its own. Default 1048576. |
+| `--drop-existing` | MySQL/MariaDB: `DROP TABLE IF EXISTS` before each table, so the dump can be imported again. |
+| `--database <name>` | MySQL/MariaDB: create this database if it doesn't exist, and use it. |
+| `--collation <name>` | MySQL/MariaDB: the collation of every table (see [MySQL and MariaDB](#mysql-and-mariadb)). |
+| `--stamp` | MySQL/MariaDB and JSON: put the export time in the output. Without it, the same database always gives byte-identical output. |
+| `--sqlite-strict` | SQLite: `STRICT` tables (readable by SQLite 3.37 or later). |
+| `--sqlite-nocase` | SQLite: `COLLATE NOCASE` on every text column, so comparisons ignore (ASCII) case as Access does. |
+| `--sqlite-metadata` | SQLite: add the tables `_access_columns` and `_access_relationships` with the full Access metadata. |
+| `--analyze` | SQLite: run `ANALYZE` on the finished file, not only `PRAGMA optimize`. |
+| `--json-layout document\|ndjson` | JSON: one file (default), or a directory with `schema.json` and one `<table>.ndjson` file per table, one row per line. |
+| `--json-rows object\|array` | JSON: a row as an object keyed by column name (default) or an array in column order (smaller). |
+| `--json-bigint number\|string` | JSON: Large Number values as exact numbers (default) or strings, for parsers that lose precision past 2^53, such as JavaScript's. |
+| `--json-decimals number\|string` | JSON: Currency and Decimal values as exact numbers (default) or strings, for parsers that read every number as a double. |
+| `--json-hyperlinks string\|object` | JSON: a hyperlink as Access stores it, `display#address#subaddress#screentip` (default), or as an object. |
+| `--no-schema` | JSON: leave out the schema section (not recommended). |
+
+### `inspect`
+
+Prints what AccessConverter reads from a database: tables, columns with their types and properties, keys, indexes
+(with the hidden ones Access adds folded in), relationships, and the issues a conversion would report. It writes
+nothing else.
+
+| Option | Meaning |
+| --- | --- |
+| `--profile` | Also read the data and print the statistics the conversion decides with (NULLs, lengths, rule violations, orphans). |
+| `--format text\|json` | Default `text`. |
+| `-o`, `--output <file>` | Write to this file (UTF-8) instead of standard output. |
+| `--password[=<password>]`, `--charset <name>` | As for `convert`. |
+
+### `verify`
+
+```sh
+accessconverter verify Shop.accdb Shop.sqlite3
+accessconverter verify Shop.accdb Shop.json
+accessconverter verify Shop.accdb --jdbc-url jdbc:mariadb://localhost:3306/shop --jdbc-driver mariadb-java-client-3.5.10.jar --db-user root
+```
+
+`verify` plans the conversion again from the source and compares the output with it: every table, column type, key,
+index, foreign key, default and CHECK, and every value (exact decimals, dates at their precision, bytes by
+SHA-256). **Give it the same options the conversion used**, since they decide what the output should hold
+(`--tables`, `--exclude-tables`, `--no-profile`, `--include-hidden`, `--sqlite-strict`, `--sqlite-nocase`,
+`--sqlite-metadata`, `--collation`, `--binary`, `--ole-extract`, `--include-version-history`, `--password`,
+`--charset`). It exits 0 when the output matches and 2 when it doesn't, listing each difference.
+
+A MySQL or MariaDB output is the database the dump was imported into:
+
+| Option | Meaning |
+| --- | --- |
+| `--jdbc-url <url>` | `jdbc:mariadb://host:3306/db` with MariaDB Connector/J (works with both servers; add `?allowPublicKeyRetrieval=true` for MySQL 8), or `jdbc:mysql://host:3306/db` with MySQL Connector/J. |
+| `--jdbc-driver <jar>` | The driver's jar. None is bundled; not needed when the driver is already on the class path. |
+| `--db-user <user>` | The database user (or put it in the URL). |
+| `--db-password <password>` | The user's password; `ACCESSCONVERTER_DB_PASSWORD` keeps it out of the process list. |
+| `--to mysql\|mariadb` | The dialect the dump was written for. Default: the server's own. |
+| `--dump-directory <dir>` | With `--binary files`: the directory the dump was written in, which the stored paths are relative to. Default: the current directory. |
+
+Without an output, `verify <input>` prints the source side: each table's row count and a digest of its rows.
+
+## The conversion report
+
+Every conversion writes a JSON report (`<output>.report.json`, or `--report <file>`); `--format-result json` prints
+the same report on standard output.
+
+```json
+{
+  "format": "accessconverter-report",
+  "formatVersion": 1,
+  "tool": "accessconverter 3.0.0",
+  "command": "convert",
+  "options": { "to": "mysql", "binary": "inline", "collation": "utf8mb4_0900_as_ci", "…": "…" },
+  "source": { "file": "Shop.mdb", "fileFormat": "V1997", "codePage": 1253, "charset": "windows-1253" },
+  "outcome": "success-with-warnings",
+  "tables": [ { "table": "Customers", "rowsRead": 8, "rowsWritten": 8 } ],
+  "issues": [
+    { "code": "CHECK_VIOLATED_BY_DATA", "severity": "warning", "table": "Orders", "object": "Quantity",
+      "message": "no CHECK for the validation rule >0: 2 existing rows violate it, as Access allows",
+      "count": 1, "samples": [ "(17); (41)" ] }
+  ],
+  "timings": { "extractMillis": 48, "planMillis": 30, "profileMillis": 47, "writeMillis": 19 }
+}
+```
+
+- `outcome` is `success`, `success-with-warnings` or `failed`, matching exit codes 0, 1 and 2.
+- `tables` has the rows read from Access and written to the output for each table; they differ only for a table
+  that failed.
+- Each issue has a `code` (stable, for scripts), a `severity`, the `table` and `object` (a column, index or
+  relationship) it concerns, a `message` for people, a `count`, and `samples`: the primary keys of a few affected
+  rows (`(17); (41)`, or `row 5` in a table without one), so you can find them in Access.
+- `info` issues are decisions made the way Access would want them (a hidden index folded into the primary key, a
+  name made legal for the target). `warning` issues are where the output differs from Access: read these. `error`
+  issues mean the conversion failed.
+
+The warnings you are most likely to meet:
+
+| Code | What it means | What to do |
+| --- | --- | --- |
+| `CHECK_VIOLATED_BY_DATA` | A validation rule became no CHECK, because existing rows break it (Access doesn't recheck old rows when a rule is added). | Fix the rows named in `samples` if the rule matters. |
+| `CHECK_UNTRANSLATABLE` | A validation rule has no equivalent in the target; it is kept as a comment. | Enforce it in your application. |
+| `NOT_NULL_DROPPED_NULLS_PRESENT` | A Required column holds NULLs, so it isn't NOT NULL. | As above. |
+| `FK_SKIPPED_ORPHANS` | An enforced relationship became no foreign key, because child rows have no parent. | Fix or delete the orphans named in `samples`. |
+| `FK_SKIPPED_NOT_ENFORCED` (info) | Access doesn't enforce this relationship, so neither does the output; the child columns get an index. | — |
+| `DEFAULT_UNTRANSLATABLE` | An Access default expression has no equivalent; it is kept as a comment. | Set it in your application. |
+| `AUTONUMBER_RANDOM_DEFAULT`, `AUTONUMBER_RANDOM_SEQUENTIAL` | A Random AutoNumber (see below). | Read the message. |
+| `COLLATION_BINARY_KEY` | MySQL/MariaDB: a key column compares with `utf8mb4_bin`, because the default collation would reject values Access holds apart. | — |
+| `DECIMAL_STORED_AS_TEXT` (info) | SQLite: a decimal with more than 13 digits is stored as text to stay exact; `CAST(col AS REAL)` makes it numeric. | — |
+| `STATEMENT_EXCEEDS_PACKET` | MySQL/MariaDB: a row is bigger than the server's default `max_allowed_packet`. | Raise it, or convert with `--binary files`. |
+| `LINKED_TABLE_SKIPPED` | A linked table: its data lives in another database and isn't converted. | Convert that database too. |
+| `CATALOG_INDEX_UNUSABLE` | The database's catalog index couldn't be used (common in non-English Access 97 files); the catalog was read by scanning instead. | Nothing: every table and relationship is still found. |
+
+## MySQL and MariaDB
+
+`--to mysql` writes a dump for **MySQL 8.0.13 or later** (tested on 8.0 and 8.4), `--to mariadb` one for **MariaDB
+10.11 or later** (tested on 10.11, 11.4 and 11.8). Import it with the server's own client:
+
+```sh
+mysql   -u root -p shop < Shop.sql      # MySQL
+mariadb -u root -p shop < Shop.sql      # MariaDB
+```
+
+The database must exist, or convert with `--database shop` to have the dump create and use it. The dump sets
+everything it needs for its own session and restores it at the end: `utf8mb4`, strict SQL mode (so nothing is ever
+silently truncated or rounded), and foreign-key checks. Each table is loaded in one transaction, then the secondary
+indexes, CHECKs and foreign keys are added, so the server validates every constraint against the data. An import
+that prints nothing succeeded.
+
+- **Collation.** Tables use `utf8mb4_0900_as_ci` (MySQL) or `utf8mb4_uca1400_as_ci` (MariaDB): case-insensitive and
+  accent-sensitive like Access. Where a primary-key or unique column holds text these collations would compare more
+  strictly than Access (some control characters, compatibility forms), that column and its foreign keys use
+  `utf8mb4_bin` instead and the report says so. `--collation utf8mb4_bin` is also safe, but compares case.
+- **Large values.** A value of more than 16 MiB needs a larger `max_allowed_packet` on the server and the client
+  (`mysql --max-allowed-packet=1G`); `--binary files` keeps the bytes out of the dump.
+- **Yes/No** is `BOOLEAN`, 1 for Yes (Access stores -1).
+- **Random AutoNumbers.** An AutoNumber whose New Values are Random gets a random `DEFAULT`, as in Access: new rows
+  get random 32-bit keys, never a counter that could run out. The server doesn't report that key back:
+  `LAST_INSERT_ID()` and the client calls built on it (PHP's `lastInsertId()`, …) return 0, so an application that
+  needs the new key must select the row. As in Access, a drawn value that is already taken fails the insert with a
+  duplicate-key error; the report says how often that happens at the table's size.
+- **`Time()` defaults** are the time of day on Access's day zero, `1899-12-30`, because that is how Access stores a
+  time-only value; an application that expects a bare time reads that date. The same holds in SQLite.
+
+Check an import with `verify --jdbc-url` (see [`verify`](#verify)).
+
+## SQLite
+
+The output is a finished SQLite database. Every conversion runs `foreign_key_check` on it; `--verify` also runs
+`integrity_check` and compares every value with the source.
+
+- **Foreign keys are only enforced when the connection asks for it.** SQLite ignores foreign keys unless each
+  connection runs `PRAGMA foreign_keys = ON;` first. The file has them; your application has to switch them on.
+- **Dates** are ISO-8601 text (`2024-01-02 03:04:05`, plus `.fff` when there are milliseconds), which sorts and
+  compares correctly and works with SQLite's date functions.
+- **Currency and Decimal** are exact: `NUMERIC` when every value has at most 13 digits, otherwise text (reported as
+  `DECIMAL_STORED_AS_TEXT`; `CAST(col AS REAL)` makes it numeric).
+- **Text comparison.** Access compares text ignoring case; SQLite's default doesn't. CHECKs and foreign keys that
+  depend on it compare with `NOCASE` where they must; `--sqlite-nocase` makes every text column `COLLATE NOCASE`.
+  SQLite's `NOCASE` only folds ASCII letters, so a validation rule whose data only complies when Greek, Cyrillic or
+  other letters are compared ignoring case becomes no CHECK, and the report says so.
+- **AutoNumbers** are `INTEGER PRIMARY KEY AUTOINCREMENT` when they are the primary key. A Random AutoNumber counts
+  upward here, from its largest value: SQLite can only generate a key for such a column in sequence, and its 64-bit
+  counter never runs out (`AUTONUMBER_RANDOM_SEQUENTIAL`).
+- `--sqlite-metadata` adds `_access_columns` (each column's Access type, length, precision, Required, descriptions,
+  format, default and validation rule as Access wrote them, and what it became) and `_access_relationships` (every
+  relationship, enforced or not, and whether it became a foreign key).
+
+## JSON
+
+JSON holds the whole database: the schema (tables, columns with every Access property, keys, indexes and all
+relationships, including those Access doesn't enforce) and every value, spelled exactly. The format is documented
+in [docs/json-format.md](docs/json-format.md) and published as a JSON Schema,
+[`accessconverter-json-v1.schema.json`](src/main/resources/com/lytrax/accessconverter/target/json/accessconverter-json-v1.schema.json).
+The output streams, so a database of any size converts in little memory, and `--json-layout ndjson` gives one file
+per table for tools that read a row per line.
+
+## Binary data, OLE objects and attachments
+
+**Binary and OLE Object values are exported as their exact stored bytes** by default, whatever they hold. That can't
+fail and loses nothing. `--binary` decides where the bytes go:
+
+| `--binary` | The value in the output |
+| --- | --- |
+| `inline` (default) | The bytes: `BLOB`/`LONGBLOB` in SQL, base64 in JSON. |
+| `files` | One file per value under `<output>-files/<table>/<column>/`, named after the row's key; the output holds its path, relative to the output's directory. Recommended for large pictures and documents, and the only way to keep a MySQL dump small. |
+| `omit` | The bytes are dropped and the output holds their size, so a missing value and a 4 MB picture stay apart. |
+
+`--ole-extract` also decodes each OLE object: its kind (`package`, `embedded`, `link`, `compound` or `raw`), its name
+(the file name of a packaged file, the program of an embedded object, the path of a link), its content type (from
+the bytes, never from a name) and its content (the packaged file, or the object's own bytes). In SQL they are four
+extra columns, `<column>__kind`, `__name`, `__mime` and `__content`; in JSON the value becomes an object. The raw
+bytes are always kept.
+
+**Attachments and multi-value columns** become child tables in SQLite and MySQL/MariaDB, `<Table>_<Column>`,
+linked to the parent column by Access's own id with a cascading foreign key: attachments with `file_name`,
+`file_type`, `file_data`, `file_size`, `file_url`, `file_timestamp` and `file_flags`, multi-value columns with
+`value`. In JSON they are arrays inside the row. **Version history** of append-only memos is only written with
+`--include-version-history`.
+
+## Passwords and encrypted databases
+
+AccessConverter opens databases encrypted by Access 2007 and later (RC4 CryptoAPI and Agile encryption) and Microsoft
+Money files, which need their password. Encoded Access 97–2003 files, and the "database password" of Access 97–2003,
+need none: that password only guards the file inside Access, doesn't encrypt it, and is reported as
+`PASSWORD_NOT_REQUIRED`. The password is given one of three ways:
+
+- `--password=<password>` on the command line;
+- `--password` alone: it is asked for without echo. Put it after the input, or the input is taken as the password;
+  without a console, the prompt goes to standard error and the password is read from the first line of standard
+  input;
+- the `ACCESSCONVERTER_PASSWORD` environment variable, which keeps the password out of the process list.
+
+The password is never printed or written to the report. A missing or wrong password for an encrypted database
+exits 2 with `error: <file>: …`.
+
+## Access 97 text
+
+Access 97 stores text in the Windows code page of the database's sort order, not in Unicode. AccessConverter reads
+the code page from the file's header, so Greek, Cyrillic, Central European, Japanese, Chinese, Korean, Thai and other
+Access 97 files convert without any option; the report's `source.charset` says which charset was used. If a file was
+made on a system whose code page doesn't match its header, `--charset windows-1253` (or any Java charset name)
+overrides it. Access 2000 and later store Unicode, and ignore `--charset` with a warning.
+
+## What isn't converted
+
+- **Queries, forms, reports, macros and VBA modules.** Jackcess doesn't read them, and they have no equivalent in
+  the targets.
+- **Linked tables.** Their data lives in another database; they are listed in the report (and in JSON's schema), and
+  that database can be converted on its own.
+- **Access security** (user-level permissions and workgroup files).
 
 ## License
 
-Access Converter is released under the [MIT License](LICENSE).
-
-```
-Copyright (c) 2024 Christos Lytras
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+AccessConverter is released under the [MIT License](LICENSE). The runtime images and the container image bundle
+third-party software under its own licenses: see [NOTICE](NOTICE).
