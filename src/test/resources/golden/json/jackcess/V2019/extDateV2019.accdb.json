@@ -1,0 +1,141 @@
+{
+  "format": "accessconverter",
+  "formatVersion": 1,
+  "producer": "AccessConverter",
+  "layout": "document",
+  "encoding": {
+    "rows": "object",
+    "bigint": "number",
+    "decimals": "number",
+    "hyperlinks": "string",
+    "binary": "base64"
+  },
+  "source": {
+    "file": "extDateV2019.accdb",
+    "fileFormat": "V2019",
+    "charset": "UTF-16LE"
+  },
+  "schema": {
+    "tables": [
+      {
+        "name": "Table1",
+        "description": null,
+        "columns": [
+          {
+            "name": "ID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "Field1",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "DateExt",
+            "type": "datetime",
+            "accessType": "EXT_DATE_TIME",
+            "nullable": true,
+            "required": false,
+            "format": "General Date",
+            "decimalPlaces": 7
+          },
+          {
+            "name": "DateNormal",
+            "type": "datetime",
+            "accessType": "SHORT_DATE_TIME",
+            "nullable": true,
+            "required": false
+          },
+          {
+            "name": "DateExtStr",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "DateNormalCalc",
+            "type": "datetime",
+            "accessType": "SHORT_DATE_TIME",
+            "nullable": true,
+            "required": false,
+            "calculatedExpression": "[DateNormal]"
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "ID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [
+          {
+            "name": "DateExtAsc",
+            "columns": [
+              {
+                "name": "DateExt",
+                "order": "asc"
+              }
+            ],
+            "unique": false,
+            "ignoreNulls": false,
+            "required": false,
+            "accessNames": [
+              "DateExtAsc"
+            ]
+          },
+          {
+            "name": "DateExtDesc",
+            "columns": [
+              {
+                "name": "DateExt",
+                "order": "desc"
+              }
+            ],
+            "unique": false,
+            "ignoreNulls": false,
+            "required": false,
+            "accessNames": [
+              "DateExtDesc"
+            ]
+          }
+        ],
+        "validationRule": null
+      }
+    ],
+    "linkedTables": [],
+    "relationships": []
+  },
+  "data": {
+    "Table1": [
+      {"ID":1,"Field1":"row1","DateExt":"2020-06-17T00:00:00.0000000","DateNormal":"2020-06-17T00:00:00","DateExtStr":"6/17/2020","DateNormalCalc":"2020-06-17T00:00:00"},
+      {"ID":2,"Field1":"row2","DateExt":"2021-06-14T00:00:00.0000000","DateNormal":"2021-06-14T00:00:00","DateExtStr":"6/14/2021","DateNormalCalc":"2021-06-14T00:00:00"},
+      {"ID":3,"Field1":"row3","DateExt":"2021-06-14T12:45:00.0000000","DateNormal":"2021-06-14T12:45:00","DateExtStr":"6/14/2021 12:45:00.0000000 PM","DateNormalCalc":"2021-06-14T12:45:00"},
+      {"ID":4,"Field1":"row4","DateExt":"2021-06-14T01:45:00.0000000","DateNormal":"2021-06-14T01:45:00","DateExtStr":"6/14/2021 1:45:00.0000000 AM","DateNormalCalc":"2021-06-14T01:45:00"},
+      {"ID":5,"Field1":"row5","DateExt":null,"DateNormal":null,"DateExtStr":null,"DateNormalCalc":null},
+      {"ID":6,"Field1":"row6","DateExt":"2021-06-14T22:45:12.3456789","DateNormal":"2021-06-14T22:45:12","DateExtStr":"6/14/2021 10:45:12.3456789 PM","DateNormalCalc":"2021-06-14T22:45:12"},
+      {"ID":7,"Field1":"row7","DateExt":"1765-06-14T12:45:00.0000000","DateNormal":"1765-06-14T12:45:00","DateExtStr":"6/14/1765 12:45:00.0000000 PM","DateNormalCalc":"1765-06-14T12:45:00"},
+      {"ID":8,"Field1":"row8","DateExt":"0100-06-14T12:45:00.1234567","DateNormal":"0100-06-14T12:45:00","DateExtStr":"6/14/100 12:45:00.1234567 PM","DateNormalCalc":"0100-06-14T12:45:00"},
+      {"ID":9,"Field1":"row9","DateExt":"1265-06-14T12:45:00.0000000","DateNormal":"1265-06-14T12:45:00","DateExtStr":"6/14/1265 12:45:00.0000000 PM","DateNormalCalc":"1265-06-14T12:45:00"}
+    ]
+  }
+}

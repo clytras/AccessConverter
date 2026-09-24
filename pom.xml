@@ -48,6 +48,7 @@
         <testcontainers.version>2.0.5</testcontainers.version>
         <mysql-connector.version>26.7.0</mysql-connector.version>
         <mariadb-client.version>3.5.10</mariadb-client.version>
+        <json-schema-validator.version>3.0.7</json-schema-validator.version>
 
         <!-- Plugins -->
         <maven-clean-plugin.version>3.5.0</maven-clean-plugin.version>
@@ -169,6 +170,13 @@
             <groupId>org.mariadb.jdbc</groupId>
             <artifactId>mariadb-java-client</artifactId>
             <version>${mariadb-client.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Validates JSON exports against the published schema (07) -->
+        <dependency>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>${json-schema-validator.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

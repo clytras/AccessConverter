@@ -376,6 +376,9 @@ public final class MySqlPlanner {
                                     + autoIncrement.name + " is that column");
                 }
             }
+            if (autoIncrement != null && autoIncrement.source.isRandomAutoNumber()) {
+                randomAutoNumber(autoIncrement.source);
+            }
             primaryKey();
             for (IndexModel index : source.indexes()) {
                 index(index, index.name(), index.unique());
@@ -881,6 +884,34 @@ public final class MySqlPlanner {
                     foreignKeys.isEmpty() ? null : foreignKeys(name, foreignKeys));
         }
 
+        /**
+         * A Random autonumber becomes AUTO_INCREMENT, which counts upward: say so, and how far the count can go. InnoDB
+         * continues after the largest stored value, and random values scatter over the whole INT range, so the ceiling
+         * can be close (the backlog decides what a Random autonumber should become).
+         */
+        private void randomAutoNumber(ColumnModel column) {
+            ColumnStats stats = rules.stats(source.name(), column.name());
+            Long max = stats == null ? null : stats.maxAutoNumber();
+            String headroom;
+            if (max == null) {
+                headroom =
+                        "; without a profile the largest value, and so the room left below INT's ceiling, is unknown";
+            } else if (max >= Integer.MAX_VALUE) {
+                headroom = "; the largest value is INT's maximum, " + Integer.MAX_VALUE
+                        + ", so the next generated value overflows and the first insert without an ID fails";
+            } else {
+                long next = Math.max(max, 0) + 1;
+                headroom = "; the next generated value is " + next + ", and " + (Integer.MAX_VALUE - next + 1)
+                        + " values remain before INT's ceiling";
+            }
+            issues.add(
+                    IssueCode.AUTONUMBER_RANDOM_SEQUENTIAL,
+                    source.name(),
+                    column.name(),
+                    "Access generates random values for this autonumber (New Values: Random); MySQL's AUTO_INCREMENT"
+                            + " generates them in sequence. The existing values are kept exactly" + headroom);
+        }
+
         /** The {@code AUTO_INCREMENT} table option: the next value after the highest Access used (04). */
         private Long seed() {
             if (autoIncrement == null) {
@@ -1293,8 +1324,9 @@ public final class MySqlPlanner {
             if (value == null) {
                 return source.type() == AccessType.BOOLEAN ? "0" : null; // an Access Yes/No without a default is No
             }
-            if (!value.isTranslated()) {
-                comments.add("Access default: " + value.raw()); // reported by the extractor
+            if (!value.isTranslated() || source.isRandomAutoNumber()) {
+                // Untranslated: reported by the extractor. GenUniqueID(): the autonumber's Random setting
+                comments.add("Access default: " + value.raw());
                 return null;
             }
             Rendered rendered = MySqlExpressions.defaultClause(value.expr(), shape());

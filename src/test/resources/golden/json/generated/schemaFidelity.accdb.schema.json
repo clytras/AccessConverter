@@ -1,0 +1,1513 @@
+{
+  "format": "accessconverter",
+  "formatVersion": 1,
+  "producer": "AccessConverter",
+  "layout": "document",
+  "encoding": {
+    "rows": "object",
+    "bigint": "number",
+    "decimals": "number",
+    "hyperlinks": "string",
+    "binary": "base64"
+  },
+  "source": {
+    "file": "schemaFidelity.accdb",
+    "fileFormat": "V2010",
+    "charset": "UTF-16LE"
+  },
+  "schema": {
+    "tables": [
+      {
+        "name": "CustomerLoyaltyProgramMembershipHistory",
+        "description": null,
+        "columns": [
+          {
+            "name": "HistID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "TierID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": true,
+            "required": false
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "HistID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [
+          {
+            "name": "CustomerLoyaltyProgramMembersCustomerLoyaltyProgramMembership",
+            "columns": [
+              {
+                "name": "TierID",
+                "order": "asc"
+              }
+            ],
+            "unique": false,
+            "ignoreNulls": false,
+            "required": false,
+            "accessNames": [
+              "CustomerLoyaltyProgramMembersCustomerLoyaltyProgramMembership"
+            ]
+          }
+        ],
+        "validationRule": null
+      },
+      {
+        "name": "CustomerLoyaltyProgramMembershipTiers",
+        "description": null,
+        "columns": [
+          {
+            "name": "TierID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "TierID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [],
+        "validationRule": null
+      },
+      {
+        "name": "Customers",
+        "description": null,
+        "columns": [
+          {
+            "name": "CustomerID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "Code",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": false,
+            "required": true,
+            "length": 10,
+            "allowZeroLength": true
+          },
+          {
+            "name": "Name",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": false,
+            "required": true,
+            "length": 100,
+            "allowZeroLength": true,
+            "description": "Customer display name"
+          },
+          {
+            "name": "Email",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 120,
+            "allowZeroLength": true
+          },
+          {
+            "name": "Notes",
+            "type": "string",
+            "accessType": "MEMO",
+            "nullable": true,
+            "required": false,
+            "allowZeroLength": true
+          },
+          {
+            "name": "Rating",
+            "type": "uint8",
+            "accessType": "BYTE",
+            "nullable": true,
+            "required": false
+          },
+          {
+            "name": "Balance",
+            "type": "decimal",
+            "accessType": "MONEY",
+            "nullable": true,
+            "required": false,
+            "precision": 19,
+            "scale": 4
+          },
+          {
+            "name": "Discount",
+            "type": "decimal",
+            "accessType": "NUMERIC",
+            "nullable": true,
+            "required": false,
+            "precision": 10,
+            "scale": 4
+          },
+          {
+            "name": "Created",
+            "type": "datetime",
+            "accessType": "SHORT_DATE_TIME",
+            "nullable": true,
+            "required": false,
+            "default": {
+              "access": "Now()",
+              "kind": "currentTimestamp"
+            }
+          },
+          {
+            "name": "Active",
+            "type": "boolean",
+            "accessType": "BOOLEAN",
+            "nullable": false,
+            "required": false,
+            "default": {
+              "access": "Yes",
+              "kind": "literal",
+              "value": true
+            }
+          },
+          {
+            "name": "RowGuid",
+            "type": "guid",
+            "accessType": "GUID",
+            "nullable": true,
+            "required": false
+          },
+          {
+            "name": "Visits",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": true,
+            "required": false
+          },
+          {
+            "name": "Country",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true,
+            "default": {
+              "access": "\"Greece\"",
+              "kind": "literal",
+              "value": "Greece"
+            }
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "CustomerID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [
+          {
+            "name": "IX_Name",
+            "columns": [
+              {
+                "name": "Name",
+                "order": "desc"
+              }
+            ],
+            "unique": false,
+            "ignoreNulls": false,
+            "required": false,
+            "accessNames": [
+              "IX_Name"
+            ]
+          },
+          {
+            "name": "UX_Code",
+            "columns": [
+              {
+                "name": "Code",
+                "order": "asc"
+              }
+            ],
+            "unique": true,
+            "ignoreNulls": false,
+            "required": false,
+            "accessNames": [
+              "UX_Code"
+            ]
+          },
+          {
+            "name": "UX_Email",
+            "columns": [
+              {
+                "name": "Email",
+                "order": "asc"
+              }
+            ],
+            "unique": true,
+            "ignoreNulls": true,
+            "required": false,
+            "accessNames": [
+              "UX_Email"
+            ]
+          }
+        ],
+        "validationRule": null
+      },
+      {
+        "name": "Files",
+        "description": null,
+        "columns": [
+          {
+            "name": "FileID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "Raw",
+            "type": "binary",
+            "accessType": "BINARY",
+            "nullable": true,
+            "required": false,
+            "length": 16
+          },
+          {
+            "name": "Doc",
+            "type": "ole",
+            "accessType": "OLE",
+            "nullable": true,
+            "required": false
+          },
+          {
+            "name": "Img",
+            "type": "ole",
+            "accessType": "OLE",
+            "nullable": true,
+            "required": false
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "FileID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [],
+        "validationRule": null
+      },
+      {
+        "name": "Order Details",
+        "description": null,
+        "columns": [
+          {
+            "name": "OrderID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": true
+          },
+          {
+            "name": "ProductID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": true
+          },
+          {
+            "name": "Qty",
+            "type": "int16",
+            "accessType": "INT",
+            "nullable": true,
+            "required": false,
+            "validationRule": {
+              "access": ">0",
+              "validationText": null
+            }
+          },
+          {
+            "name": "UnitPrice",
+            "type": "decimal",
+            "accessType": "MONEY",
+            "nullable": true,
+            "required": false,
+            "precision": 19,
+            "scale": 4
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "OrderID",
+              "order": "asc"
+            },
+            {
+              "name": "ProductID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey",
+            "OrdersOrder Details"
+          ]
+        },
+        "indexes": [
+          {
+            "name": "ProductsOrder Details",
+            "columns": [
+              {
+                "name": "ProductID",
+                "order": "asc"
+              }
+            ],
+            "unique": false,
+            "ignoreNulls": false,
+            "required": false,
+            "accessNames": [
+              "ProductsOrder Details"
+            ]
+          }
+        ],
+        "validationRule": null
+      },
+      {
+        "name": "Orders",
+        "description": null,
+        "columns": [
+          {
+            "name": "OrderID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "CustomerID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": true
+          },
+          {
+            "name": "ShipperCode",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 10,
+            "allowZeroLength": true
+          },
+          {
+            "name": "OrderDate",
+            "type": "datetime",
+            "accessType": "SHORT_DATE_TIME",
+            "nullable": true,
+            "required": false
+          },
+          {
+            "name": "Order",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 20,
+            "allowZeroLength": true
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "OrderID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [
+          {
+            "name": "CustomerID",
+            "columns": [
+              {
+                "name": "CustomerID",
+                "order": "asc"
+              }
+            ],
+            "unique": false,
+            "ignoreNulls": false,
+            "required": false,
+            "accessNames": [
+              "CustomerID",
+              "CustomersOrders"
+            ]
+          },
+          {
+            "name": "ShippersOrders",
+            "columns": [
+              {
+                "name": "ShipperCode",
+                "order": "asc"
+              }
+            ],
+            "unique": false,
+            "ignoreNulls": false,
+            "required": false,
+            "accessNames": [
+              "ShippersOrders"
+            ]
+          }
+        ],
+        "validationRule": null
+      },
+      {
+        "name": "Products",
+        "description": null,
+        "columns": [
+          {
+            "name": "ProductID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "Name",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "ParentProductID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": true,
+            "required": false
+          },
+          {
+            "name": "SupplierID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": true,
+            "required": false
+          },
+          {
+            "name": "Price",
+            "type": "decimal",
+            "accessType": "MONEY",
+            "nullable": true,
+            "required": false,
+            "precision": 19,
+            "scale": 4
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "ProductID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [
+          {
+            "name": "Name",
+            "columns": [
+              {
+                "name": "Name",
+                "order": "asc"
+              }
+            ],
+            "unique": false,
+            "ignoreNulls": false,
+            "required": false,
+            "accessNames": [
+              "Name"
+            ]
+          }
+        ],
+        "validationRule": null
+      },
+      {
+        "name": "Shippers",
+        "description": null,
+        "columns": [
+          {
+            "name": "ShipperID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "Code",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": false,
+            "required": false,
+            "length": 10,
+            "allowZeroLength": true
+          },
+          {
+            "name": "Name",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "Code",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [],
+        "validationRule": null
+      },
+      {
+        "name": "Suppliers",
+        "description": null,
+        "columns": [
+          {
+            "name": "SupplierID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "Name",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "SupplierID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [],
+        "validationRule": null
+      },
+      {
+        "name": "WideTable",
+        "description": null,
+        "columns": [
+          {
+            "name": "ID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "T1",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T2",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T3",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T4",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T5",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T6",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T7",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T8",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T9",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T10",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T11",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T12",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T13",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T14",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T15",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T16",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T17",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T18",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T19",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T20",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T21",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T22",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T23",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T24",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T25",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T26",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T27",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T28",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T29",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T30",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T31",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T32",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T33",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T34",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T35",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T36",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T37",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T38",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T39",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T40",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T41",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T42",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T43",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T44",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T45",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T46",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T47",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T48",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T49",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T50",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T51",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T52",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T53",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T54",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T55",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T56",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T57",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T58",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T59",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T60",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T61",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T62",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T63",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T64",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T65",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T66",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T67",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T68",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T69",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "T70",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "ID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [],
+        "validationRule": null
+      },
+      {
+        "name": "Πελάτες",
+        "description": null,
+        "columns": [
+          {
+            "name": "Κωδικός",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "Όνομα",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "Κωδικός",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [],
+        "validationRule": null
+      }
+    ],
+    "linkedTables": [],
+    "relationships": [
+      {
+        "name": "CustomerLoyaltyProgramMembersCustomerLoyaltyProgramMembership",
+        "parent": {
+          "table": "CustomerLoyaltyProgramMembershipTiers",
+          "columns": [
+            "TierID"
+          ]
+        },
+        "child": {
+          "table": "CustomerLoyaltyProgramMembershipHistory",
+          "columns": [
+            "TierID"
+          ]
+        },
+        "enforced": true,
+        "onUpdate": "noAction",
+        "onDelete": "noAction",
+        "oneToOne": false,
+        "join": "inner"
+      },
+      {
+        "name": "CustomersOrders",
+        "parent": {
+          "table": "Customers",
+          "columns": [
+            "CustomerID"
+          ]
+        },
+        "child": {
+          "table": "Orders",
+          "columns": [
+            "CustomerID"
+          ]
+        },
+        "enforced": true,
+        "onUpdate": "cascade",
+        "onDelete": "cascade",
+        "oneToOne": false,
+        "join": "inner"
+      },
+      {
+        "name": "OrdersOrder Details",
+        "parent": {
+          "table": "Orders",
+          "columns": [
+            "OrderID"
+          ]
+        },
+        "child": {
+          "table": "Order Details",
+          "columns": [
+            "OrderID"
+          ]
+        },
+        "enforced": true,
+        "onUpdate": "noAction",
+        "onDelete": "cascade",
+        "oneToOne": false,
+        "join": "inner"
+      },
+      {
+        "name": "ProductsOrder Details",
+        "parent": {
+          "table": "Products",
+          "columns": [
+            "ProductID"
+          ]
+        },
+        "child": {
+          "table": "Order Details",
+          "columns": [
+            "ProductID"
+          ]
+        },
+        "enforced": true,
+        "onUpdate": "noAction",
+        "onDelete": "noAction",
+        "oneToOne": false,
+        "join": "inner"
+      },
+      {
+        "name": "ShippersOrders",
+        "parent": {
+          "table": "Shippers",
+          "columns": [
+            "Code"
+          ]
+        },
+        "child": {
+          "table": "Orders",
+          "columns": [
+            "ShipperCode"
+          ]
+        },
+        "enforced": true,
+        "onUpdate": "noAction",
+        "onDelete": "setNull",
+        "oneToOne": false,
+        "join": "inner"
+      },
+      {
+        "name": "SuppliersProducts",
+        "parent": {
+          "table": "Suppliers",
+          "columns": [
+            "SupplierID"
+          ]
+        },
+        "child": {
+          "table": "Products",
+          "columns": [
+            "SupplierID"
+          ]
+        },
+        "enforced": false,
+        "onUpdate": "noAction",
+        "onDelete": "noAction",
+        "oneToOne": false,
+        "join": "inner"
+      }
+    ]
+  },

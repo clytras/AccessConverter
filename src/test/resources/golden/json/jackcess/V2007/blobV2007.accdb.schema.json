@@ -1,0 +1,77 @@
+{
+  "format": "accessconverter",
+  "formatVersion": 1,
+  "producer": "AccessConverter",
+  "layout": "document",
+  "encoding": {
+    "rows": "object",
+    "bigint": "number",
+    "decimals": "number",
+    "hyperlinks": "string",
+    "binary": "base64"
+  },
+  "source": {
+    "file": "blobV2007.accdb",
+    "fileFormat": "V2007",
+    "charset": "UTF-16LE"
+  },
+  "schema": {
+    "tables": [
+      {
+        "name": "Table1",
+        "description": null,
+        "columns": [
+          {
+            "name": "ID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "ole_data",
+            "type": "ole",
+            "accessType": "OLE",
+            "nullable": true,
+            "required": false
+          },
+          {
+            "name": "attach_data",
+            "type": "complexId",
+            "accessType": "ATTACHMENT",
+            "nullable": false,
+            "required": false
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "ID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [],
+        "validationRule": null
+      }
+    ],
+    "linkedTables": [],
+    "relationships": []
+  },

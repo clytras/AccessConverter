@@ -247,6 +247,15 @@ public final class SqlitePlanner {
                 only.rowidAlias = true;
                 if (only.source.type() == AccessType.AUTONUMBER_LONG) {
                     autoIncrementColumn = only.name;
+                    if (only.source.isRandomAutoNumber()) {
+                        issues.add(
+                                IssueCode.AUTONUMBER_RANDOM_SEQUENTIAL,
+                                source.name(),
+                                only.source.name(),
+                                "Access generates random values for this autonumber (New Values: Random); SQLite's"
+                                        + " AUTOINCREMENT generates them in sequence, after the largest value. The"
+                                        + " existing values are kept exactly");
+                    }
                 }
             } else {
                 // SQLite allows NULLs in a PRIMARY KEY that isn't the rowid, so the columns say NOT NULL themselves;
@@ -555,7 +564,8 @@ public final class SqlitePlanner {
                 defaultSql = source.type() == AccessType.BOOLEAN ? "0" : null;
                 return;
             }
-            if (!value.isTranslated()) {
+            // GenUniqueID() is the Random setting of the autonumber, not a default (reported with the key)
+            if (!value.isTranslated() || source.isRandomAutoNumber()) {
                 comments.add("Access default: " + value.raw());
                 return;
             }

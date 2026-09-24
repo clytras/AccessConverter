@@ -1,0 +1,84 @@
+{
+  "format": "accessconverter",
+  "formatVersion": 1,
+  "producer": "AccessConverter",
+  "layout": "document",
+  "encoding": {
+    "rows": "object",
+    "bigint": "number",
+    "decimals": "number",
+    "hyperlinks": "string",
+    "binary": "base64"
+  },
+  "source": {
+    "file": "unsupportedFieldsV2007.accdb",
+    "fileFormat": "V2007",
+    "charset": "UTF-16LE"
+  },
+  "schema": {
+    "tables": [
+      {
+        "name": "Test",
+        "description": null,
+        "columns": [
+          {
+            "name": "ID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "UnknownVar",
+            "type": "binary",
+            "accessType": "UNSUPPORTED",
+            "nullable": true,
+            "required": false
+          },
+          {
+            "name": "UnknownFix",
+            "type": "binary",
+            "accessType": "UNSUPPORTED",
+            "nullable": true,
+            "required": false,
+            "decimalPlaces": 255
+          },
+          {
+            "name": "UnknownComplex",
+            "type": "complexId",
+            "accessType": "COMPLEX_UNSUPPORTED",
+            "nullable": false,
+            "required": false
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "ID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [],
+        "validationRule": null
+      }
+    ],
+    "linkedTables": [],
+    "relationships": []
+  },
+  "data": {
+    "Test": [
+      {"ID":1,"UnknownVar":"//5zb21lZGF0YQ==","UnknownFix":"NwAAAA==","UnknownComplex":1},
+      {"ID":2,"UnknownVar":"//5vdGhlciBkYXRh","UnknownFix":"8////w==","UnknownComplex":2},
+      {"ID":3,"UnknownVar":null,"UnknownFix":"AgAAAA==","UnknownComplex":3}
+    ]
+  }
+}

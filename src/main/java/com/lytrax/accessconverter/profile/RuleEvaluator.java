@@ -12,6 +12,7 @@ import com.lytrax.accessconverter.model.expr.Expr.In;
 import com.lytrax.accessconverter.model.expr.Expr.IsNull;
 import com.lytrax.accessconverter.model.expr.Expr.Like;
 import com.lytrax.accessconverter.model.expr.Expr.NewGuid;
+import com.lytrax.accessconverter.model.expr.Expr.NewRandomId;
 import com.lytrax.accessconverter.model.expr.Expr.Not;
 import com.lytrax.accessconverter.model.expr.Expr.NullLiteral;
 import com.lytrax.accessconverter.model.expr.Expr.NumberLiteral;
@@ -157,6 +158,7 @@ public final class RuleEvaluator {
             case ColumnRef c -> row.apply(c.name());
             case CurrentDateTime c -> throw new EvaluationException("non-deterministic " + c.part());
             case NewGuid g -> throw new EvaluationException("non-deterministic GenGUID()");
+            case NewRandomId r -> throw new EvaluationException("non-deterministic GenUniqueID()");
             default -> throw new EvaluationException("a condition used as a value");
         };
     }

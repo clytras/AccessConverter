@@ -15,6 +15,11 @@ import com.lytrax.accessconverter.source.OpenOptions;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.ConvertOptions.OnTableError;
 import com.lytrax.accessconverter.target.WriteOutcome;
+import com.lytrax.accessconverter.target.json.JsonOptions;
+import com.lytrax.accessconverter.target.json.JsonPlan;
+import com.lytrax.accessconverter.target.json.JsonPlanner;
+import com.lytrax.accessconverter.target.json.JsonVerifier;
+import com.lytrax.accessconverter.target.json.JsonWriter;
 import com.lytrax.accessconverter.target.mysql.MySqlDumpWriter;
 import com.lytrax.accessconverter.target.mysql.MySqlOptions;
 import com.lytrax.accessconverter.target.mysql.MySqlPlan;
@@ -57,7 +62,9 @@ import picocli.CommandLine.Spec;
                     + " cascade actions, NOT NULL, defaults and CHECK constraints, as far as the data allows and the"
                     + " target can express them.",
             "Every value is exported exactly or reported in the conversion report.",
-            "A MySQL or MariaDB dump imports with the server's own client: mysql <database> < <output>"
+            "A MySQL or MariaDB dump imports with the server's own client: mysql <database> < <output>",
+            "JSON carries the whole Access schema, relationships Access doesn't enforce included, and every value"
+                    + " exactly; its format is published as a JSON Schema (formatVersion 1)."
         })
 final class ConvertCommand implements Callable<Integer> {
 
@@ -79,7 +86,8 @@ final class ConvertCommand implements Callable<Integer> {
     @Option(
             names = {"-o", "--output"},
             paramLabel = "<file>",
-            description = "Output file (default: the input's name with the target's extension, next to the input).")
+            description = "Output file (default: the input's name with the target's extension, next to the input;"
+                    + " for --json-layout ndjson, a directory named <input>-ndjson).")
     Path output;
 
     @Option(names = "--overwrite", description = "Replace an existing output file instead of failing.")
@@ -111,8 +119,9 @@ final class ConvertCommand implements Callable<Integer> {
 
     @Option(
             names = "--verify",
-            description = "SQLite: after writing, check the output's integrity and compare its schema and every value"
-                    + " with the source. For a MySQL or MariaDB dump, import it and run verify --jdbc-url.")
+            description = "SQLite and JSON: after writing, compare the output's schema and every value with the source"
+                    + " (SQLite also checks its integrity). For a MySQL or MariaDB dump, import it and run verify"
+                    + " --jdbc-url.")
     boolean verify;
 
     @Option(names = "--analyze", description = "SQLite: run ANALYZE on the finished output, not only PRAGMA optimize.")
@@ -121,8 +130,9 @@ final class ConvertCommand implements Callable<Integer> {
     @Option(
             names = "--batch-rows",
             paramLabel = "<n>",
-            description = "Rows per insert batch (default: " + ConvertOptions.DEFAULT_BATCH_ROWS + ").")
-    int batchRows = ConvertOptions.DEFAULT_BATCH_ROWS;
+            description = "SQLite, MySQL/MariaDB: rows per insert batch (default: " + ConvertOptions.DEFAULT_BATCH_ROWS
+                    + ").")
+    Integer batchRows;
 
     @Option(
             names = "--batch-bytes",
@@ -145,9 +155,46 @@ final class ConvertCommand implements Callable<Integer> {
 
     @Option(
             names = "--stamp",
-            description = "MySQL/MariaDB: put the generation time in the dump's header (the dump then differs on"
-                    + " every run).")
+            description = "MySQL/MariaDB and JSON: put the export time in the output (it then differs on every run).")
     boolean stamp;
+
+    @Option(
+            names = "--json-layout",
+            paramLabel = "<layout>",
+            description = "JSON: document (one .json file, the default) or ndjson (a directory holding schema.json and"
+                    + " one <table>.ndjson file per table, one row per line).")
+    JsonOptions.Layout jsonLayout;
+
+    @Option(
+            names = "--json-rows",
+            paramLabel = "<form>",
+            description = "JSON: a row as an object keyed by column name (object, the default) or as an array in"
+                    + " column order (array; smaller).")
+    JsonOptions.Rows jsonRows;
+
+    @Option(
+            names = "--json-bigint",
+            paramLabel = "<form>",
+            description = "JSON: Large Number values as exact numbers (number, the default) or as strings (string), for"
+                    + " parsers that lose precision past 2^53, such as JavaScript's.")
+    JsonOptions.NumberForm jsonBigint;
+
+    @Option(
+            names = "--json-decimals",
+            paramLabel = "<form>",
+            description = "JSON: Currency and Decimal values as exact numbers (number, the default) or as strings"
+                    + " (string), for parsers that read every number as a double.")
+    JsonOptions.NumberForm jsonDecimals;
+
+    @Option(
+            names = "--json-hyperlinks",
+            paramLabel = "<form>",
+            description = "JSON: a hyperlink as Access stores it, display#address#subaddress#screentip (string, the"
+                    + " default), or as {display, address, subAddress, screenTip} (object).")
+    JsonOptions.Hyperlinks jsonHyperlinks;
+
+    @Option(names = "--no-schema", description = "JSON: leave out the schema section (not recommended).")
+    boolean noSchema;
 
     @Mixin
     PlanOptions plan;
@@ -165,13 +212,18 @@ final class ConvertCommand implements Callable<Integer> {
     public Integer call() throws IOException {
         checkOptions();
         Main.requireFile(input);
-        Path out = output != null ? output : input.resolveSibling(baseName(input) + to.extension());
+        Path out = output != null
+                ? output
+                : input.resolveSibling(
+                        to == Target.json && jsonOptions().layout() == JsonOptions.Layout.NDJSON
+                                ? baseName(input) + "-ndjson"
+                                : baseName(input) + to.extension());
         if (Files.exists(out) && !overwrite) {
             spec.commandLine().getErr().println("error: " + out + " exists; pass --overwrite to replace it");
             return ExitCodes.FAILED;
         }
         OpenOptions openOptions = source.toOpenOptions();
-        ConvertOptions options = plan.convertOptions(onTableError, batchRows);
+        ConvertOptions options = plan.convertOptions(onTableError, batchRows());
         Issues issues = new Issues();
         Map<String, Duration> timings = new LinkedHashMap<>();
         SchemaModel model;
@@ -185,9 +237,11 @@ final class ConvertCommand implements Callable<Integer> {
             DataProfile profile = options.profile() ? DataProfiler.profile(db, model) : null;
             timings.put("profile", since(started));
 
-            tables = to == Target.sqlite
-                    ? sqlite(db, model, profile, out, options, issues, timings)
-                    : mysql(db, model, profile, out, options, issues, timings);
+            tables = switch (to) {
+                case sqlite -> sqlite(db, model, profile, out, options, issues, timings);
+                case mysql, mariadb -> mysql(db, model, profile, out, options, issues, timings);
+                case json -> json(db, model, profile, out, options, issues, timings);
+            };
         }
         ConversionReport conversionReport = new ConversionReport(
                 Main.Version.version(),
@@ -212,23 +266,66 @@ final class ConvertCommand implements Callable<Integer> {
     /** Options that don't apply to the target are usage errors, never silently ignored. */
     private void checkOptions() {
         plan.check(to, spec.commandLine());
-        if (to == Target.sqlite) {
-            if (batchBytes != null || dropExisting || database != null || stamp) {
-                throw new ParameterException(
-                        spec.commandLine(),
-                        "--batch-bytes, --drop-existing, --database and --stamp apply to --to mysql and --to mariadb");
-            }
-            return;
-        }
-        if (verify || analyze) {
+        boolean jsonOptions = jsonLayout != null
+                || jsonRows != null
+                || jsonBigint != null
+                || jsonDecimals != null
+                || jsonHyperlinks != null
+                || noSchema;
+        if (to != Target.json && jsonOptions) {
             throw new ParameterException(
                     spec.commandLine(),
-                    "--verify and --analyze apply to --to sqlite; to check a MySQL or MariaDB dump, import it and run"
-                            + " verify --jdbc-url");
+                    "--json-layout, --json-rows, --json-bigint, --json-decimals, --json-hyperlinks and --no-schema"
+                            + " apply to --to json");
         }
-        if (batchBytes != null && batchBytes < 1) {
-            throw new ParameterException(spec.commandLine(), "--batch-bytes must be at least 1");
+        if (!to.isMySql() && (batchBytes != null || dropExisting || database != null)) {
+            throw new ParameterException(
+                    spec.commandLine(),
+                    "--batch-bytes, --drop-existing and --database apply to --to mysql and --to mariadb");
         }
+        switch (to) {
+            case sqlite -> {
+                if (stamp) {
+                    throw new ParameterException(
+                            spec.commandLine(), "--stamp applies to --to mysql, --to mariadb and --to json");
+                }
+            }
+            case json -> {
+                if (analyze || batchRows != null) {
+                    throw new ParameterException(
+                            spec.commandLine(),
+                            "--analyze applies to --to sqlite and --batch-rows to the SQL targets; a JSON export"
+                                    + " streams row by row");
+                }
+            }
+            case mysql, mariadb -> {
+                if (verify || analyze) {
+                    throw new ParameterException(
+                            spec.commandLine(),
+                            "--verify and --analyze apply to --to sqlite and --to json; to check a MySQL or MariaDB"
+                                    + " dump, import it and run verify --jdbc-url");
+                }
+                if (batchBytes != null && batchBytes < 1) {
+                    throw new ParameterException(spec.commandLine(), "--batch-bytes must be at least 1");
+                }
+            }
+        }
+    }
+
+    private int batchRows() {
+        return batchRows == null ? ConvertOptions.DEFAULT_BATCH_ROWS : batchRows;
+    }
+
+    private JsonOptions jsonOptions() {
+        JsonOptions defaults = JsonOptions.DEFAULT;
+        return new JsonOptions(
+                jsonLayout != null ? jsonLayout : defaults.layout(),
+                jsonRows != null ? jsonRows : defaults.rows(),
+                jsonBigint != null ? jsonBigint : defaults.bigint(),
+                jsonDecimals != null ? jsonDecimals : defaults.decimals(),
+                jsonHyperlinks != null ? jsonHyperlinks : defaults.hyperlinks(),
+                !noSchema,
+                stamp);
     }
 
     private List<TableResult> sqlite(
@@ -279,6 +376,33 @@ final class ConvertCommand implements Callable<Integer> {
         return outcome.tables();
     }
 
+    private List<TableResult> json(
+            AccessSource db,
+            SchemaModel model,
+            DataProfile profile,
+            Path out,
+            ConvertOptions options,
+            Issues issues,
+            Map<String, Duration> timings)
+            throws IOException {
+        long started = System.nanoTime();
+        JsonPlan planned = JsonPlanner.plan(model, profile, options, issues);
+        timings.put("plan", since(started));
+
+        started = System.nanoTime();
+        WriteOutcome outcome = JsonWriter.write(
+                db, planned, out, options, jsonOptions(), "AccessConverter " + Main.Version.version(), issues);
+        timings.put("write", since(started));
+
+        if (verify) {
+            started = System.nanoTime();
+            VerifyResult result = JsonVerifier.verify(db, planned, out);
+            timings.put("verify", since(started));
+            result.report(issues);
+        }
+        return outcome.tables();
+    }
+
     private MySqlOptions mysqlOptions() {
         return plan.mysqlOptions(
                 to.dialect(),
@@ -293,10 +417,22 @@ final class ConvertCommand implements Callable<Integer> {
         options.put("to", to.name());
         options.put("output", out.toString());
         options.put("onTableError", PlanOptions.lower(onTableError));
-        options.put("batchRows", String.valueOf(batchRows));
+        if (to != Target.json) {
+            options.put("batchRows", String.valueOf(batchRows()));
+        }
         if (to == Target.sqlite) {
             options.put("verify", String.valueOf(verify));
             options.put("analyze", String.valueOf(analyze));
+        } else if (to == Target.json) {
+            JsonOptions json = jsonOptions();
+            options.put("verify", String.valueOf(verify));
+            options.put("jsonLayout", PlanOptions.lower(json.layout()));
+            options.put("jsonRows", PlanOptions.lower(json.rows()));
+            options.put("jsonBigint", PlanOptions.lower(json.bigint()));
+            options.put("jsonDecimals", PlanOptions.lower(json.decimals()));
+            options.put("jsonHyperlinks", PlanOptions.lower(json.hyperlinks()));
+            options.put("schema", String.valueOf(json.schema()));
+            options.put("stamp", String.valueOf(stamp));
         } else {
             MySqlOptions mysql = mysqlOptions();
             options.put("collation", mysql.effectiveCollation());
@@ -373,7 +509,7 @@ final class ConvertCommand implements Callable<Integer> {
             text.append("  SQLite enforces the foreign keys only for a connection that runs"
                     + " PRAGMA foreign_keys = ON\n");
         }
-        if (to != Target.sqlite) {
+        if (to.isMySql()) {
             text.append("  import it with: ")
                     .append(to == Target.mariadb ? "mariadb" : "mysql")
                     .append(' ')

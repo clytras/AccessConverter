@@ -127,6 +127,45 @@ class MySqlPlannerTest {
     }
 
     @Test
+    void aRandomAutonumberSaysItBecomesSequentialAndHowMuchRoomIsLeft() {
+        SchemaModel model = schema(
+                table(
+                        "Random",
+                        primaryKey("Id"),
+                        column("Id", AccessType.AUTONUMBER_LONG).defaultValue("GenUniqueID()")),
+                table("Increment", primaryKey("Id"), column("Id", AccessType.AUTONUMBER_LONG)));
+        MySqlPlan plan = plan(
+                model,
+                profile()
+                        .table("Random", 3, stats("Id").maxAutoNumber(1_790_235_740L))
+                        .build(),
+                MySqlDialect.MYSQL);
+
+        // GenUniqueID() is the Random setting, not an untranslatable default, and no DEFAULT is written for it
+        assertThat(planned(plan.table("Random").orElseThrow(), "Id").defaultSql())
+                .isNull();
+        assertThat(issues.list()).noneMatch(i -> i.code() == IssueCode.DEFAULT_UNTRANSLATABLE);
+        assertThat(issues.list())
+                .filteredOn(i -> i.code() == IssueCode.AUTONUMBER_RANDOM_SEQUENTIAL)
+                .singleElement()
+                .satisfies(i -> {
+                    assertThat(i.table()).isEqualTo("Random");
+                    assertThat(i.message())
+                            .contains(
+                                    "generates them in sequence",
+                                    "kept exactly",
+                                    "the next generated value is 1790235741, and 357247907 values remain");
+                });
+
+        Issues unprofiled = new Issues();
+        MySqlPlanner.plan(model, null, NO_PROFILE, MySqlOptions.of(MySqlDialect.MARIADB), unprofiled);
+        assertThat(unprofiled.list())
+                .filteredOn(i -> i.code() == IssueCode.AUTONUMBER_RANDOM_SEQUENTIAL)
+                .singleElement()
+                .satisfies(i -> assertThat(i.message()).contains("without a profile the largest value"));
+    }
+
+    @Test
     void aUniqueKeyOverInnoDbsLimitBecomesAPlainIndexWithPrefixes() {
         SchemaModel model = schema(table(
                 "T",

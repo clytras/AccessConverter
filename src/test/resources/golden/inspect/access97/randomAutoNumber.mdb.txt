@@ -1,0 +1,25 @@
+Source: randomAutoNumber.mdb (V1997)
+Text: code page 1252, charset windows-1252
+Tables: 2 local, 0 linked; relationships: 0
+
+Table TIncrement (3 rows)
+  columns:
+    ID    AUTONUMBER_LONG
+    Name  TEXT(50)  no-empty-string
+  primary key: PrimaryKey (ID)
+
+Table TRandom (4 rows)
+  columns:
+    ID    AUTONUMBER_LONG  default GenUniqueID()
+    Name  TEXT(50)  no-empty-string
+  primary key: PrimaryKey (ID)
+
+Profile:
+  TIncrement: 3 rows scanned
+    ID: nulls 0, max-autonumber 3
+    Name: empty-strings 0
+  TRandom: 4 rows scanned
+    ID: nulls 0, max-autonumber 2147483647
+    Name: empty-strings 0
+
+Issues: 0

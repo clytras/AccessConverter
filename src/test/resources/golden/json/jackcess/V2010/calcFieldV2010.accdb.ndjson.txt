@@ -1,0 +1,230 @@
+==> schema.json <==
+{
+  "format": "accessconverter",
+  "formatVersion": 1,
+  "producer": "AccessConverter",
+  "layout": "ndjson",
+  "encoding": {
+    "rows": "array",
+    "bigint": "string",
+    "decimals": "string",
+    "hyperlinks": "string",
+    "binary": "base64"
+  },
+  "source": {
+    "file": "calcFieldV2010.accdb",
+    "fileFormat": "V2010",
+    "charset": "UTF-16LE"
+  },
+  "schema": {
+    "tables": [
+      {
+        "name": "Table1",
+        "description": null,
+        "columns": [
+          {
+            "name": "ID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "FirstName",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "LastName",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "LastFirst",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 243,
+            "allowZeroLength": true,
+            "calculatedExpression": "[LastName] & \", \" & [FirstName]"
+          },
+          {
+            "name": "City",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          },
+          {
+            "name": "LastFirstLen",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": true,
+            "required": false,
+            "decimalPlaces": 255,
+            "calculatedExpression": "Len([LastFirst])"
+          },
+          {
+            "name": "Salary",
+            "type": "decimal",
+            "accessType": "MONEY",
+            "nullable": true,
+            "required": false,
+            "precision": 19,
+            "scale": 4,
+            "format": "$#,##0.00;($#,##0.00)",
+            "decimalPlaces": 255
+          },
+          {
+            "name": "MonthlySalary",
+            "type": "decimal",
+            "accessType": "MONEY",
+            "nullable": true,
+            "required": false,
+            "precision": 19,
+            "scale": 4,
+            "format": "$#,##0.00;($#,##0.00)",
+            "decimalPlaces": 255,
+            "calculatedExpression": "[Salary]/12"
+          },
+          {
+            "name": "IsRich",
+            "type": "boolean",
+            "accessType": "BOOLEAN",
+            "nullable": false,
+            "required": false,
+            "format": "Yes/No",
+            "calculatedExpression": "[Salary]>100000"
+          },
+          {
+            "name": "AllNames",
+            "type": "string",
+            "accessType": "MEMO",
+            "nullable": true,
+            "required": false,
+            "allowZeroLength": true,
+            "calculatedExpression": "[LastName] & \", \" & [FirstName] & \"=\" & [LastFirst]"
+          },
+          {
+            "name": "WeeklySalary",
+            "type": "decimal",
+            "accessType": "NUMERIC",
+            "nullable": true,
+            "required": false,
+            "precision": 28,
+            "scale": 0,
+            "format": "General Number",
+            "decimalPlaces": 255,
+            "calculatedExpression": "[Salary]/52"
+          },
+          {
+            "name": "SalaryTest",
+            "type": "decimal",
+            "accessType": "MONEY",
+            "nullable": true,
+            "required": false,
+            "precision": 19,
+            "scale": 4,
+            "format": "$#,##0.00;($#,##0.00)",
+            "decimalPlaces": 255,
+            "calculatedExpression": "[Salary]"
+          },
+          {
+            "name": "BoolTest",
+            "type": "boolean",
+            "accessType": "BOOLEAN",
+            "nullable": false,
+            "required": false,
+            "format": "True/False",
+            "calculatedExpression": "True"
+          },
+          {
+            "name": "Popularity",
+            "type": "decimal",
+            "accessType": "NUMERIC",
+            "nullable": true,
+            "required": false,
+            "precision": 18,
+            "scale": 6,
+            "default": {
+              "access": "0",
+              "kind": "literal",
+              "value": 0
+            },
+            "decimalPlaces": 255
+          },
+          {
+            "name": "DecimalTest",
+            "type": "decimal",
+            "accessType": "NUMERIC",
+            "nullable": true,
+            "required": false,
+            "precision": 28,
+            "scale": 0,
+            "decimalPlaces": 255,
+            "calculatedExpression": "[Popularity]"
+          },
+          {
+            "name": "FloatTest",
+            "type": "float32",
+            "accessType": "FLOAT",
+            "nullable": true,
+            "required": false,
+            "decimalPlaces": 255,
+            "calculatedExpression": "[Salary]*0.13/[DecimalTest]"
+          },
+          {
+            "name": "BigNumTest",
+            "type": "decimal",
+            "accessType": "NUMERIC",
+            "nullable": true,
+            "required": false,
+            "precision": 28,
+            "scale": 0,
+            "decimalPlaces": 255,
+            "calculatedExpression": "([Salary]*[MonthlySalary]/[DecimalTest])*34.12342134"
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "ID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [],
+        "validationRule": null
+      }
+    ],
+    "linkedTables": [],
+    "relationships": []
+  },
+  "files": {
+    "Table1": "Table1.ndjson"
+  }
+}
+==> Table1.ndjson <==
+[1,"Bruce","Wayne","Wayne, Bruce","Gotham",12,"1000000.0000","83333.3333",true,"Wayne, Bruce=Wayne, Bruce","19230.7692307692","1000000.0000",true,"50.325000","50.325000",2583.2092,"56505085819.424791296572280180"]
+[2,"Bart","Simpson","Simpson, Bart","Springfield",13,"-1.0000","-0.0833",false,"Simpson, Bart=Simpson, Bart","-0.0192307692307692","-1.0000",true,"-36.222200","-36.222200",0.0035889593,"-0.0784734499180612994241100748"]
+[3,"John","Doe","Doe, John","Nowhere",9,"0.0000","0.0000",false,"Doe, John=Doe, John","0","0.0000",true,"0.012300","0.012300",0.0,"0.00000000"]
+[4,"Test","User","User, Test","Hockessin",10,"100.0000","8.3333",false,"User, Test=User, Test","1.92307692307692","100.0000",true,"102030405060.654321","102030405060.654321",1.27413E-10,"0.0000002787019289824216980830"]

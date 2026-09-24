@@ -14,6 +14,7 @@ import com.lytrax.accessconverter.model.expr.Expr.In;
 import com.lytrax.accessconverter.model.expr.Expr.IsNull;
 import com.lytrax.accessconverter.model.expr.Expr.Like;
 import com.lytrax.accessconverter.model.expr.Expr.NewGuid;
+import com.lytrax.accessconverter.model.expr.Expr.NewRandomId;
 import com.lytrax.accessconverter.model.expr.Expr.Not;
 import com.lytrax.accessconverter.model.expr.Expr.NullLiteral;
 import com.lytrax.accessconverter.model.expr.Expr.NumberLiteral;
@@ -82,6 +83,7 @@ public final class ExpressionTranslator {
             case DateTimeLiteral d -> {}
             case CurrentDateTime c -> {}
             case NewGuid g -> {}
+            case NewRandomId r -> {}
             case ColumnRef c -> throw new Unsupported("a default can't refer to a column");
             default -> throw new Unsupported("a default must be a single value");
         }
@@ -112,6 +114,7 @@ public final class ExpressionTranslator {
         switch (expr) {
             case CurrentDateTime c -> throw new Unsupported("Now(), Date() and Time() make a rule non-deterministic");
             case NewGuid g -> throw new Unsupported("GenGUID() makes a rule non-deterministic");
+            case NewRandomId r -> throw new Unsupported("GenUniqueID() makes a rule non-deterministic");
             case And a -> {
                 requireDeterministic(a.left());
                 requireDeterministic(a.right());
@@ -466,6 +469,7 @@ public final class ExpressionTranslator {
                     case "date" -> new CurrentDateTime(CurrentDateTime.Part.DATE);
                     case "time" -> new CurrentDateTime(CurrentDateTime.Part.TIME);
                     case "genguid" -> new NewGuid();
+                    case "genuniqueid" -> new NewRandomId();
                     default -> throw new Unsupported("function " + t.text + "() is outside the supported subset");
                 };
             }

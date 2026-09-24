@@ -50,6 +50,13 @@ public sealed interface Expr {
     /** {@code GenGUID()}. */
     record NewGuid() implements Expr {}
 
+    /**
+     * {@code GenUniqueID()}: how Access stores New Values = Random on a Long autonumber (measured in Access 97's table
+     * designer; Jet then generates random values, negative ones included). It is part of the autonumber, not a
+     * default a target writes.
+     */
+    record NewRandomId() implements Expr {}
+
     record ColumnRef(String name) implements Expr {
         public ColumnRef {
             Objects.requireNonNull(name, "name");

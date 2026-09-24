@@ -11,6 +11,9 @@ import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.OpenOptions;
 import com.lytrax.accessconverter.target.ConvertOptions;
 import com.lytrax.accessconverter.target.ConvertOptions.OnTableError;
+import com.lytrax.accessconverter.target.json.JsonPlan;
+import com.lytrax.accessconverter.target.json.JsonPlanner;
+import com.lytrax.accessconverter.target.json.JsonVerifier;
 import com.lytrax.accessconverter.target.mysql.MySqlDialect;
 import com.lytrax.accessconverter.target.mysql.MySqlOptions;
 import com.lytrax.accessconverter.target.mysql.MySqlPlan;
@@ -95,14 +98,26 @@ final class VerifyCommand implements Callable<Integer> {
         return output == null ? snapshot() : compare();
     }
 
-    /** Compares a SQLite output with the source. Other targets arrive with their phases. */
+    /** Compares a SQLite file or a JSON export with the source. */
     private Integer compare() throws IOException {
+        if (Files.isDirectory(output)) {
+            if (!JsonVerifier.isNdjson(output)) {
+                spec.commandLine()
+                        .getErr()
+                        .println("error: " + output + " is a directory without the schema.json of an ndjson export");
+                return ExitCodes.FAILED;
+            }
+            return compareJson();
+        }
         Main.requireFile(output);
+        if (JsonVerifier.isJson(output)) {
+            return compareJson();
+        }
         if (!isSqlite(output)) {
             spec.commandLine()
                     .getErr()
-                    .println("error: " + output + " is not a SQLite file; for a MySQL or MariaDB dump, import it"
-                            + " and pass --jdbc-url instead");
+                    .println("error: " + output + " is neither a SQLite file nor a JSON export; for a MySQL or"
+                            + " MariaDB dump, import it and pass --jdbc-url instead");
             return ExitCodes.FAILED;
         }
         OpenOptions options = source.toOpenOptions();
@@ -118,6 +133,24 @@ final class VerifyCommand implements Callable<Integer> {
             result = SqliteVerifier.verify(db, planned, output);
         }
         return print(model, output + " (SQLite)", result, issues);
+    }
+
+    /** Compares a JSON document or ndjson directory with the source; the file says how its values are spelled. */
+    private Integer compareJson() throws IOException {
+        plan.check(Target.json, spec.commandLine());
+        OpenOptions options = source.toOpenOptions();
+        Issues issues = new Issues();
+        ConvertOptions convert = plan.convertOptions(OnTableError.FAIL, ConvertOptions.DEFAULT_BATCH_ROWS);
+        VerifyResult result;
+        SchemaModel model;
+        try (AccessSource db = AccessSource.open(input, options, issues)) {
+            model = SchemaExtractor.extract(db, plan.extractOptions(), issues);
+            DataProfile profile = convert.profile() ? DataProfiler.profile(db, model) : null;
+            // The issues of planning again are the conversion's, not the verification's: they go nowhere
+            JsonPlan planned = JsonPlanner.plan(model, profile, convert, new Issues());
+            result = JsonVerifier.verify(db, planned, output);
+        }
+        return print(model, output + " (JSON)", result, issues);
     }
 
     /** Compares a MySQL or MariaDB database, loaded from a dump, with the source (09). */

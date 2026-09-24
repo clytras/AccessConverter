@@ -1,0 +1,76 @@
+{
+  "format": "accessconverter",
+  "formatVersion": 1,
+  "producer": "AccessConverter",
+  "layout": "document",
+  "encoding": {
+    "rows": "object",
+    "bigint": "number",
+    "decimals": "number",
+    "hyperlinks": "string",
+    "binary": "base64"
+  },
+  "source": {
+    "file": "linkedV2007.accdb",
+    "fileFormat": "V2007",
+    "charset": "UTF-16LE"
+  },
+  "schema": {
+    "tables": [
+      {
+        "name": "Table1",
+        "description": null,
+        "columns": [
+          {
+            "name": "ID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "Field1",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "ID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [],
+        "validationRule": null
+      }
+    ],
+    "linkedTables": [
+      {
+        "name": "Table2",
+        "database": "Z:\\jackcess_test\\linkeeTest.accdb",
+        "remoteTable": "Table1",
+        "odbc": false
+      }
+    ],
+    "relationships": []
+  },
+  "data": {
+    "Table1": [
+      {"ID":1,"Field1":"foo"}
+    ]
+  }
+}

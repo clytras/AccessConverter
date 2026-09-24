@@ -1,0 +1,1119 @@
+{
+  "format": "accessconverter",
+  "formatVersion": 1,
+  "producer": "AccessConverter",
+  "layout": "document",
+  "encoding": {
+    "rows": "object",
+    "bigint": "number",
+    "decimals": "number",
+    "hyperlinks": "string",
+    "binary": "base64"
+  },
+  "source": {
+    "file": "common1V2010.accdb",
+    "fileFormat": "V2010",
+    "charset": "UTF-16LE"
+  },
+  "schema": {
+    "tables": [
+      {
+        "name": "Table1",
+        "description": null,
+        "columns": [
+          {
+            "name": "A",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": false,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": false
+          },
+          {
+            "name": "B",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 100,
+            "allowZeroLength": false
+          },
+          {
+            "name": "C",
+            "type": "uint8",
+            "accessType": "BYTE",
+            "nullable": true,
+            "required": false,
+            "default": {
+              "access": "0",
+              "kind": "literal",
+              "value": 0
+            },
+            "decimalPlaces": 255
+          },
+          {
+            "name": "D",
+            "type": "int16",
+            "accessType": "INT",
+            "nullable": true,
+            "required": false,
+            "default": {
+              "access": "0",
+              "kind": "literal",
+              "value": 0
+            },
+            "decimalPlaces": 255
+          },
+          {
+            "name": "E",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": true,
+            "required": false,
+            "default": {
+              "access": "0",
+              "kind": "literal",
+              "value": 0
+            },
+            "decimalPlaces": 255
+          },
+          {
+            "name": "F",
+            "type": "float64",
+            "accessType": "DOUBLE",
+            "nullable": true,
+            "required": false,
+            "default": {
+              "access": "0",
+              "kind": "literal",
+              "value": 0
+            },
+            "decimalPlaces": 255
+          },
+          {
+            "name": "G",
+            "type": "datetime",
+            "accessType": "SHORT_DATE_TIME",
+            "nullable": true,
+            "required": false
+          },
+          {
+            "name": "H",
+            "type": "decimal",
+            "accessType": "MONEY",
+            "nullable": true,
+            "required": false,
+            "precision": 19,
+            "scale": 4,
+            "default": {
+              "access": "0",
+              "kind": "literal",
+              "value": 0
+            },
+            "format": "$#,##0.00;($#,##0.00)",
+            "decimalPlaces": 255
+          },
+          {
+            "name": "I",
+            "type": "boolean",
+            "accessType": "BOOLEAN",
+            "nullable": false,
+            "required": false,
+            "format": "Yes/No"
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "A",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [
+          {
+            "name": "B",
+            "columns": [
+              {
+                "name": "B",
+                "order": "asc"
+              }
+            ],
+            "unique": false,
+            "ignoreNulls": false,
+            "required": false,
+            "accessNames": [
+              "B"
+            ]
+          }
+        ],
+        "validationRule": null
+      },
+      {
+        "name": "Table2",
+        "description": null,
+        "columns": [
+          {
+            "name": "column1",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": false,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column2",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column3",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column4",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column5",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column6",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column7",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column8",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column9",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column10",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column11",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column12",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column13",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column14",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column15",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column16",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column17",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column18",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column19",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column20",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column21",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column22",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column23",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column24",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column25",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column26",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column27",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column28",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column29",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column30",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column31",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column32",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column33",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column34",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column35",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column36",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column37",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column38",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column39",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column40",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column41",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column42",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column43",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column44",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column45",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column46",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column47",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column48",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column49",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column50",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column51",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column52",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column53",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column54",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column55",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column56",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column57",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column58",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column59",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column60",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column61",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column62",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column63",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column64",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column65",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column66",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column67",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column68",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column69",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column70",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column71",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column72",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column73",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column74",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column75",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column76",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column77",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column78",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column79",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column80",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column81",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column82",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column83",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column84",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column85",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column86",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column87",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column88",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          },
+          {
+            "name": "column89",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": true
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "column1",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey",
+            "id"
+          ]
+        },
+        "indexes": [
+          {
+            "name": "column10",
+            "columns": [
+              {
+                "name": "column10",
+                "order": "asc"
+              }
+            ],
+            "unique": false,
+            "ignoreNulls": false,
+            "required": false,
+            "accessNames": [
+              "column10"
+            ]
+          },
+          {
+            "name": "column14",
+            "columns": [
+              {
+                "name": "column14",
+                "order": "asc"
+              }
+            ],
+            "unique": false,
+            "ignoreNulls": false,
+            "required": false,
+            "accessNames": [
+              "column14"
+            ]
+          },
+          {
+            "name": "column75",
+            "columns": [
+              {
+                "name": "column75",
+                "order": "asc"
+              }
+            ],
+            "unique": false,
+            "ignoreNulls": false,
+            "required": false,
+            "accessNames": [
+              "column75"
+            ]
+          }
+        ],
+        "validationRule": null
+      },
+      {
+        "name": "Table3",
+        "description": null,
+        "columns": [
+          {
+            "name": "a",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "b",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": false
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "a",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey",
+            "id"
+          ]
+        },
+        "indexes": [],
+        "validationRule": null
+      },
+      {
+        "name": "Table4",
+        "description": null,
+        "columns": [
+          {
+            "name": "name",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 50,
+            "allowZeroLength": false
+          },
+          {
+            "name": "data",
+            "type": "guid",
+            "accessType": "GUID",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "guid",
+            "default": {
+              "access": "GenGUID()",
+              "kind": "newGuid"
+            }
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "data",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [],
+        "validationRule": null
+      }
+    ],
+    "linkedTables": [],
+    "relationships": []
+  },

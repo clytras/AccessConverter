@@ -1,0 +1,84 @@
+{
+  "format": "accessconverter",
+  "formatVersion": 1,
+  "producer": "AccessConverter",
+  "layout": "document",
+  "encoding": {
+    "rows": "object",
+    "bigint": "number",
+    "decimals": "number",
+    "hyperlinks": "string",
+    "binary": "base64"
+  },
+  "source": {
+    "file": "textEdge.accdb",
+    "fileFormat": "V2010",
+    "charset": "UTF-16LE"
+  },
+  "schema": {
+    "tables": [
+      {
+        "name": "TextEdge",
+        "description": null,
+        "columns": [
+          {
+            "name": "ID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "Label",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 30,
+            "allowZeroLength": true
+          },
+          {
+            "name": "Val",
+            "type": "string",
+            "accessType": "TEXT",
+            "nullable": true,
+            "required": false,
+            "length": 255,
+            "allowZeroLength": true
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "ID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [],
+        "validationRule": null
+      }
+    ],
+    "linkedTables": [],
+    "relationships": []
+  },
+  "data": {
+    "TextEdge": [
+      {"ID":1,"Label":"windows-path","Val":"C:\\temp\\new"},
+      {"ID":2,"Label":"trailing-backslash","Val":"ends with backslash\\"},
+      {"ID":3,"Label":"quotes","Val":"single ' and double \""},
+      {"ID":4,"Label":"newline","Val":"line1\nline2"},
+      {"ID":5,"Label":"emoji","Val":"emoji 😀 and Ωμέγα"},
+      {"ID":6,"Label":"ctrl-z","Val":"a\u001Ab"},
+      {"ID":7,"Label":"after","Val":"row after the tricky ones"}
+    ]
+  }
+}

@@ -1,0 +1,648 @@
+package com.lytrax.accessconverter.target.json;
+
+import com.lytrax.accessconverter.model.AccessType;
+import com.lytrax.accessconverter.model.CheckRule;
+import com.lytrax.accessconverter.model.ColumnModel;
+import com.lytrax.accessconverter.model.DefaultValue;
+import com.lytrax.accessconverter.model.ForeignKeyModel;
+import com.lytrax.accessconverter.model.IndexModel;
+import com.lytrax.accessconverter.model.SchemaModel;
+import com.lytrax.accessconverter.model.TableModel;
+import com.lytrax.accessconverter.model.expr.Expr;
+import com.lytrax.accessconverter.report.ConversionReport.TableResult;
+import com.lytrax.accessconverter.report.IssueCode;
+import com.lytrax.accessconverter.report.Issues;
+import com.lytrax.accessconverter.source.AccessSource;
+import com.lytrax.accessconverter.source.RowStream;
+import com.lytrax.accessconverter.target.AtomicOutput;
+import com.lytrax.accessconverter.target.ConvertOptions;
+import com.lytrax.accessconverter.target.RowSource;
+import com.lytrax.accessconverter.target.TableFailure;
+import com.lytrax.accessconverter.target.WriteOutcome;
+import com.lytrax.accessconverter.target.json.JsonOptions.Hyperlinks;
+import com.lytrax.accessconverter.target.json.JsonOptions.Layout;
+import com.lytrax.accessconverter.target.json.JsonOptions.NumberForm;
+import com.lytrax.accessconverter.target.json.JsonOptions.Rows;
+import com.lytrax.accessconverter.target.json.JsonPlan.PlannedColumn;
+import com.lytrax.accessconverter.target.json.JsonPlan.PlannedTable;
+import com.lytrax.accessconverter.target.json.JsonValues.Hyperlink;
+import com.lytrax.accessconverter.value.ComplexRef;
+import com.lytrax.accessconverter.value.OleValue;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.math.BigDecimal;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.ObjectWriteContext;
+
+/**
+ * Writes the JSON export a {@link JsonPlan} describes (07), as one document or as an ndjson directory.
+ *
+ * <p>Everything streams: one pass per table, one row in memory at a time, and the largest allocation is one value
+ * (03, Memory). A table's rows are written by their own compact generator, one row per line, after the enclosing
+ * structure is flushed. So when a table fails, the file is cut back to where its rows began and the table is left
+ * empty, as the SQL targets roll it back: a JSON file never holds part of a table without saying so. The output is
+ * built as {@code <output>.partial} and renamed into place only when it is complete (F-42).
+ */
+public final class JsonWriter {
+
+    private static final int BUFFER = 1 << 16;
+
+    private final RowSource source;
+    private final JsonPlan plan;
+    private final ConvertOptions options;
+    private final JsonOptions json;
+    private final String producer;
+    private final Issues issues;
+    private final List<TableResult> results = new ArrayList<>();
+    private boolean tableFailed;
+
+    private JsonWriter(
+            RowSource source, JsonPlan plan, ConvertOptions options, JsonOptions json, String producer, Issues issues) {
+        this.source = source;
+        this.plan = plan;
+        this.options = options;
+        this.json = json;
+        this.producer = producer;
+        this.issues = issues;
+    }
+
+    /**
+     * @param output the document, or the ndjson directory
+     * @param producer the tool and its version ({@code AccessConverter 3.0.0})
+     */
+    public static WriteOutcome write(
+            AccessSource source,
+            JsonPlan plan,
+            Path output,
+            ConvertOptions options,
+            JsonOptions json,
+            String producer,
+            Issues issues)
+            throws IOException {
+        return write(source::rows, plan, output, options, json, producer, issues);
+    }
+
+    /** As {@link #write}, reading the rows from somewhere else; for the {@code --on-table-error} test. */
+    static WriteOutcome write(
+            RowSource source,
+            JsonPlan plan,
+            Path output,
+            ConvertOptions options,
+            JsonOptions json,
+            String producer,
+            Issues issues)
+            throws IOException {
+        JsonWriter writer = new JsonWriter(source, plan, options, json, producer, issues);
+        if (json.layout() == Layout.DOCUMENT) {
+            AtomicOutput.write(output, partial -> {
+                writer.document(partial);
+                return null;
+            });
+        } else {
+            AtomicOutput.writeDirectory(output, JsonWriter::isNdjsonFile, partial -> {
+                writer.ndjson(partial);
+                return null;
+            });
+        }
+        return new WriteOutcome(writer.results, writer.tableFailed);
+    }
+
+    /** Whether a file name is one an ndjson export consists of. */
+    public static boolean isNdjsonFile(String fileName) {
+        return fileName.equals(JsonFormat.NDJSON_SCHEMA_FILE) || fileName.endsWith(JsonFormat.NDJSON_EXTENSION);
+    }
+
+    // ---------------------------------------------------------------- layouts
+
+    private void document(Path file) throws IOException {
+        try (Output out = new Output(file)) {
+            JsonFormat.Printer printer = new JsonFormat.Printer();
+            JsonGenerator g = JsonFormat.FACTORY.createGenerator(JsonFormat.pretty(printer), out.stream);
+            g.writeStartObject();
+            header(g, "document");
+            g.writeObjectPropertyStart("data");
+            for (PlannedTable table : plan.tables()) {
+                g.writeName(table.name());
+                g.writeStartArray();
+                g.flush();
+                long rows = rows(table, out, printer.rowIndent(), ",");
+                if (rows > 0) {
+                    printer.valuesWrittenElsewhere();
+                }
+                g.writeEndArray();
+            }
+            g.writeEndObject();
+            g.writeEndObject();
+            g.writeRaw('\n');
+            g.close();
+        }
+    }
+
+    private void ndjson(Path directory) throws IOException {
+        for (PlannedTable table : plan.tables()) {
+            try (Output out = new Output(directory.resolve(table.file()))) {
+                rows(table, out, "", "");
+            }
+        }
+        try (Output out = new Output(directory.resolve(JsonFormat.NDJSON_SCHEMA_FILE))) {
+            JsonGenerator g =
+                    JsonFormat.FACTORY.createGenerator(JsonFormat.pretty(new JsonFormat.Printer()), out.stream);
+            g.writeStartObject();
+            header(g, "ndjson");
+            g.writeObjectPropertyStart("files");
+            for (PlannedTable table : plan.tables()) {
+                g.writeStringProperty(table.name(), table.file());
+            }
+            g.writeEndObject();
+            g.writeEndObject();
+            g.writeRaw('\n');
+            g.close();
+        }
+    }
+
+    /** A file written through a channel, so that it can be cut back to an earlier length. */
+    private static final class Output implements AutoCloseable {
+        final FileChannel channel;
+        final OutputStream stream;
+
+        Output(Path file) throws IOException {
+            channel = FileChannel.open(file, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+            stream = new BufferedOutputStream(Channels.newOutputStream(channel), BUFFER);
+        }
+
+        /** Everything written so far is in the file; the position is its length. */
+        long position() throws IOException {
+            stream.flush();
+            return channel.position();
+        }
+
+        void truncate(long length) throws IOException {
+            stream.flush();
+            channel.truncate(length);
+            channel.position(length);
+        }
+
+        @Override
+        public void close() throws IOException {
+            stream.close();
+        }
+    }
+
+    // ---------------------------------------------------------------- header and schema
+
+    private void header(JsonGenerator g, String layout) {
+        g.writeStringProperty("format", JsonFormat.NAME);
+        g.writeNumberProperty("formatVersion", JsonFormat.VERSION);
+        g.writeStringProperty("producer", producer);
+        g.writeStringProperty("layout", layout);
+        g.writeObjectPropertyStart("encoding");
+        g.writeStringProperty("rows", lower(json.rows()));
+        g.writeStringProperty("bigint", lower(json.bigint()));
+        g.writeStringProperty("decimals", lower(json.decimals()));
+        g.writeStringProperty("hyperlinks", lower(json.hyperlinks()));
+        g.writeStringProperty("binary", "base64");
+        g.writeEndObject();
+        SchemaModel.Source src = plan.model().source();
+        g.writeObjectPropertyStart("source");
+        g.writeStringProperty("file", src.fileName());
+        g.writeStringProperty("fileFormat", src.fileFormat());
+        if (src.codePage() != null) {
+            g.writeNumberProperty("codePage", src.codePage());
+        }
+        g.writeStringProperty("charset", src.charset());
+        if (json.stamp()) {
+            g.writeStringProperty(
+                    "exported", Instant.now().truncatedTo(ChronoUnit.SECONDS).toString());
+        }
+        g.writeEndObject();
+        if (json.schema()) {
+            schema(g, plan);
+        }
+    }
+
+    /** The {@code schema} property: every written table, the linked tables, and the relationships between tables. */
+    static void schema(JsonGenerator g, JsonPlan plan) {
+        g.writeObjectPropertyStart("schema");
+        g.writeArrayPropertyStart("tables");
+        for (PlannedTable table : plan.tables()) {
+            table(g, table);
+        }
+        g.writeEndArray();
+        g.writeArrayPropertyStart("linkedTables");
+        for (TableModel linked : plan.linked()) {
+            g.writeStartObject();
+            g.writeStringProperty("name", linked.name());
+            g.writeStringProperty("database", linked.link().database());
+            g.writeStringProperty("remoteTable", linked.link().remoteTable());
+            g.writeBooleanProperty("odbc", linked.link().odbc());
+            g.writeEndObject();
+        }
+        g.writeEndArray();
+        g.writeArrayPropertyStart("relationships");
+        for (ForeignKeyModel fk : plan.relationships()) {
+            relationship(g, fk);
+        }
+        g.writeEndArray();
+        g.writeEndObject();
+    }
+
+    private static void table(JsonGenerator g, PlannedTable table) {
+        TableModel source = table.source();
+        g.writeStartObject();
+        g.writeStringProperty("name", table.name());
+        g.writeStringProperty("description", source.description());
+        g.writeArrayPropertyStart("columns");
+        for (PlannedColumn column : table.columns()) {
+            column(g, column);
+        }
+        g.writeEndArray();
+        g.writeName("primaryKey");
+        if (table.primaryKey() == null) {
+            g.writeNull();
+        } else {
+            index(g, table.primaryKey());
+        }
+        g.writeArrayPropertyStart("indexes");
+        for (IndexModel index : table.indexes()) {
+            index(g, index);
+        }
+        g.writeEndArray();
+        g.writeName("validationRule");
+        rule(g, source.validation());
+        g.writeEndObject();
+    }
+
+    private static void column(JsonGenerator g, PlannedColumn planned) {
+        ColumnModel c = planned.source();
+        g.writeStartObject();
+        g.writeStringProperty("name", c.name());
+        g.writeStringProperty("type", planned.type().wireName());
+        g.writeStringProperty("accessType", accessType(c.type()));
+        g.writeBooleanProperty("nullable", planned.nullable());
+        g.writeBooleanProperty("required", c.required());
+        if (c.type() == AccessType.AUTONUMBER_LONG) {
+            g.writeStringProperty("autoNumber", c.isRandomAutoNumber() ? "random" : "increment");
+        } else if (c.type() == AccessType.AUTONUMBER_GUID) {
+            g.writeStringProperty("autoNumber", "guid");
+        }
+        if (c.length() != null) {
+            g.writeNumberProperty("length", c.length());
+        }
+        if (c.type() == AccessType.MONEY) {
+            g.writeNumberProperty("precision", 19);
+            g.writeNumberProperty("scale", 4);
+        } else if (c.type() == AccessType.NUMERIC) {
+            if (c.precision() != null) {
+                g.writeNumberProperty("precision", c.precision());
+            }
+            if (c.scale() != null) {
+                g.writeNumberProperty("scale", c.scale());
+            }
+        }
+        if (c.type().isText()) {
+            g.writeBooleanProperty("allowZeroLength", c.allowZeroLength());
+        }
+        // A Random autonumber's GenUniqueID() is its New Values setting, which autoNumber already says
+        if (c.defaultValue() != null && !c.isRandomAutoNumber()) {
+            g.writeName("default");
+            defaultValue(g, c.defaultValue());
+        }
+        if (c.validation() != null) {
+            g.writeName("validationRule");
+            rule(g, c.validation());
+        }
+        optional(g, "description", c.description());
+        optional(g, "format", c.format());
+        if (c.decimalPlaces() != null) {
+            g.writeNumberProperty("decimalPlaces", c.decimalPlaces());
+        }
+        if (c.richText()) {
+            g.writeBooleanProperty("richText", true);
+        }
+        optional(g, "calculatedExpression", c.calculatedExpression());
+        if (c.appendOnly()) {
+            g.writeBooleanProperty("appendOnly", true);
+        }
+        if (c.hidden()) {
+            g.writeBooleanProperty("hidden", true);
+        }
+        g.writeEndObject();
+    }
+
+    /** Jackcess's type name. An autonumber is its storage type, LONG or GUID; {@code autoNumber} says which kind. */
+    static String accessType(AccessType type) {
+        return switch (type) {
+            case AUTONUMBER_LONG -> "LONG";
+            case AUTONUMBER_GUID -> "GUID";
+            default -> type.name();
+        };
+    }
+
+    /**
+     * A default as Access wrote it, plus what it means where that is known: a literal's value in its own JSON form
+     * (not converted to the column's type), or the current date/time or a new GUID. Nothing is evaluated.
+     */
+    static void defaultValue(JsonGenerator g, DefaultValue d) {
+        g.writeStartObject();
+        g.writeStringProperty("access", d.raw());
+        if (!d.isTranslated()) {
+            g.writeStringProperty("kind", "unsupported");
+            g.writeStringProperty("reason", d.unsupportedReason());
+        } else {
+            switch (d.expr()) {
+                case Expr.NullLiteral n -> g.writeStringProperty("kind", "null");
+                case Expr.BooleanLiteral b -> {
+                    g.writeStringProperty("kind", "literal");
+                    g.writeBooleanProperty("value", b.value());
+                }
+                case Expr.NumberLiteral n -> {
+                    g.writeStringProperty("kind", "literal");
+                    g.writeName("value");
+                    g.writeNumber(n.value());
+                }
+                case Expr.StringLiteral s -> {
+                    g.writeStringProperty("kind", "literal");
+                    g.writeName("value");
+                    string(g, s.value());
+                }
+                case Expr.DateTimeLiteral t -> {
+                    g.writeStringProperty("kind", "literal");
+                    g.writeStringProperty("value", JsonValues.dateTime(t.value()));
+                }
+                case Expr.CurrentDateTime now ->
+                    g.writeStringProperty(
+                            "kind",
+                            switch (now.part()) {
+                                case NOW -> "currentTimestamp";
+                                case DATE -> "currentDate";
+                                case TIME -> "currentTime";
+                            });
+                case Expr.NewGuid guid -> g.writeStringProperty("kind", "newGuid");
+                default -> g.writeStringProperty("kind", "expression");
+            }
+        }
+        g.writeEndObject();
+    }
+
+    private static void rule(JsonGenerator g, CheckRule rule) {
+        if (rule == null) {
+            g.writeNull();
+            return;
+        }
+        g.writeStartObject();
+        g.writeStringProperty("access", rule.raw());
+        g.writeStringProperty("validationText", rule.validationText());
+        g.writeEndObject();
+    }
+
+    private static void index(JsonGenerator g, IndexModel index) {
+        g.writeStartObject();
+        g.writeStringProperty("name", index.name());
+        g.writeArrayPropertyStart("columns");
+        for (IndexModel.IndexColumn c : index.columns()) {
+            g.writeStartObject();
+            g.writeStringProperty("name", c.name());
+            g.writeStringProperty("order", c.ascending() ? "asc" : "desc");
+            g.writeEndObject();
+        }
+        g.writeEndArray();
+        g.writeBooleanProperty("unique", index.unique());
+        g.writeBooleanProperty("ignoreNulls", index.ignoreNulls());
+        g.writeBooleanProperty("required", index.required());
+        g.writeArrayPropertyStart("accessNames");
+        index.sourceNames().forEach(g::writeString);
+        g.writeEndArray();
+        g.writeEndObject();
+    }
+
+    private static void relationship(JsonGenerator g, ForeignKeyModel fk) {
+        g.writeStartObject();
+        g.writeStringProperty("name", fk.name());
+        side(g, "parent", fk.parentTable(), fk.parentColumns());
+        side(g, "child", fk.childTable(), fk.childColumns());
+        g.writeBooleanProperty("enforced", fk.enforced());
+        g.writeStringProperty("onUpdate", camel(fk.onUpdate()));
+        g.writeStringProperty("onDelete", camel(fk.onDelete()));
+        g.writeBooleanProperty("oneToOne", fk.oneToOne());
+        g.writeStringProperty("join", camel(fk.join()));
+        g.writeEndObject();
+    }
+
+    private static void side(JsonGenerator g, String name, String table, List<String> columns) {
+        g.writeObjectPropertyStart(name);
+        g.writeStringProperty("table", table);
+        g.writeArrayPropertyStart("columns");
+        columns.forEach(g::writeString);
+        g.writeEndArray();
+        g.writeEndObject();
+    }
+
+    private static void optional(JsonGenerator g, String name, String value) {
+        if (value != null) {
+            g.writeStringProperty(name, value);
+        }
+    }
+
+    // ---------------------------------------------------------------- data
+
+    /**
+     * Writes one table's rows after what is already in {@code out}, each preceded by {@code indent} and separated by
+     * {@code separator}; an ndjson row ends with a line feed instead. On failure the file is cut back to where the
+     * rows began, so the table is empty.
+     *
+     * @return the rows written
+     */
+    private long rows(PlannedTable table, Output out, String indent, String separator) throws IOException {
+        long start = out.position();
+        long read = 0;
+        long written = 0;
+        boolean ndjson = json.layout() == Layout.NDJSON;
+        JsonGenerator g = JsonFormat.FACTORY.createGenerator(ObjectWriteContext.empty(), out.stream);
+        try {
+            RowStream rows = source.of(table.source());
+            while (rows.hasNext()) {
+                Object[] row = rows.next();
+                read++;
+                if (!ndjson) {
+                    g.writeRaw(read == 1 ? indent : separator + indent);
+                }
+                row(g, table, row);
+                if (ndjson) {
+                    g.writeRaw('\n');
+                }
+            }
+            g.close();
+            written = read;
+        } catch (IOException | RuntimeException e) {
+            tableFailed = true;
+            g.close(); // AUTO_CLOSE_CONTENT is off: this only flushes, and the cut below removes it
+            out.truncate(start);
+            TableFailure.handle(issues, options, table.name(), 0, e);
+        }
+        results.add(new TableResult(table.name(), read, written));
+        return written;
+    }
+
+    private void row(JsonGenerator g, PlannedTable table, Object[] row) {
+        List<PlannedColumn> columns = table.columns();
+        if (json.rows() == Rows.OBJECT) {
+            g.writeStartObject();
+            for (PlannedColumn column : columns) {
+                g.writeName(column.name());
+                value(g, table, column, row[column.sourceIndex()]);
+            }
+            g.writeEndObject();
+        } else {
+            g.writeStartArray();
+            for (PlannedColumn column : columns) {
+                value(g, table, column, row[column.sourceIndex()]);
+            }
+            g.writeEndArray();
+        }
+    }
+
+    /** One value, spelled as 07's table says. Nothing is substituted: a NULL stays null. */
+    private void value(JsonGenerator g, PlannedTable table, PlannedColumn column, Object value) {
+        if (value == null) {
+            if (!column.nullable()) {
+                throw new IllegalStateException("column " + table.name() + "." + column.name()
+                        + " is not nullable because Access requires a value, but a row holds NULL");
+            }
+            g.writeNull();
+            return;
+        }
+        switch (column.type()) {
+            case BOOLEAN -> g.writeBoolean((Boolean) value);
+            case UINT8, INT16, INT32 -> g.writeNumber(((Number) value).intValue());
+            case INT64 -> {
+                long l = (Long) value;
+                if (json.bigint() == NumberForm.STRING) {
+                    g.writeString(Long.toString(l));
+                } else {
+                    g.writeNumber(l);
+                }
+            }
+            case DECIMAL -> {
+                BigDecimal d = (BigDecimal) value;
+                if (json.decimals() == NumberForm.STRING) {
+                    g.writeString(d.toPlainString());
+                } else {
+                    g.writeNumber(d);
+                }
+            }
+            case FLOAT32 -> {
+                float f = (Float) value;
+                if (finite(table, column, f)) {
+                    g.writeNumber(Float.toString(f)); // the shortest text that reads back as f (JDK 19+)
+                } else {
+                    g.writeNull();
+                }
+            }
+            case FLOAT64 -> {
+                double d = (Double) value;
+                if (finite(table, column, d)) {
+                    g.writeNumber(Double.toString(d));
+                } else {
+                    g.writeNull();
+                }
+            }
+            case DATETIME ->
+                g.writeString(
+                        column.source().type() == AccessType.EXT_DATE_TIME
+                                ? JsonValues.extendedDateTime((LocalDateTime) value)
+                                : JsonValues.dateTime((LocalDateTime) value));
+            case STRING, GUID -> text(g, table, column, (String) value);
+            case HYPERLINK -> {
+                if (json.hyperlinks() == Hyperlinks.STRING) {
+                    text(g, table, column, (String) value);
+                } else {
+                    Hyperlink link = Hyperlink.parse((String) value);
+                    g.writeStartObject();
+                    g.writeName("display");
+                    nullableText(g, table, column, link.display());
+                    g.writeName("address");
+                    nullableText(g, table, column, link.address());
+                    g.writeName("subAddress");
+                    nullableText(g, table, column, link.subAddress());
+                    g.writeName("screenTip");
+                    nullableText(g, table, column, link.screenTip());
+                    g.writeEndObject();
+                }
+            }
+            case BINARY -> g.writeBinary((byte[]) value);
+            case OLE -> g.writeBinary(((OleValue) value).raw());
+            case COMPLEX_ID -> g.writeNumber(((ComplexRef) value).complexId());
+        }
+    }
+
+    /** JSON has no NaN or Infinity: written as null and reported. */
+    private boolean finite(PlannedTable table, PlannedColumn column, double value) {
+        if (Double.isFinite(value)) {
+            return true;
+        }
+        issues.add(
+                IssueCode.DOUBLE_NON_FINITE,
+                table.name(),
+                column.name(),
+                "written as null: JSON has no NaN or Infinity",
+                String.valueOf(value));
+        return false;
+    }
+
+    private void nullableText(JsonGenerator g, PlannedTable table, PlannedColumn column, String value) {
+        if (value == null) {
+            g.writeNull();
+        } else {
+            text(g, table, column, value);
+        }
+    }
+
+    /** Text as it is; a lone surrogate, which UTF-8 has no bytes for, as a {@code \\uXXXX} escape, reported. */
+    private void text(JsonGenerator g, PlannedTable table, PlannedColumn column, String value) {
+        if (!JsonValues.hasUnpairedSurrogate(value)) {
+            g.writeString(value);
+            return;
+        }
+        issues.add(
+                IssueCode.TEXT_UNPAIRED_SURROGATE,
+                table.name(),
+                column.name(),
+                "an unpaired UTF-16 surrogate is written as a \\uXXXX escape: valid JSON that reads back as the same"
+                        + " text, though some strict parsers reject it");
+        g.writeRawValue(JsonValues.quotedKeepingSurrogates(value));
+    }
+
+    /** A string in the schema section, where a lone surrogate is kept the same way but not reported. */
+    private static void string(JsonGenerator g, String value) {
+        if (JsonValues.hasUnpairedSurrogate(value)) {
+            g.writeRawValue(JsonValues.quotedKeepingSurrogates(value));
+        } else {
+            g.writeString(value);
+        }
+    }
+
+    private static String lower(Enum<?> value) {
+        return value.name().toLowerCase(Locale.ROOT);
+    }
+
+    /** {@code NO_ACTION} → {@code noAction}. */
+    static String camel(Enum<?> value) {
+        String[] words = value.name().toLowerCase(Locale.ROOT).split("_");
+        StringBuilder text = new StringBuilder(words[0]);
+        for (int i = 1; i < words.length; i++) {
+            text.append(Character.toUpperCase(words[i].charAt(0))).append(words[i].substring(1));
+        }
+        return text.toString();
+    }
+}

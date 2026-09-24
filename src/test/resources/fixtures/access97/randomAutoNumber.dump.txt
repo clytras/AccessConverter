@@ -1,0 +1,23 @@
+database: C:\work\randomAutoNumber.mdb
+jet format: 3.0   DAO: 3.51
+size: 77824 bytes
+
+TABLE TIncrement
+  field ID : Long(4)
+  field Name : Text(50)
+  index PrimaryKey PRIMARY UNIQUE
+  | 1	row 1
+  | 2	row 2
+  | 3	row 3
+  rows: 3
+
+TABLE TRandom
+  field ID : Long(4)
+  field Name : Text(50)
+  index PrimaryKey PRIMARY UNIQUE
+  | -2087453651	row 2
+  | -2899478	row 3
+  | 1790235740	row 1
+  | 2147483647	ceiling
+  rows: 4
+

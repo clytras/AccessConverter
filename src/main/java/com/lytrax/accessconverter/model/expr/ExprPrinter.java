@@ -11,6 +11,7 @@ import com.lytrax.accessconverter.model.expr.Expr.In;
 import com.lytrax.accessconverter.model.expr.Expr.IsNull;
 import com.lytrax.accessconverter.model.expr.Expr.Like;
 import com.lytrax.accessconverter.model.expr.Expr.NewGuid;
+import com.lytrax.accessconverter.model.expr.Expr.NewRandomId;
 import com.lytrax.accessconverter.model.expr.Expr.Not;
 import com.lytrax.accessconverter.model.expr.Expr.NullLiteral;
 import com.lytrax.accessconverter.model.expr.Expr.NumberLiteral;
@@ -63,6 +64,7 @@ public final class ExprPrinter {
                     case TIME -> "Time()";
                 };
             case NewGuid g -> "GenGUID()";
+            case NewRandomId r -> "GenUniqueID()";
             case ColumnRef c -> "[" + c.name() + "]";
         };
     }

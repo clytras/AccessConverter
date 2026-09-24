@@ -1,0 +1,89 @@
+{
+  "format": "accessconverter",
+  "formatVersion": 1,
+  "producer": "AccessConverter",
+  "layout": "document",
+  "encoding": {
+    "rows": "object",
+    "bigint": "number",
+    "decimals": "number",
+    "hyperlinks": "string",
+    "binary": "base64"
+  },
+  "source": {
+    "file": "bigint.accdb",
+    "fileFormat": "V2016",
+    "charset": "UTF-16LE"
+  },
+  "schema": {
+    "tables": [
+      {
+        "name": "Table",
+        "description": null,
+        "columns": [
+          {
+            "name": "ID",
+            "type": "int32",
+            "accessType": "LONG",
+            "nullable": false,
+            "required": false,
+            "autoNumber": "increment"
+          },
+          {
+            "name": "Numeric",
+            "type": "int64",
+            "accessType": "BIG_INT",
+            "nullable": true,
+            "required": false,
+            "default": {
+              "access": "0",
+              "kind": "literal",
+              "value": 0
+            },
+            "decimalPlaces": 255
+          }
+        ],
+        "primaryKey": {
+          "name": "PrimaryKey",
+          "columns": [
+            {
+              "name": "ID",
+              "order": "asc"
+            }
+          ],
+          "unique": true,
+          "ignoreNulls": false,
+          "required": true,
+          "accessNames": [
+            "PrimaryKey"
+          ]
+        },
+        "indexes": [
+          {
+            "name": "Numeric",
+            "columns": [
+              {
+                "name": "Numeric",
+                "order": "asc"
+              }
+            ],
+            "unique": false,
+            "ignoreNulls": false,
+            "required": false,
+            "accessNames": [
+              "Numeric"
+            ]
+          }
+        ],
+        "validationRule": null
+      }
+    ],
+    "linkedTables": [],
+    "relationships": []
+  },
+  "data": {
+    "Table": [
+      {"ID":1,"Numeric":42}
+    ]
+  }
+}

@@ -79,15 +79,15 @@ final class PlanOptions {
 
     /** Rejects the options that don't apply to the target, so none is silently ignored. */
     void check(Target target, CommandLine cli) {
-        if (target == Target.sqlite) {
+        if (target != Target.sqlite && (sqliteStrict || sqliteNocase || sqliteMetadata)) {
+            throw new ParameterException(
+                    cli, "--sqlite-strict, --sqlite-nocase and --sqlite-metadata apply to --to sqlite");
+        }
+        if (!target.isMySql()) {
             if (collation != null) {
                 throw new ParameterException(cli, "--collation applies to --to mysql and --to mariadb");
             }
             return;
-        }
-        if (sqliteStrict || sqliteNocase || sqliteMetadata) {
-            throw new ParameterException(
-                    cli, "--sqlite-strict, --sqlite-nocase and --sqlite-metadata apply to --to sqlite");
         }
         if (collation != null && !collation.toLowerCase(Locale.ROOT).startsWith("utf8mb4_")) {
             throw new ParameterException(

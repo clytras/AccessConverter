@@ -175,7 +175,89 @@ class ConvertCommandTest {
         Files.writeString(output, "not a database");
         Cli verify = Cli.run("verify", GeneratedFixture.HUNDRED_ROWS.path().toString(), output.toString());
         assertThat(verify.exitCode()).isEqualTo(ExitCodes.FAILED);
-        assertThat(verify.err()).contains("is not a SQLite file");
+        assertThat(verify.err()).contains("is neither a SQLite file nor a JSON export");
+
+        Path directory = Files.createDirectories(dir.resolve("some-directory"));
+        Cli notNdjson = Cli.run("verify", GeneratedFixture.HUNDRED_ROWS.path().toString(), directory.toString());
+        assertThat(notNdjson.exitCode()).isEqualTo(ExitCodes.FAILED);
+        assertThat(notNdjson.err()).contains("without the schema.json of an ndjson export");
+    }
+
+    @Test
+    void convertsToJsonAndVerifiesIt() throws IOException {
+        Path input = dir.resolve("copy.accdb");
+        Files.copy(GeneratedFixture.SCHEMA_FIDELITY.path(), input);
+
+        Cli convert = Cli.run("convert", "--to", "json", "--verify", input.toString());
+        assertThat(convert.exitCode()).as(convert.err()).isEqualTo(ExitCodes.OK);
+        Path document = dir.resolve("copy.json");
+        assertThat(Files.readString(document, StandardCharsets.UTF_8))
+                .startsWith("{\n  \"format\": \"accessconverter\",\n  \"formatVersion\": 1,\n")
+                .doesNotContain("\"exported\"");
+        assertThat(Files.readString(dir.resolve("copy.json.report.json"), StandardCharsets.UTF_8))
+                .contains("\"to\": \"json\"", "\"jsonLayout\": \"document\"", "\"verify\": \"true\"")
+                .doesNotContain("batchRows");
+        assertThat(convert.out()).doesNotContain("import it with");
+
+        Cli verify = Cli.run("verify", input.toString(), document.toString());
+        assertThat(verify.exitCode()).isEqualTo(ExitCodes.OK);
+        assertThat(verify.out()).contains("(JSON)", "verify: the output matches the source");
+
+        Cli ndjson = Cli.run(
+                "convert",
+                "--to",
+                "json",
+                "--json-layout",
+                "ndjson",
+                "--json-rows",
+                "array",
+                "--stamp",
+                input.toString());
+        assertThat(ndjson.exitCode()).isEqualTo(ExitCodes.OK);
+        Path directory = dir.resolve("copy-ndjson");
+        assertThat(directory.resolve("schema.json")).content().contains("\"exported\": \"");
+        assertThat(directory.resolve("Order Details.ndjson")).content().startsWith("[1,1,3,9.9900]\n");
+        assertThat(dir.resolve("copy-ndjson.report.json")).exists();
+
+        Cli verifyNdjson = Cli.run("verify", input.toString(), directory.toString());
+        assertThat(verifyNdjson.exitCode()).isEqualTo(ExitCodes.OK);
+
+        // An edited value is a difference, and verify fails
+        Files.writeString(
+                directory.resolve("Order Details.ndjson"),
+                Files.readString(directory.resolve("Order Details.ndjson")).replace("9.9900", "9.9901"));
+        Cli edited = Cli.run("verify", input.toString(), directory.toString());
+        assertThat(edited.exitCode()).isEqualTo(ExitCodes.FAILED);
+        assertThat(edited.out()).contains("Order Details.UnitPrice: row 1 is 9.9901, expected 9.9900");
+    }
+
+    @Test
+    void jsonOptionsBelongToJsonAndSqlOptionsDoNot() {
+        String input = GeneratedFixture.HUNDRED_ROWS.path().toString();
+        Cli jsonOption = Cli.run("convert", "--to", "sqlite", "--json-rows", "array", input);
+        assertThat(jsonOption.exitCode()).isEqualTo(ExitCodes.USAGE);
+        assertThat(jsonOption.err()).contains("apply to --to json");
+
+        for (String[] option : new String[][] {
+            {"--batch-rows", "10"},
+            {"--analyze"},
+            {"--drop-existing"},
+            {"--collation", "utf8mb4_bin"},
+            {"--sqlite-strict"}
+        }) {
+            String[] args = new String[option.length + 4];
+            args[0] = "convert";
+            args[1] = "--to";
+            args[2] = "json";
+            System.arraycopy(option, 0, args, 3, option.length);
+            args[args.length - 1] = input;
+            Cli cli = Cli.run(args);
+            assertThat(cli.exitCode()).as(String.join(" ", option)).isEqualTo(ExitCodes.USAGE);
+        }
+
+        Cli stamp = Cli.run("convert", "--to", "sqlite", "--stamp", input);
+        assertThat(stamp.exitCode()).isEqualTo(ExitCodes.USAGE);
+        assertThat(stamp.err()).contains("--stamp applies to --to mysql, --to mariadb and --to json");
     }
 
     @Test

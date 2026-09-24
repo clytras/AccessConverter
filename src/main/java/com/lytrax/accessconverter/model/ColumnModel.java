@@ -1,5 +1,6 @@
 package com.lytrax.accessconverter.model;
 
+import com.lytrax.accessconverter.model.expr.Expr;
 import java.util.Objects;
 
 /**
@@ -43,5 +44,15 @@ public record ColumnModel(
 
     public boolean isCalculated() {
         return calculatedExpression != null;
+    }
+
+    /**
+     * A Long autonumber with New Values = Random: Access stores that as the default {@code GenUniqueID()} and generates
+     * random values, negative ones included, where an Increment autonumber counts upward.
+     */
+    public boolean isRandomAutoNumber() {
+        return type == AccessType.AUTONUMBER_LONG
+                && defaultValue != null
+                && defaultValue.expr() instanceof Expr.NewRandomId;
     }
 }
