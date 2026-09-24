@@ -64,8 +64,17 @@ public record LikePattern(String access, List<Element> elements) {
         return elements.stream().noneMatch(e -> e instanceof AnyDigit);
     }
 
-    /** A Java regex matching like Access: whole value, case-insensitive. */
+    /** A Java regex matching like Access: the whole value, case-insensitive for every letter. */
     public Pattern toRegex() {
+        return toRegex(true);
+    }
+
+    /**
+     * A Java regex matching the whole value.
+     *
+     * @param unicodeCase fold every letter's case (Access), or ASCII letters only (SQLite's {@code LIKE})
+     */
+    public Pattern toRegex(boolean unicodeCase) {
         StringBuilder regex = new StringBuilder();
         for (Element e : elements) {
             switch (e) {
@@ -75,6 +84,7 @@ public record LikePattern(String access, List<Element> elements) {
                 case AnyDigit d -> regex.append("[0-9]");
             }
         }
-        return Pattern.compile(regex.toString(), Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.DOTALL);
+        return Pattern.compile(
+                regex.toString(), Pattern.CASE_INSENSITIVE | (unicodeCase ? Pattern.UNICODE_CASE : 0) | Pattern.DOTALL);
     }
 }

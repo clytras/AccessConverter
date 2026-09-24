@@ -2,6 +2,7 @@ package com.lytrax.accessconverter.target.sqlite;
 
 import com.lytrax.accessconverter.model.expr.Expr;
 import com.lytrax.accessconverter.model.expr.LikePattern;
+import com.lytrax.accessconverter.profile.RuleEvaluator;
 import com.lytrax.accessconverter.target.CheckRenderer;
 import com.lytrax.accessconverter.target.IdentifierPolicy;
 import com.lytrax.accessconverter.target.Rendered;
@@ -13,8 +14,11 @@ import java.util.Optional;
  * constraints (06, Constraints and attributes). Anything the subset allows but SQLite can't express, and any
  * default that doesn't fit its column, comes back as a problem to report instead of a guess.
  *
- * <p>Text is compared with {@code COLLATE NOCASE}, because Access compares text case-insensitively: a rule Access
- * accepted must never reject the same row here.
+ * <p>Text is compared as {@code rtrim(col) COLLATE NOCASE} against a literal without its trailing spaces, because
+ * Access compares text case-insensitively and ignores trailing spaces (U+0020 only; measured in Access 97 and ACE 16,
+ * phase 6): a rule Access accepted must never reject the same row here. NOCASE folds ASCII letters only, so the
+ * planner emits a CHECK only when the data also satisfies the rule compared that way
+ * ({@code RuleEvaluator.TextComparison.ASCII_NOCASE}). {@code Like} sees the value as it is, as in Access.
  */
 public final class SqliteExpressions {
 
@@ -135,18 +139,25 @@ public final class SqliteExpressions {
             this.columns = columns;
         }
 
+        private String column(Expr.ColumnRef ref) {
+            return IdentifierPolicy.quote(columns.name(ref.name())
+                    .orElseThrow(() -> unrenderable("it refers to " + ref.name() + ", which is not written")));
+        }
+
         @Override
         protected String operand(Expr.ColumnRef ref) {
-            String name = columns.name(ref.name())
-                    .orElseThrow(() -> unrenderable("it refers to " + ref.name() + ", which is not written"));
-            // Access compares text case-insensitively; BINARY would reject rows Access accepted
-            return IdentifierPolicy.quote(name) + (columns.kind(ref.name()) == Kind.TEXT ? " COLLATE NOCASE" : "");
+            // Access compares text case-insensitively and without trailing spaces; BINARY would reject rows it accepted
+            return columns.kind(ref.name()) == Kind.TEXT ? "rtrim(" + column(ref) + ") COLLATE NOCASE" : column(ref);
         }
 
         @Override
         protected String value(Expr expr, Expr.ColumnRef beside) {
             Kind kind = beside == null ? Kind.NUMERIC : columns.kind(beside.name());
             int fractionDigits = beside == null ? 0 : columns.fractionDigits(beside.name());
+            if (kind == Kind.TEXT && expr instanceof Expr.StringLiteral s) {
+                // The column side is rtrim()med too
+                return IdentifierPolicy.literal(RuleEvaluator.withoutTrailingSpaces(s.value()));
+            }
             Rendered result = defaultClause(expr, kind, fractionDigits);
             if (!result.isPresent()) {
                 throw unrenderable(result.problem());
@@ -159,6 +170,9 @@ public final class SqliteExpressions {
             LikePattern pattern = like.pattern();
             if (!pattern.mapsToSqlLike()) {
                 throw unrenderable("SQLite's LIKE has no equivalent of the # wildcard in " + quote(pattern.access()));
+            }
+            if (like.operand() instanceof Expr.ColumnRef ref) {
+                operand = column(ref); // the value as it is, as Access matches it: no rtrim() here
             }
             StringBuilder sql = new StringBuilder();
             boolean escaped = false;

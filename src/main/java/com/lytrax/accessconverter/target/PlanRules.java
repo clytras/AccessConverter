@@ -295,6 +295,19 @@ public final class PlanRules {
      * @param column the column the rule belongs to, or null for the table's rule
      */
     public boolean ruleHolds(TableModel table, CheckRule rule, String column) {
+        return ruleHolds(table, rule, column, false);
+    }
+
+    /**
+     * {@link #ruleHolds(TableModel, CheckRule, String)} for a target that compares text as SQLite does, folding ASCII
+     * letters only and in code-point order: the rows must also satisfy the rule compared that way, or the CHECK would
+     * reject rows Access accepted (a Greek {@code "α"} against {@code In ("Α")}).
+     */
+    public boolean ruleHoldsUnderAsciiNocase(TableModel table, CheckRule rule, String column) {
+        return ruleHolds(table, rule, column, true);
+    }
+
+    private boolean ruleHolds(TableModel table, CheckRule rule, String column, boolean asciiNocase) {
         RuleStats stats = column == null
                 ? tableRule(table.name())
                 : java.util.Optional.ofNullable(stats(table.name(), column))
@@ -313,7 +326,19 @@ public final class PlanRules {
             return false;
         }
         if (stats.holds()) {
-            return true;
+            if (!asciiNocase || stats.holdsUnderAsciiNocase()) {
+                return true;
+            }
+            issues.add(
+                    IssueCode.CHECK_UNTRANSLATABLE,
+                    table.name(),
+                    column,
+                    "no CHECK for the validation rule " + rule.raw() + ": " + stats.asciiNocaseViolations()
+                            + " existing rows satisfy it only as Access compares text, whose case folding covers every"
+                            + " letter and whose order is alphabetical; " + target + " folds ASCII letters only"
+                            + " (COLLATE NOCASE) and orders by code point",
+                    String.join("; ", stats.asciiNocaseSamples()));
+            return false;
         }
         issues.add(
                 IssueCode.CHECK_VIOLATED_BY_DATA,

@@ -3,6 +3,7 @@ package com.lytrax.accessconverter.target.mysql;
 import com.lytrax.accessconverter.model.AccessType;
 import com.lytrax.accessconverter.model.expr.Expr;
 import com.lytrax.accessconverter.model.expr.LikePattern;
+import com.lytrax.accessconverter.profile.RuleEvaluator;
 import com.lytrax.accessconverter.target.CheckRenderer;
 import com.lytrax.accessconverter.target.Rendered;
 import java.math.BigDecimal;
@@ -263,7 +264,7 @@ public final class MySqlExpressions {
             if (column != null && column.isText()) {
                 return switch (expr) {
                     // Access ignores trailing spaces when it compares text; the column side is RTRIM()med too
-                    case Expr.StringLiteral s -> text(s.value().stripTrailing());
+                    case Expr.StringLiteral s -> text(RuleEvaluator.withoutTrailingSpaces(s.value()));
                     case Expr.NumberLiteral n -> text(n.value().toPlainString());
                     default -> throw unrenderable("a text column is compared with a " + describe(expr) + " value");
                 };

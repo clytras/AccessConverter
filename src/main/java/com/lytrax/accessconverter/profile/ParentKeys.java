@@ -123,7 +123,7 @@ final class ParentKeys {
     private List<Object> normalize(Object[] values) {
         return Arrays.stream(values)
                 .map(v -> switch (v) {
-                    case String s -> text.getCollationKey(s.stripTrailing());
+                    case String s -> text.getCollationKey(RuleEvaluator.accessComparable(s));
                     case BigDecimal d -> d.stripTrailingZeros();
                     case Number n -> new BigDecimal(n.toString()).stripTrailingZeros();
                     case byte[] b -> ByteBuffer.wrap(b);

@@ -5,9 +5,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.lytrax.accessconverter.extract.ExpressionTranslator;
 import com.lytrax.accessconverter.model.CheckRule;
 import com.lytrax.accessconverter.model.DefaultValue;
+import com.lytrax.accessconverter.model.expr.Expr;
+import com.lytrax.accessconverter.profile.RuleEvaluator;
+import com.lytrax.accessconverter.profile.RuleEvaluator.TextComparison;
+import com.lytrax.accessconverter.profile.RuleEvaluator.Truth;
 import com.lytrax.accessconverter.target.Rendered;
 import com.lytrax.accessconverter.target.sqlite.SqliteExpressions.Kind;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Optional;
+import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -142,9 +152,81 @@ class SqliteExpressionsTest {
     }
 
     @Test
-    void textIsComparedCaseInsensitivelyAsAccessDoes() {
+    void textIsComparedCaseInsensitivelyAndWithoutTrailingSpacesAsAccessDoes() {
         CheckRule rule = ExpressionTranslator.translateColumnRule("<>\"\"", null, "Name");
-        assertThat(SqliteExpressions.check(rule.expr(), COLUMNS).sql()).isEqualTo("\"Name\" COLLATE NOCASE <> ''");
+        assertThat(SqliteExpressions.check(rule.expr(), COLUMNS).sql())
+                .isEqualTo("rtrim(\"Name\") COLLATE NOCASE <> ''");
+        CheckRule in = ExpressionTranslator.translateColumnRule("In (\"A  \",\"B\t\")", null, "Name");
+        assertThat(SqliteExpressions.check(in.expr(), COLUMNS).sql())
+                .isEqualTo("rtrim(\"Name\") COLLATE NOCASE IN ('A', 'B\t')");
+    }
+
+    /**
+     * What Access (ACE 16, a General-sort .accdb) accepted and rejected for each rule, measured through DAO in phase 6
+     * (Access 97 agrees except that it ignores accents in a rule, which only makes the evaluator drop a CHECK). The
+     * evaluator reproduces Access; the SQLite CHECK does exactly what the evaluator's SQLite comparison predicts, so
+     * a CHECK the planner emits never rejects a row the profile passed.
+     */
+    @ParameterizedTest(name = "{0} with [{1}]: Access {2}")
+    @CsvSource(
+            delimiter = ';',
+            value = {
+                "In (\"A\",\"B\");A;accept",
+                "In (\"A\",\"B\");A_;accept",
+                "In (\"A\",\"B\");A___;accept",
+                "In (\"A\",\"B\");a_;accept",
+                "In (\"A\",\"B\");A<TAB>;reject",
+                "In (\"A\",\"B\");A<NBSP>;reject",
+                "In (\"A\",\"B\");A<CRLF>;reject",
+                "In (\"A\",\"B\");_A;reject",
+                "=\"A\";A__;accept",
+                "=\"A\";A<TAB>;reject",
+                "<>\"A\";A_;reject",
+                "<>\"A\";A<TAB>;accept",
+                "<>\"A\";e;accept",
+                "In (\"Α\",\"Β\");α;accept",
+                "In (\"Α\",\"Β\");ά;reject",
+                "In (\"Α\",\"Β\");a;reject",
+                "=\"ΟΔΟΣ\";οδος;accept",
+                "=\"ΟΔΟΣ\";οδοσ;accept",
+                "=\"ЖУК\";жук;accept",
+                "=\"I\";i;accept",
+                "=\"I\";ı;reject",
+                "=\"É\";é;accept",
+                "=\"É\";e;reject",
+                "Like \"A\";A;accept",
+                "Like \"A\";A_;reject",
+                "Like \"A*\";a<TAB>;accept",
+                "Like \"A*\";_A;reject"
+            })
+    void theCheckNeverRejectsWhatTheProfilePassed(String access, String stored, String measured) throws Exception {
+        String value = stored.replace("_", " ")
+                .replace("<TAB>", "\t")
+                .replace("<NBSP>", " ")
+                .replace("<CRLF>", "\r\n");
+        Expr rule =
+                ExpressionTranslator.translateColumnRule(access, null, "Name").expr();
+        Function<String, Object> row = column -> value;
+
+        Truth asAccess = new RuleEvaluator(TextComparison.ACCESS).test(rule, row);
+        assertThat(asAccess != Truth.FALSE).as("Access semantics").isEqualTo(measured.equals("accept"));
+
+        Truth asSqlite = new RuleEvaluator(TextComparison.ASCII_NOCASE).test(rule, row);
+        try (Connection db = DriverManager.getConnection("jdbc:sqlite::memory:");
+                Statement s = db.createStatement()) {
+            s.execute("CREATE TABLE t (\"Name\" TEXT CHECK ("
+                    + SqliteExpressions.check(rule, COLUMNS).sql() + "))");
+            boolean accepted;
+            try (PreparedStatement insert = db.prepareStatement("INSERT INTO t VALUES (?)")) {
+                insert.setString(1, value);
+                insert.execute();
+                accepted = true;
+            } catch (SQLException e) {
+                assertThat(e.getMessage()).contains("CHECK constraint failed");
+                accepted = false;
+            }
+            assertThat(accepted).as("SQLite").isEqualTo(asSqlite != Truth.FALSE);
+        }
     }
 
     @Test
@@ -164,13 +246,12 @@ class SqliteExpressionsTest {
     @Test
     void likePatternsBecomeSqlLikeWithEscapedWildcards() {
         CheckRule starts = ExpressionTranslator.translateColumnRule("Like \"A*\"", null, "Name");
-        assertThat(SqliteExpressions.check(starts.expr(), COLUMNS).sql())
-                .isEqualTo("\"Name\" COLLATE NOCASE LIKE 'A%'");
+        assertThat(SqliteExpressions.check(starts.expr(), COLUMNS).sql()).isEqualTo("\"Name\" LIKE 'A%'");
         CheckRule percent = ExpressionTranslator.translateColumnRule("Like \"100%\"", null, "Name");
         assertThat(SqliteExpressions.check(percent.expr(), COLUMNS).sql())
-                .isEqualTo("\"Name\" COLLATE NOCASE LIKE '100\\%' ESCAPE '\\'");
+                .isEqualTo("\"Name\" LIKE '100\\%' ESCAPE '\\'");
         CheckRule one = ExpressionTranslator.translateColumnRule("Like \"A?C\"", null, "Name");
-        assertThat(SqliteExpressions.check(one.expr(), COLUMNS).sql()).isEqualTo("\"Name\" COLLATE NOCASE LIKE 'A_C'");
+        assertThat(SqliteExpressions.check(one.expr(), COLUMNS).sql()).isEqualTo("\"Name\" LIKE 'A_C'");
     }
 
     @Test

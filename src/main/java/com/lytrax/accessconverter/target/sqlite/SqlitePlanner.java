@@ -295,7 +295,7 @@ public final class SqlitePlanner {
                 tableComments.add("Access validation rule: " + rule.raw());
                 return;
             }
-            if (!rules.ruleHolds(source, rule, null)) {
+            if (!rules.ruleHoldsUnderAsciiNocase(source, rule, null)) {
                 tableComments.add("Access validation rule: " + rule.raw());
                 return;
             }
@@ -607,7 +607,7 @@ public final class SqlitePlanner {
             TableDraft draft = draft(table.name());
             CheckRule rule = source.validation();
             if (rule != null) {
-                if (rule.isTranslated() && rules.ruleHolds(table, rule, source.name())) {
+                if (rule.isTranslated() && rules.ruleHoldsUnderAsciiNocase(table, rule, source.name())) {
                     checkFor(draft, rule);
                 } else {
                     comments.add("Access validation rule: " + rule.raw());

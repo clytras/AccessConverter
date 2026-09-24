@@ -74,14 +74,36 @@ public record DataProfile(Map<String, TableProfile> tables, Map<String, Relation
      * @param violations rows for which the rule is FALSE
      * @param unevaluable rows the evaluator couldn't decide (incompatible types): the rule is then unverified
      * @param samples keys of violating rows
+     * @param asciiNocaseViolations rows for which the rule is FALSE when text is compared as a SQLite CHECK compares
+     *     it ({@link RuleEvaluator.TextComparison#ASCII_NOCASE}); rows the evaluator couldn't decide are in
+     *     {@code unevaluable} either way
+     * @param asciiNocaseSamples keys of those rows
      */
-    public record RuleStats(long violations, long unevaluable, List<String> samples, String firstError) {
+    public record RuleStats(
+            long violations,
+            long unevaluable,
+            List<String> samples,
+            String firstError,
+            long asciiNocaseViolations,
+            List<String> asciiNocaseSamples) {
         public RuleStats {
             samples = List.copyOf(samples);
+            asciiNocaseSamples = List.copyOf(asciiNocaseSamples);
         }
 
+        /** Statistics where both comparisons agree. */
+        public RuleStats(long violations, long unevaluable, List<String> samples, String firstError) {
+            this(violations, unevaluable, samples, firstError, violations, samples);
+        }
+
+        /** Every row satisfies the rule as Access compares text. */
         public boolean holds() {
             return violations == 0 && unevaluable == 0;
+        }
+
+        /** Every row also satisfies it as a SQLite CHECK compares text. */
+        public boolean holdsUnderAsciiNocase() {
+            return holds() && asciiNocaseViolations == 0;
         }
     }
 

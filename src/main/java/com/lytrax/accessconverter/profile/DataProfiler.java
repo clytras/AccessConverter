@@ -14,6 +14,7 @@ import com.lytrax.accessconverter.profile.DataProfile.RelationshipProfile;
 import com.lytrax.accessconverter.profile.DataProfile.RuleStats;
 import com.lytrax.accessconverter.profile.DataProfile.TableProfile;
 import com.lytrax.accessconverter.profile.RuleEvaluator.EvaluationException;
+import com.lytrax.accessconverter.profile.RuleEvaluator.TextComparison;
 import com.lytrax.accessconverter.profile.RuleEvaluator.Truth;
 import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.source.AccessSource;
@@ -51,20 +52,24 @@ public final class DataProfiler {
     public static DataProfile profile(AccessSource source, SchemaModel model) throws IOException {
         Map<String, TableProfile> tables = new LinkedHashMap<>();
         Map<String, RelationshipProfile> relationships = new LinkedHashMap<>();
-        RuleEvaluator evaluator = new RuleEvaluator();
+        Evaluators evaluators = new Evaluators(
+                new RuleEvaluator(TextComparison.ACCESS), new RuleEvaluator(TextComparison.ASCII_NOCASE));
         for (TableModel table : model.tables()) {
             if (!table.isLinked()) {
-                new TablePass(source, model, table, evaluator).run(tables, relationships);
+                new TablePass(source, model, table, evaluators).run(tables, relationships);
             }
         }
         return new DataProfile(tables, relationships);
     }
 
+    /** Rules are evaluated as Access compares text, and as a SQLite CHECK does. */
+    private record Evaluators(RuleEvaluator access, RuleEvaluator asciiNocase) {}
+
     private static final class TablePass {
         private final AccessSource source;
         private final SchemaModel model;
         private final TableModel table;
-        private final RuleEvaluator evaluator;
+        private final Evaluators evaluators;
         private final Map<String, Integer> position = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         private final List<ColumnModel> scanned = new ArrayList<>();
         private final List<ColumnAccumulator> columns = new ArrayList<>();
@@ -72,11 +77,11 @@ public final class DataProfiler {
         private RuleAccumulator tableRule;
         private long rows;
 
-        TablePass(AccessSource source, SchemaModel model, TableModel table, RuleEvaluator evaluator) {
+        TablePass(AccessSource source, SchemaModel model, TableModel table, Evaluators evaluators) {
             this.source = source;
             this.model = model;
             this.table = table;
-            this.evaluator = evaluator;
+            this.evaluators = evaluators;
         }
 
         void run(Map<String, TableProfile> tables, Map<String, RelationshipProfile> relationships) throws IOException {
@@ -268,8 +273,10 @@ public final class DataProfiler {
             final Expr rule;
             long violations;
             long unevaluable;
+            long asciiNocaseViolations;
             String firstError;
             final List<String> samples = new ArrayList<>();
+            final List<String> asciiNocaseSamples = new ArrayList<>();
 
             RuleAccumulator(Expr rule) {
                 this.rule = rule;
@@ -277,9 +284,13 @@ public final class DataProfiler {
 
             void accept(Function<String, Object> row, Supplier<String> key) {
                 try {
-                    if (evaluator.test(rule, row) == Truth.FALSE) {
+                    if (evaluators.access().test(rule, row) == Truth.FALSE) {
                         violations++;
                         sample(samples, key.get());
+                    }
+                    if (evaluators.asciiNocase().test(rule, row) == Truth.FALSE) {
+                        asciiNocaseViolations++;
+                        sample(asciiNocaseSamples, key.get());
                     }
                 } catch (EvaluationException e) {
                     unevaluable++;
@@ -290,7 +301,8 @@ public final class DataProfiler {
             }
 
             RuleStats stats() {
-                return new RuleStats(violations, unevaluable, samples, firstError);
+                return new RuleStats(
+                        violations, unevaluable, samples, firstError, asciiNocaseViolations, asciiNocaseSamples);
             }
         }
 
