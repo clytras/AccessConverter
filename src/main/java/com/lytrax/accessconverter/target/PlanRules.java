@@ -65,6 +65,14 @@ public final class PlanRules {
         return profile.table(table).flatMap(t -> t.column(column)).orElse(null);
     }
 
+    /** The table's row count, or null without a profile. */
+    public Long rows(String table) {
+        if (profile == null) {
+            return null;
+        }
+        return profile.table(table).map(DataProfile.TableProfile::rowsScanned).orElse(null);
+    }
+
     public RuleStats tableRule(String table) {
         if (profile == null) {
             return null;

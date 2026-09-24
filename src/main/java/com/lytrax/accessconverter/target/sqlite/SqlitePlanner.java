@@ -259,8 +259,10 @@ public final class SqlitePlanner {
                                 source.name(),
                                 only.source.name(),
                                 "Access generates random values for this autonumber (New Values: Random); SQLite's"
-                                        + " AUTOINCREMENT generates them in sequence, after the largest value. The"
-                                        + " existing values are kept exactly");
+                                        + " AUTOINCREMENT generates them in sequence, after the largest value. SQLite's"
+                                        + " counter is 64-bit, so it never runs out, but a generated value past"
+                                        + " 2147483647 no longer fits an Access Long. The existing values are kept"
+                                        + " exactly");
                     }
                 }
             } else {

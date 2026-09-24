@@ -186,7 +186,15 @@ public final class MySqlVerifier {
                 return false;
             }
         }
-        return expression(planned).equals(expression(actual));
+        return ungrouped(expression(planned)).equals(ungrouped(expression(actual)));
+    }
+
+    /**
+     * An expression without its grouping parentheses: MySQL stores {@code a * b + c} as {@code ((a * b) + c)}, MariaDB
+     * as written. The defaults compared here are the planner's own few expressions, which this can't confuse.
+     */
+    private static String ungrouped(String expression) {
+        return expression.replace("(", "").replace(")", "");
     }
 
     /** The text of a string literal the planner wrote ({@code 'it\'s'}). */

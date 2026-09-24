@@ -20,6 +20,12 @@ public final class MySqlExpressions {
     /** A new Replication ID in Access's <code>{XXXXXXXX-…}</code> form; verified on both dialects (05). */
     public static final String RANDOM_GUID = "(CONCAT('{', UPPER(UUID()), '}'))";
 
+    /**
+     * A Random autonumber's next value: a random signed 32-bit integer, as Access generates. {@code RAND()} has about
+     * 2^30 distinct values on both servers, so two calls make the 16-bit halves. Measured on all five servers (05).
+     */
+    public static final String RANDOM_INT = "(FLOOR(RAND() * 65536) * 65536 + FLOOR(RAND() * 65536) - 2147483648)";
+
     /** Access's {@code Date()}: today at midnight. */
     public static final String TODAY = "(CURRENT_DATE)";
 

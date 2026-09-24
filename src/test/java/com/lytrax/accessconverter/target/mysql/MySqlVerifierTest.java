@@ -65,5 +65,15 @@ class MySqlVerifierTest {
         assertThat(MySqlVerifier.sameDefault("('abc')", "'abc'")).isTrue();
         assertThat(MySqlVerifier.sameDefault("CURRENT_TIMESTAMP(3)", "curdate()"))
                 .isFalse();
+        // A Random autonumber's default, as MySQL 8 (fully parenthesized) and MariaDB (as written) report it
+        String random = MySqlExpressions.RANDOM_INT;
+        assertThat(MySqlVerifier.sameDefault(
+                        random, "(((floor((rand() * 65536)) * 65536) + floor((rand() * 65536))) - 2147483648)"))
+                .isTrue();
+        assertThat(MySqlVerifier.sameDefault(
+                        random, "floor(rand() * 65536) * 65536 + floor(rand() * 65536) - 2147483648"))
+                .isTrue();
+        assertThat(MySqlVerifier.sameDefault(random, "floor(rand() * 65536) * 65536 - 2147483648"))
+                .isFalse();
     }
 }

@@ -3,6 +3,7 @@ package com.lytrax.accessconverter.it;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.lytrax.accessconverter.fixtures.Access97Fixture;
 import com.lytrax.accessconverter.fixtures.GeneratedFixture;
 import com.lytrax.accessconverter.target.mysql.MySqlFixture;
 import com.lytrax.accessconverter.target.mysql.MySqlFixture.Converted;
@@ -22,7 +23,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  * 09's behavior test on every server: the foreign keys of {@code schemaFidelity} do what Access did. Deleting a
  * customer cascades to its orders and their details, changing its id follows into the orders, deleting a shipper
  * clears the orders' reference, an orphan detail is rejected, and the relationship Access doesn't enforce still
- * accepts orphans (F-31, F-33).
+ * accepts orphans (F-31, F-33). A Random autonumber generates random keys (the phase 6 backlog decision).
  */
 class MySqlBehaviorIT {
 
@@ -67,6 +68,39 @@ class MySqlBehaviorIT {
             s.execute("INSERT INTO Products (Name, SupplierID) VALUES ('Orphan', 12345)");
         }
         assertThat(converted.table("Products").foreignKeys()).isEmpty();
+    }
+
+    /**
+     * The backlog decision on Random autonumbers: the table whose largest key is INT's maximum, where AUTO_INCREMENT
+     * failed the first generated insert on every server (MySQL 1062, MariaDB 167), now takes generated keys, random
+     * and signed as Access draws them, while the Increment table still counts upward.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("images")
+    void aRandomAutonumberGeneratesRandomKeys(String image) throws Exception {
+        DatabaseServer server = DatabaseServer.of(image);
+        Path dump = dir.resolve(image.replace(':', '-') + "-randomAutoNumber.sql");
+        MySqlFixture.convert(Access97Fixture.RANDOM_AUTO_NUMBER.file(), dump, server.dialect());
+        server.recreate("random");
+        assertThat(server.importDump(dump, "random")).isEmpty();
+
+        try (Connection db = server.connect("random");
+                Statement s = db.createStatement()) {
+            for (int i = 0; i < 200; i++) {
+                s.execute("INSERT INTO TRandom (Name) VALUES ('generated')");
+            }
+            assertThat(strings(s, "SELECT LAST_INSERT_ID()")).containsExactly("0");
+            assertThat(strings(s, "SELECT count(DISTINCT ID) FROM TRandom WHERE Name = 'generated'"))
+                    .containsExactly("200");
+            assertThat(strings(s, "SELECT sum(ID < 0) > 0 AND sum(ID > 0) > 0 FROM TRandom WHERE Name = 'generated'"))
+                    .containsExactly("1");
+            assertThat(strings(s, "SELECT ID FROM TRandom WHERE Name = 'ceiling'"))
+                    .containsExactly("2147483647");
+
+            s.execute("INSERT INTO TIncrement (Name) VALUES ('generated')");
+            assertThat(strings(s, "SELECT ID FROM TIncrement WHERE Name = 'generated'"))
+                    .containsExactly("4");
+        }
     }
 
     private static List<String> strings(Statement s, String sql) throws SQLException {

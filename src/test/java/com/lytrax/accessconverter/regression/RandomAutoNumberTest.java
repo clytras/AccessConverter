@@ -15,6 +15,7 @@ import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.RowStream;
 import com.lytrax.accessconverter.target.json.JsonFixture;
 import com.lytrax.accessconverter.target.mysql.MySqlDialect;
+import com.lytrax.accessconverter.target.mysql.MySqlExpressions;
 import com.lytrax.accessconverter.target.mysql.MySqlFixture;
 import com.lytrax.accessconverter.target.sqlite.Sqlite;
 import com.lytrax.accessconverter.target.sqlite.SqliteFixture;
@@ -30,8 +31,9 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * A Random autonumber (New Values: Random), made in Access 97's table designer: Access stores it as the default
  * {@code GenUniqueID()} on an ordinary Long autonumber. The model recognizes it instead of reporting an untranslatable
- * default; JSON says {@code "autoNumber": "random"}; SQLite and MySQL, which can only count upward, say so. Above all,
- * the values Jet generated, negative ones and one at INT's ceiling included, stay exactly what Access printed.
+ * default; JSON says {@code "autoNumber": "random"}; MySQL/MariaDB generate random values too, through the column's
+ * DEFAULT; SQLite, whose rowid key ignores a DEFAULT, counts upward and says so. Above all, the values Jet generated,
+ * negative ones and one at INT's ceiling included, stay exactly what Access printed.
  */
 class RandomAutoNumberTest {
 
@@ -108,7 +110,12 @@ class RandomAutoNumberTest {
                 .singleElement()
                 .satisfies(i -> {
                     assertThat(i.table()).isEqualTo("TRandom");
-                    assertThat(i.message()).contains("AUTOINCREMENT generates them in sequence", "kept exactly");
+                    assertThat(i.message())
+                            .contains(
+                                    "AUTOINCREMENT generates them in sequence",
+                                    "never runs out",
+                                    "past 2147483647 no longer fits an Access Long",
+                                    "kept exactly");
                 });
         try (Sqlite sqlite = converted.open()) {
             assertThat(sqlite.strings("SELECT ID FROM TRandom ORDER BY ID"))
@@ -118,18 +125,27 @@ class RandomAutoNumberTest {
     }
 
     @Test
-    void mysqlSaysTheNextGeneratedValueOverflows() throws IOException {
-        var converted = MySqlFixture.convert(FIXTURE.file(), dir.resolve("random.sql"), MySqlDialect.MYSQL);
+    void mysqlGeneratesRandomValuesThroughTheDefaultAndSaysTheKeyIsNotReturned() throws IOException {
+        for (MySqlDialect dialect : MySqlDialect.values()) {
+            var converted = MySqlFixture.convert(FIXTURE.file(), dir.resolve(dialect + ".sql"), dialect);
 
-        List<Issue> reported = converted.issues(IssueCode.AUTONUMBER_RANDOM_SEQUENTIAL);
-        assertThat(reported)
-                .singleElement()
-                .satisfies(i -> assertThat(i.message())
-                        .contains(
-                                "AUTO_INCREMENT generates them in sequence",
-                                "the largest value is INT's maximum, 2147483647",
-                                "the first insert without an ID fails"));
-        String dump = Files.readString(converted.file(), StandardCharsets.UTF_8);
-        assertThat(dump).contains("(-2087453651, 'row 2')", "(2147483647, 'ceiling')");
+            List<Issue> reported = converted.issues(IssueCode.AUTONUMBER_RANDOM_DEFAULT);
+            assertThat(reported)
+                    .as(dialect.toString())
+                    .singleElement()
+                    .satisfies(i -> assertThat(i.message())
+                            .contains(
+                                    "no ceiling",
+                                    "LAST_INSERT_ID()",
+                                    "with the table's 4 rows, about one insert in 1,073,741,824"));
+            assertThat(converted.issues(IssueCode.AUTONUMBER_RANDOM_SEQUENTIAL)).isEmpty();
+            String dump = Files.readString(converted.file(), StandardCharsets.UTF_8);
+            assertThat(dump).contains("(-2087453651, 'row 2')", "(2147483647, 'ceiling')");
+            // The Random table gets no AUTO_INCREMENT, which would have nowhere to go past 2147483647
+            String create = dump.substring(dump.indexOf("CREATE TABLE `TRandom`"));
+            assertThat(create.substring(0, create.indexOf(';')))
+                    .contains("`ID` INT NOT NULL DEFAULT " + MySqlExpressions.RANDOM_INT + ",")
+                    .doesNotContain("AUTO_INCREMENT");
+        }
     }
 }

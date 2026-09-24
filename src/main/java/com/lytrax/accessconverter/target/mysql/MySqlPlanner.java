@@ -35,6 +35,7 @@ import com.lytrax.accessconverter.target.mysql.MySqlPlan.ValueForm;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -368,6 +369,10 @@ public final class MySqlPlanner {
                 if (column.source.type() != AccessType.AUTONUMBER_LONG) {
                     continue;
                 }
+                if (column.source.isRandomAutoNumber()) {
+                    randomAutoNumber(column.source);
+                    continue;
+                }
                 if (autoIncrement == null) {
                     autoIncrement = column;
                     column.autoIncrement = true;
@@ -379,9 +384,6 @@ public final class MySqlPlanner {
                             "the values are kept, but MySQL generates values for one column per table, and "
                                     + autoIncrement.name + " is that column");
                 }
-            }
-            if (autoIncrement != null && autoIncrement.source.isRandomAutoNumber()) {
-                randomAutoNumber(autoIncrement.source);
             }
             primaryKey();
             for (IndexModel index : source.indexes()) {
@@ -889,31 +891,36 @@ public final class MySqlPlanner {
         }
 
         /**
-         * A Random autonumber becomes AUTO_INCREMENT, which counts upward: say so, and how far the count can go. InnoDB
-         * continues after the largest stored value, and random values scatter over the whole INT range, so the ceiling
-         * can be close (the backlog decides what a Random autonumber should become).
+         * A Random autonumber gets a random DEFAULT, not AUTO_INCREMENT (maintainer decision, phase 6): Access draws a
+         * random 32-bit value with no ceiling, and a collision is a duplicate-key error there too. AUTO_INCREMENT would
+         * continue after the largest stored value, and random values scatter up to INT's maximum, so a counter would
+         * run out after about 2^32 / rows inserts, or at once (the tier D fixture holds 2147483647). The price is
+         * that the server doesn't return the generated key, which the report says plainly.
          */
         private void randomAutoNumber(ColumnModel column) {
-            ColumnStats stats = rules.stats(source.name(), column.name());
-            Long max = stats == null ? null : stats.maxAutoNumber();
-            String headroom;
-            if (max == null) {
-                headroom =
-                        "; without a profile the largest value, and so the room left below INT's ceiling, is unknown";
-            } else if (max >= Integer.MAX_VALUE) {
-                headroom = "; the largest value is INT's maximum, " + Integer.MAX_VALUE
-                        + ", so the next generated value overflows and the first insert without an ID fails";
+            Long rows = rules.rows(source.name());
+            String collisions;
+            if (rows == null) {
+                collisions = "; without a profile the row count, and so how often that happens, is unknown";
+            } else if (rows == 0) {
+                collisions = "; the table is empty, so that grows from zero as rows are added";
             } else {
-                long next = Math.max(max, 0) + 1;
-                headroom = "; the next generated value is " + next + ", and " + (Integer.MAX_VALUE - next + 1)
-                        + " values remain before INT's ceiling";
+                collisions = String.format(
+                        Locale.ROOT,
+                        "; with the table's %,d rows, about one insert in %,d draws a value that is taken",
+                        rows,
+                        Math.max(1, Math.round(4_294_967_296d / rows)));
             }
             issues.add(
-                    IssueCode.AUTONUMBER_RANDOM_SEQUENTIAL,
+                    IssueCode.AUTONUMBER_RANDOM_DEFAULT,
                     source.name(),
                     column.name(),
-                    "Access generates random values for this autonumber (New Values: Random); MySQL's AUTO_INCREMENT"
-                            + " generates them in sequence. The existing values are kept exactly" + headroom);
+                    "Access generates random values for this autonumber (New Values: Random), and so does the column's"
+                            + " DEFAULT: a random INT, with no ceiling. The server doesn't return the generated key:"
+                            + " LAST_INSERT_ID() and the client calls built on it give 0, so an application that reads"
+                            + " the new key after an insert must select the row instead. A value that is already taken"
+                            + " fails the insert with a duplicate-key error, as in Access" + collisions
+                            + ". The existing values are kept exactly");
         }
 
         /** The {@code AUTO_INCREMENT} table option: the next value after the highest Access used (04). */
@@ -1356,11 +1363,14 @@ public final class MySqlPlanner {
             if (source.type() == AccessType.AUTONUMBER_GUID) {
                 return MySqlExpressions.RANDOM_GUID; // Access generates a Replication ID itself; so can MySQL
             }
+            if (source.isRandomAutoNumber()) {
+                return MySqlExpressions.RANDOM_INT; // GenUniqueID(): the autonumber's Random setting
+            }
             if (value == null) {
                 return source.type() == AccessType.BOOLEAN ? "0" : null; // an Access Yes/No without a default is No
             }
-            if (!value.isTranslated() || source.isRandomAutoNumber()) {
-                // Untranslated: reported by the extractor. GenUniqueID(): the autonumber's Random setting
+            if (!value.isTranslated()) {
+                // Reported by the extractor
                 comments.add("Access default: " + value.raw());
                 return null;
             }

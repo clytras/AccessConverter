@@ -130,7 +130,7 @@ class MySqlPlannerTest {
     }
 
     @Test
-    void aRandomAutonumberSaysItBecomesSequentialAndHowMuchRoomIsLeft() {
+    void aRandomAutonumberGetsARandomDefaultAndSaysHowOftenAValueIsTaken() {
         SchemaModel model = schema(
                 table(
                         "Random",
@@ -140,32 +140,40 @@ class MySqlPlannerTest {
         MySqlPlan plan = plan(
                 model,
                 profile()
-                        .table("Random", 3, stats("Id").maxAutoNumber(1_790_235_740L))
+                        .table("Random", 1_000_000, stats("Id").maxAutoNumber(2_147_483_647L))
                         .build(),
                 MySqlDialect.MYSQL);
 
-        // GenUniqueID() is the Random setting, not an untranslatable default, and no DEFAULT is written for it
-        assertThat(planned(plan.table("Random").orElseThrow(), "Id").defaultSql())
-                .isNull();
+        // GenUniqueID() is the Random setting: a random DEFAULT, no AUTO_INCREMENT, and no untranslatable default
+        PlannedColumn random = planned(plan.table("Random").orElseThrow(), "Id");
+        assertThat(random.defaultSql()).isEqualTo(MySqlExpressions.RANDOM_INT);
+        assertThat(random.autoIncrement()).isFalse();
+        assertThat(plan.table("Random").orElseThrow().autoIncrementSeed()).isNull();
+        assertThat(planned(plan.table("Increment").orElseThrow(), "Id").autoIncrement())
+                .isTrue();
         assertThat(issues.list()).noneMatch(i -> i.code() == IssueCode.DEFAULT_UNTRANSLATABLE);
+        assertThat(issues.list()).noneMatch(i -> i.code() == IssueCode.AUTONUMBER_RANDOM_SEQUENTIAL);
         assertThat(issues.list())
-                .filteredOn(i -> i.code() == IssueCode.AUTONUMBER_RANDOM_SEQUENTIAL)
+                .filteredOn(i -> i.code() == IssueCode.AUTONUMBER_RANDOM_DEFAULT)
                 .singleElement()
                 .satisfies(i -> {
                     assertThat(i.table()).isEqualTo("Random");
                     assertThat(i.message())
                             .contains(
-                                    "generates them in sequence",
-                                    "kept exactly",
-                                    "the next generated value is 1790235741, and 357247907 values remain");
+                                    "no ceiling",
+                                    "LAST_INSERT_ID() and the client calls built on it give 0",
+                                    "must select the row instead",
+                                    "with the table's 1,000,000 rows, about one insert in 4,295 draws a value that is"
+                                            + " taken",
+                                    "kept exactly");
                 });
 
         Issues unprofiled = new Issues();
         MySqlPlanner.plan(model, null, NO_PROFILE, MySqlOptions.of(MySqlDialect.MARIADB), unprofiled);
         assertThat(unprofiled.list())
-                .filteredOn(i -> i.code() == IssueCode.AUTONUMBER_RANDOM_SEQUENTIAL)
+                .filteredOn(i -> i.code() == IssueCode.AUTONUMBER_RANDOM_DEFAULT)
                 .singleElement()
-                .satisfies(i -> assertThat(i.message()).contains("without a profile the largest value"));
+                .satisfies(i -> assertThat(i.message()).contains("without a profile the row count"));
     }
 
     @Test
