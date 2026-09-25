@@ -55,6 +55,8 @@ public final class SqliteVerifier {
 
     private void run(Connection db) throws SQLException, IOException {
         SqliteIntrospector.Schema schema = SqliteIntrospector.read(db);
+        header(db, "application_id", SqliteWriter.APPLICATION_ID);
+        header(db, "user_version", SqliteWriter.FORMAT_VERSION);
         tables(schema);
         for (PlannedTable table : plan.tables()) {
             Optional<SqliteIntrospector.Table> actual = schema.table(table.name());
@@ -73,12 +75,25 @@ public final class SqliteVerifier {
 
     // ---------------------------------------------------------------- schema
 
+    /** The header field that marks the file as AccessConverter's, and its layout version. */
+    private void header(Connection db, String pragma, int expected) throws SQLException {
+        try (Statement statement = db.createStatement();
+                ResultSet rows = statement.executeQuery("PRAGMA " + pragma)) {
+            int actual = rows.next() ? rows.getInt(1) : 0;
+            if (actual != expected) {
+                differences.add(new Difference(
+                        null, null, "PRAGMA " + pragma, String.valueOf(expected), String.valueOf(actual)));
+            }
+        }
+    }
+
     private void tables(SqliteIntrospector.Schema schema) {
         List<String> expected =
                 new ArrayList<>(plan.tables().stream().map(PlannedTable::name).toList());
         if (plan.metadata() != null) {
             expected.add(plan.metadata().columnsTable());
             expected.add(plan.metadata().relationshipsTable());
+            expected.add(plan.metadata().exportTable());
         }
         expected.sort(String.CASE_INSENSITIVE_ORDER);
         List<String> actual = new ArrayList<>(schema.tableNames());

@@ -46,18 +46,34 @@ import java.util.stream.Collectors;
  */
 public final class SqliteWriter {
 
+    /**
+     * {@code PRAGMA application_id}: "ACCV", marking the file as written by AccessConverter in the header field SQLite
+     * reserves for that (not in SQLite's registry of known ids, magic.txt, as of 2026).
+     */
+    public static final int APPLICATION_ID = 0x41434356;
+
+    /** {@code PRAGMA user_version}: the SQLite output's layout version, as JSON has its {@code formatVersion}. */
+    public static final int FORMAT_VERSION = 1;
+
     private final ConvertOptions options;
     private final SqliteOptions sqlite;
     private final SqlitePlan plan;
     private final RowSource source;
+    private final String producer;
     private final Issues issues;
     private final List<TableResult> results = new ArrayList<>();
     private boolean tableFailed;
     private BinaryFiles files;
 
     private SqliteWriter(
-            RowSource source, SqlitePlan plan, ConvertOptions options, SqliteOptions sqlite, Issues issues) {
+            RowSource source,
+            SqlitePlan plan,
+            ConvertOptions options,
+            SqliteOptions sqlite,
+            String producer,
+            Issues issues) {
         this.source = source;
+        this.producer = producer;
         this.plan = plan;
         this.options = options;
         this.sqlite = sqlite;
@@ -65,6 +81,7 @@ public final class SqliteWriter {
     }
 
     /**
+     * @param producer the tool and its version ({@code AccessConverter 3.0.1}), for {@code --sqlite-metadata}
      * @param integrityCheck also run {@code PRAGMA integrity_check}
      * @return what each table contributed, and whether a table failed while {@code --on-table-error continue}
      */
@@ -74,10 +91,11 @@ public final class SqliteWriter {
             Path output,
             ConvertOptions options,
             SqliteOptions sqlite,
+            String producer,
             boolean integrityCheck,
             Issues issues)
             throws IOException {
-        return write(source::rows, plan, output, options, sqlite, integrityCheck, issues);
+        return write(source::rows, plan, output, options, sqlite, producer, integrityCheck, issues);
     }
 
     /** As {@link #write}, reading the rows from somewhere else; for the {@code --on-table-error} test. */
@@ -87,10 +105,11 @@ public final class SqliteWriter {
             Path output,
             ConvertOptions options,
             SqliteOptions sqlite,
+            String producer,
             boolean integrityCheck,
             Issues issues)
             throws IOException {
-        return new SqliteWriter(source, plan, options, sqlite, issues).run(output, integrityCheck);
+        return new SqliteWriter(source, plan, options, sqlite, producer, issues).run(output, integrityCheck);
     }
 
     private WriteOutcome run(Path output, boolean integrityCheck) throws IOException {
@@ -124,6 +143,9 @@ public final class SqliteWriter {
             pragma(db, "synchronous = OFF");
             pragma(db, "locking_mode = EXCLUSIVE");
             pragma(db, "temp_store = MEMORY");
+            // Who wrote the file, in the header fields SQLite reserves for that; no table is added for it
+            pragma(db, "application_id = " + APPLICATION_ID);
+            pragma(db, "user_version = " + FORMAT_VERSION);
             db.setAutoCommit(false);
             for (PlannedTable table : plan.tables()) {
                 execute(db, table.createTableSql());
@@ -140,7 +162,7 @@ public final class SqliteWriter {
             }
             db.commit();
             if (plan.metadata() != null) {
-                SqliteMetadata.fill(db, plan);
+                SqliteMetadata.fill(db, plan, producer);
                 db.commit();
             }
             foreignKeyCheck(db);

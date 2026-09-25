@@ -85,7 +85,8 @@ public final class SqlitePlanner {
         SqlitePlan.Metadata metadata = sqlite.metadata()
                 ? new SqlitePlan.Metadata(
                         names.register("_access_columns", "_access_columns", "table", issues, null),
-                        names.register("_access_relationships", "_access_relationships", "table", issues, null))
+                        names.register("_access_relationships", "_access_relationships", "table", issues, null),
+                        names.register("_access_export", "_access_export", "table", issues, null))
                 : null;
         relationships();
         for (TableDraft draft : drafts) {

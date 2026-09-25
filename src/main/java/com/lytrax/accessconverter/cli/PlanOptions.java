@@ -58,8 +58,8 @@ final class PlanOptions {
 
     @Option(
             names = "--sqlite-metadata",
-            description = "SQLite: add the _access_columns and _access_relationships tables with the full Access"
-                    + " metadata.")
+            description = "SQLite: add the _access_columns, _access_relationships and _access_export tables with the"
+                    + " full Access metadata.")
     boolean sqliteMetadata;
 
     @Option(

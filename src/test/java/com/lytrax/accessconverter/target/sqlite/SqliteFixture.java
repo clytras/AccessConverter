@@ -38,7 +38,7 @@ public final class SqliteFixture {
             SchemaModel model = ComplexTables.expand(SchemaExtractor.extract(db, ExtractOptions.ALL, issues), options);
             DataProfile profile = options.profile() ? DataProfiler.profile(db, model) : null;
             SqlitePlan plan = SqlitePlanner.plan(model, profile, options, sqlite, issues);
-            SqliteWriter.write(db, plan, output, options, sqlite, true, issues);
+            SqliteWriter.write(db, plan, output, options, sqlite, "AccessConverter", true, issues);
             VerifyResult verified = SqliteVerifier.verify(db, plan, output);
             return new Converted(output, plan, model, profile, issues, verified);
         } catch (IOException e) {

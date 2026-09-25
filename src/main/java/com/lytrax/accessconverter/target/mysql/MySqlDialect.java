@@ -8,8 +8,8 @@ import java.util.Locale;
  * comments can't tell them apart.
  */
 public enum MySqlDialect {
-    /** MySQL 8.0 or later. */
-    MYSQL("MySQL", "MySQL 8.0 or later", "utf8mb4_0900_as_ci"),
+    /** MySQL 8.0.13 or later: the first with expression defaults, which the dump uses. */
+    MYSQL("MySQL", "MySQL 8.0.13 or later", "utf8mb4_0900_as_ci"),
     /** MariaDB 10.11 or later. */
     MARIADB("MariaDB", "MariaDB 10.11 or later", "utf8mb4_uca1400_as_ci");
 

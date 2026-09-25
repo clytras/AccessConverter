@@ -4,6 +4,7 @@ import static com.lytrax.accessconverter.target.IdentifierPolicy.quote;
 
 import com.lytrax.accessconverter.model.ColumnModel;
 import com.lytrax.accessconverter.model.ForeignKeyModel;
+import com.lytrax.accessconverter.model.SchemaModel;
 import com.lytrax.accessconverter.model.TableModel;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -54,14 +55,31 @@ final class SqliteMetadata {
             "status",
             "written_as_foreign_key");
 
+    /** One row: what wrote the file, from which database. No time, so the output stays deterministic. */
+    private static final List<String> EXPORT_FIELDS =
+            List.of("producer", "format_version", "source_file", "source_format", "source_code_page", "source_charset");
+
     private SqliteMetadata() {}
 
     static void create(Connection db, SqlitePlan plan) throws SQLException {
         execute(db, createTable(plan.metadata().columnsTable(), COLUMN_FIELDS));
         execute(db, createTable(plan.metadata().relationshipsTable(), RELATIONSHIP_FIELDS));
+        execute(db, createTable(plan.metadata().exportTable(), EXPORT_FIELDS));
     }
 
-    static void fill(Connection db, SqlitePlan plan) throws SQLException {
+    static void fill(Connection db, SqlitePlan plan, String producer) throws SQLException {
+        try (PreparedStatement insert =
+                db.prepareStatement(insert(plan.metadata().exportTable(), EXPORT_FIELDS))) {
+            SchemaModel.Source source = plan.model().source();
+            int at = 0;
+            insert.setString(++at, producer);
+            insert.setInt(++at, SqliteWriter.FORMAT_VERSION);
+            insert.setString(++at, source.fileName());
+            insert.setString(++at, source.fileFormat());
+            set(insert, ++at, source.codePage());
+            insert.setString(++at, source.charset());
+            insert.executeUpdate();
+        }
         try (PreparedStatement insert =
                 db.prepareStatement(insert(plan.metadata().columnsTable(), COLUMN_FIELDS))) {
             for (TableModel table : plan.model().tables()) {

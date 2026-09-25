@@ -43,7 +43,7 @@ public record SqlitePlan(
     }
 
     /** The names of the opt-in metadata tables. */
-    public record Metadata(String columnsTable, String relationshipsTable) {}
+    public record Metadata(String columnsTable, String relationshipsTable, String exportTable) {}
 
     /**
      * @param name the table's name in the output, which is the Access name unless it had to be renamed

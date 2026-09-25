@@ -122,7 +122,7 @@ output.
 | `--stamp` | MySQL/MariaDB and JSON: put the export time in the output. Without it, the same database always gives byte-identical output. |
 | `--sqlite-strict` | SQLite: `STRICT` tables (readable by SQLite 3.37 or later). |
 | `--sqlite-nocase` | SQLite: `COLLATE NOCASE` on every text column, so comparisons ignore (ASCII) case as Access does. |
-| `--sqlite-metadata` | SQLite: add the tables `_access_columns` and `_access_relationships` with the full Access metadata. |
+| `--sqlite-metadata` | SQLite: add the tables `_access_columns`, `_access_relationships` and `_access_export` with the full Access metadata. |
 | `--analyze` | SQLite: run `ANALYZE` on the finished file, not only `PRAGMA optimize`. |
 | `--json-layout document\|ndjson` | JSON: one file (default), or a directory with `schema.json` and one `<table>.ndjson` file per table, one row per line. |
 | `--json-rows object\|array` | JSON: a row as an object keyed by column name (default) or an array in column order (smaller). |
@@ -276,8 +276,12 @@ The output is a finished SQLite database. Every conversion runs `foreign_key_che
   upward here, from its largest value: SQLite can only generate a key for such a column in sequence, and its 64-bit
   counter never runs out (`AUTONUMBER_RANDOM_SEQUENTIAL`).
 - `--sqlite-metadata` adds `_access_columns` (each column's Access type, length, precision, Required, descriptions,
-  format, default and validation rule as Access wrote them, and what it became) and `_access_relationships` (every
-  relationship, enforced or not, and whether it became a foreign key).
+  format, default and validation rule as Access wrote them, and what it became), `_access_relationships` (every
+  relationship, enforced or not, and whether it became a foreign key) and `_access_export` (the AccessConverter
+  version and the source file, format and code page).
+- **Every file says who wrote it** without an extra table: `PRAGMA application_id` is `0x41434356` ("ACCV") and
+  `PRAGMA user_version` is the layout version, `1`. A MySQL/MariaDB dump names the producer in its first comment
+  line, and JSON in its `producer` property. No output records a time unless `--stamp` is given.
 
 ## JSON
 

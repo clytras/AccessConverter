@@ -129,8 +129,8 @@ class SqliteTableErrorTest {
             SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
             SqlitePlan plan =
                     SqlitePlanner.plan(model, DataProfiler.profile(db, model), options, SqliteOptions.DEFAULT, issues);
-            WriteOutcome outcome =
-                    SqliteWriter.write(db::rows, required(plan), output, options, SqliteOptions.DEFAULT, false, issues);
+            WriteOutcome outcome = SqliteWriter.write(
+                    db::rows, required(plan), output, options, SqliteOptions.DEFAULT, "AccessConverter", false, issues);
             assertThat(outcome.tableFailed()).isTrue();
         }
 
@@ -185,7 +185,14 @@ class SqliteTableErrorTest {
             SqlitePlan plan =
                     SqlitePlanner.plan(model, DataProfiler.profile(db, model), options, SqliteOptions.DEFAULT, issues);
             return SqliteWriter.write(
-                    new FailingTable(db, failing), plan, output, options, SqliteOptions.DEFAULT, true, issues);
+                    new FailingTable(db, failing),
+                    plan,
+                    output,
+                    options,
+                    SqliteOptions.DEFAULT,
+                    "AccessConverter",
+                    true,
+                    issues);
         } finally {
             Files.deleteIfExists(output.resolveSibling(output.getFileName() + ".partial"));
         }

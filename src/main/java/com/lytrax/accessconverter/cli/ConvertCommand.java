@@ -353,7 +353,8 @@ final class ConvertCommand implements Callable<Integer> {
         timings.put("plan", since(started));
 
         started = System.nanoTime();
-        WriteOutcome outcome = SqliteWriter.write(db, planned, out, options, sqlite, verify, issues);
+        WriteOutcome outcome = SqliteWriter.write(
+                db, planned, out, options, sqlite, "AccessConverter " + Main.Version.version(), verify, issues);
         timings.put("write", since(started));
 
         if (verify) {
