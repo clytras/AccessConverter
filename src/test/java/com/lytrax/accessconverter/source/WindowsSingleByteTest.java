@@ -19,16 +19,45 @@ class WindowsSingleByteTest {
         assertThat(new String(bytes, cp1252)).isEqualTo("€\u0081\u008D\u008F\u0090\u009D£");
     }
 
-    /** Where Windows sends a byte to its private use area, the byte stays undecodable (and is counted). */
+    /**
+     * The bytes above 0x9F the JDK leaves undefined decode as Windows decodes them, measured with MultiByteToWideChar:
+     * Access 97 returned U+F8F9 for 1253's 0xAA in the Greek Northwind ("5ª Ave." stored in a Greek database).
+     */
     @Test
-    void undefinedBytesAbove0x9FStayUndecodable() {
-        Charset cp1253 = WindowsSingleByte.of(Charset.forName("windows-1253"));
-        assertThat(new String(new byte[] {(byte) 0xAA, (byte) 0x81, (byte) 0xC1}, cp1253))
-                .isEqualTo(REPLACEMENT + "\u0081Α");
+    void undefinedBytesAbove0x9FDecodeAsWindowsDecodesThem() {
+        assertThat(decode("windows-1253", 0xAA, 0x81, 0xC1, 0xD2, 0xFF)).isEqualTo("\u0081Α");
+        assertThat(decode("windows-1255", 0xCA, 0xD9, 0xFF)).isEqualTo("ֺ");
+        assertThat(decode("windows-1257", 0xA1, 0xA5)).isEqualTo("");
+        assertThat(decode("x-windows-874", 0xDB, 0xFF)).isEqualTo("");
     }
 
+    private static String decode(String charset, int... bytes) {
+        byte[] b = new byte[bytes.length];
+        for (int i = 0; i < bytes.length; i++) {
+            b[i] = (byte) bytes[i];
+        }
+        return new String(b, WindowsSingleByte.of(Charset.forName(charset)));
+    }
+
+    /** Every byte of every single-byte code page Access 97 uses decodes, and encodes back to itself. */
     @ParameterizedTest
-    @ValueSource(strings = {"windows-1250", "windows-1251", "windows-1252", "windows-1254", "windows-1258"})
+    @ValueSource(
+            strings = {
+                "x-windows-874",
+                "windows-1250",
+                "windows-1251",
+                "windows-1252",
+                "windows-1253",
+                "windows-1254",
+                "windows-1255",
+                "windows-1256",
+                "windows-1257",
+                "windows-1258",
+                "IBM437",
+                "IBM850",
+                "IBM852",
+                "IBM866"
+            })
     void everyByteRoundTrips(String name) {
         Charset charset = WindowsSingleByte.of(Charset.forName(name));
         for (int b = 0; b < 256; b++) {

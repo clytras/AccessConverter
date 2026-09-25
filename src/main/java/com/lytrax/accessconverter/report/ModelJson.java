@@ -207,6 +207,7 @@ public final class ModelJson {
                 optional(g, "nulls", c.nulls());
                 optional(g, "emptyStrings", c.emptyStrings());
                 optional(g, "undecodable", c.undecodable());
+                optional(g, "privateUse", c.privateUse());
                 optional(g, "maxSignificantDigits", c.maxSignificantDigits());
                 optional(g, "maxScale", c.maxScale());
                 optional(g, "maxFractionDigits", c.maxFractionDigits());

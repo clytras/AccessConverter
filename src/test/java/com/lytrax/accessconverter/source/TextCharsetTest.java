@@ -76,26 +76,39 @@ class TextCharsetTest {
     }
 
     /**
-     * indexCodesV1997 holds every byte value; read as code page 1253, three of them (0xAA, 0xD2, 0xFF) are undefined
-     * and can't be decoded. The profile counts the values that hold one, and only those.
+     * indexCodesV1997 holds every byte value; read as code page 1253, three of them (0xAA, 0xD2, 0xFF) are ones
+     * Windows decodes to its private use area. They decode that way here too, so nothing is lost; the profile counts
+     * the values that hold one, and the conversion reports each such column.
      */
     @Test
-    void undecodableValuesAreCountedByTheProfile(@TempDir Path dir) throws IOException {
+    void privateUseTextIsCountedAndReported(@TempDir Path dir) throws IOException {
         CorpusFile indexCodes = CorpusFile.get("jackcess/V1997/indexCodesV1997.mdb");
         Path greek = withCodePage(indexCodes.file(), dir.resolve("greek.mdb"), 1253);
         DataProfile profile = profile(greek);
-        List<ColumnStats> undecodable = profile.tables().values().stream()
+        List<ColumnStats> privateUse = profile.tables().values().stream()
                 .flatMap(t -> t.columns().stream())
-                .filter(c -> c.undecodable() != null)
+                .filter(c -> c.privateUse() != null)
                 .toList();
-        assertThat(undecodable)
+        assertThat(privateUse)
                 .isNotEmpty()
-                .allSatisfy(c -> assertThat(c.undecodable()).isPositive());
-
-        assertThat(profile(indexCodes.file()).tables().values())
+                .allSatisfy(c -> assertThat(c.privateUse()).isPositive());
+        assertThat(profile.tables().values())
                 .flatMap(TableProfile::columns)
                 .extracting(ColumnStats::undecodable)
                 .containsOnlyNulls();
+
+        Issues issues = new Issues();
+        DataProfiler.reportCodePageText(profile, Extraction.of(greek).model().source(), issues);
+        assertThat(issues.list()).hasSize(privateUse.size()).allSatisfy(i -> {
+            assertThat(i.code()).isEqualTo(IssueCode.TEXT_PRIVATE_USE);
+            assertThat(i.message()).contains("code page 1253", "private-use character");
+        });
+
+        DataProfile western = profile(indexCodes.file());
+        assertThat(western.tables().values()).flatMap(TableProfile::columns).allSatisfy(c -> {
+            assertThat(c.undecodable()).isNull();
+            assertThat(c.privateUse()).isNull();
+        });
     }
 
     private static DataProfile profile(Path file) throws IOException {

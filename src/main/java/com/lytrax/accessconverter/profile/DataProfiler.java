@@ -16,6 +16,7 @@ import com.lytrax.accessconverter.profile.DataProfile.TableProfile;
 import com.lytrax.accessconverter.profile.RuleEvaluator.EvaluationException;
 import com.lytrax.accessconverter.profile.RuleEvaluator.TextComparison;
 import com.lytrax.accessconverter.profile.RuleEvaluator.Truth;
+import com.lytrax.accessconverter.report.IssueCode;
 import com.lytrax.accessconverter.report.Issues;
 import com.lytrax.accessconverter.source.AccessSource;
 import com.lytrax.accessconverter.source.RowStream;
@@ -46,6 +47,50 @@ import java.util.stream.Collectors;
 public final class DataProfiler {
     /** U+FFFD, what a byte the code page doesn't define decodes to. */
     private static final char REPLACEMENT = (char) 0xFFFD;
+
+    /**
+     * Access 97 text the code page doesn't fully cover (3.0.1): a byte Windows decodes to its private use area is
+     * written as that character, exactly as Access shows it; a byte nothing decodes is written as U+FFFD, and the byte
+     * is lost. Both are reported per column; the profile counts them.
+     */
+    public static void reportCodePageText(DataProfile profile, SchemaModel.Source source, Issues issues) {
+        if (source.codePage() == null) {
+            return;
+        }
+        for (var table : profile.tables().values()) {
+            for (var column : table.columns()) {
+                if (column.privateUse() != null) {
+                    issues.add(
+                            IssueCode.TEXT_PRIVATE_USE,
+                            table.table(),
+                            column.column(),
+                            column.privateUse() + " values hold a byte code page " + source.codePage()
+                                    + " leaves undefined, written as Windows and Access decode it: a private-use"
+                                    + " character (U+E000 to U+F8FF), which maps back to the same byte but which most"
+                                    + " fonts show as blank");
+                }
+                if (column.undecodable() != null) {
+                    issues.add(
+                            IssueCode.TEXT_UNDECODABLE,
+                            table.table(),
+                            column.column(),
+                            column.undecodable() + " values hold a byte " + source.charset()
+                                    + " can't decode; it is written as U+FFFD, and the byte is lost");
+                }
+            }
+        }
+    }
+
+    /** A character of the BMP's private use area, where Windows decodes the bytes some code pages leave undefined. */
+    private static boolean hasPrivateUse(String text) {
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c >= '\uE000' && c <= '\uF8FF') {
+                return true;
+            }
+        }
+        return false;
+    }
 
     private DataProfiler() {}
 
@@ -320,6 +365,7 @@ public final class DataProfiler {
             long nullCount;
             long emptyCount;
             long undecodableCount;
+            long privateUseCount;
             long unsafeKeyTextCount;
             int maxDigits;
             int maxScale;
@@ -346,6 +392,7 @@ public final class DataProfiler {
                 return nulls
                         || emptyStrings
                         || undecodableCount > 0
+                        || privateUseCount > 0
                         || unsafeKeyTextCount > 0
                         || digits
                         || fraction
@@ -360,6 +407,9 @@ public final class DataProfiler {
                 } else {
                     if (undecodable && ((String) value).indexOf(REPLACEMENT) >= 0) {
                         undecodableCount++;
+                    }
+                    if (undecodable && hasPrivateUse((String) value)) {
+                        privateUseCount++;
                     }
                     if (keyText && !KeyText.isSafe((String) value)) {
                         unsafeKeyTextCount++;
@@ -388,6 +438,7 @@ public final class DataProfiler {
                         nulls ? nullCount : null,
                         emptyStrings ? emptyCount : null,
                         undecodableCount > 0 ? undecodableCount : null,
+                        privateUseCount > 0 ? privateUseCount : null,
                         digits ? maxDigits : null,
                         digits ? maxScale : null,
                         fraction ? maxFraction : null,

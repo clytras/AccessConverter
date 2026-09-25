@@ -50,6 +50,8 @@ public record DataProfile(Map<String, TableProfile> tables, Map<String, Relation
      * @param emptyStrings {@code ""} count where AllowZeroLength is off: {@code CHECK (col <> '')} only when 0
      * @param undecodable Access 97 text: values holding a byte their code page doesn't define, which decoded to
      *     U+FFFD; null when there are none
+     * @param privateUse Access 97 text: values holding a byte Windows decodes to a private-use character (U+E000 to
+     *     U+F8FF, such as 1253's 0xAA as U+F8F9); exact, but most fonts show nothing for it; null when there are none
      * @param maxSignificantDigits MONEY/NUMERIC: digits needed to hold every value exactly
      * @param maxScale MONEY/NUMERIC: the most fractional digits any value uses
      * @param maxFractionDigits date/time: fractional-second digits in use (0 = whole seconds, up to 7)
@@ -63,6 +65,7 @@ public record DataProfile(Map<String, TableProfile> tables, Map<String, Relation
             Long nulls,
             Long emptyStrings,
             Long undecodable,
+            Long privateUse,
             Integer maxSignificantDigits,
             Integer maxScale,
             Integer maxFractionDigits,

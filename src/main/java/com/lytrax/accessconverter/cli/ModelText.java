@@ -212,6 +212,9 @@ final class ModelText {
                 if (c.undecodable() != null) {
                     parts.add("undecodable " + c.undecodable() + " (bytes the code page doesn't define)");
                 }
+                if (c.privateUse() != null) {
+                    parts.add("private-use " + c.privateUse() + " (bytes Windows decodes to its private use area)");
+                }
                 if (c.maxSignificantDigits() != null) {
                     parts.add("max-digits " + c.maxSignificantDigits() + " max-scale " + c.maxScale());
                 }

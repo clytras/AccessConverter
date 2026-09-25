@@ -339,6 +339,12 @@ Access 97 files convert without any option; the report's `source.charset` says w
 made on a system whose code page doesn't match its header, `--charset windows-1253` (or any Java charset name)
 overrides it. Access 2000 and later store Unicode, and ignore `--charset` with a warning.
 
+Every byte is decoded as Windows, and so Access, decodes it. A few code pages (Greek 1253, Hebrew 1255, Baltic 1257,
+Thai 874) leave some bytes undefined. Windows turns those into private-use characters (U+E000 to U+F8FF), which map
+back to the same byte but show as blank in most fonts, so AccessConverter writes the same characters and reports
+each column that holds one (`TEXT_PRIVATE_USE`). A byte no charset can decode is written as U+FFFD and reported as
+`TEXT_UNDECODABLE`.
+
 ## What isn't converted
 
 - **Queries, forms, reports, macros and VBA modules.** Jackcess doesn't read them, and they have no equivalent in

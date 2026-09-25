@@ -246,6 +246,9 @@ final class ConvertCommand implements Callable<Integer> {
             started = System.nanoTime();
             DataProfile profile = options.profile() ? DataProfiler.profile(db, planned) : null;
             timings.put("profile", since(started));
+            if (profile != null) {
+                DataProfiler.reportCodePageText(profile, model.source(), issues);
+            }
 
             tables = switch (to) {
                 case sqlite -> sqlite(db, planned, profile, out, options, issues, timings);

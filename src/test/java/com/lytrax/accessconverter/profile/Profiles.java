@@ -129,6 +129,7 @@ public final class Profiles {
                     nulls,
                     emptyStrings,
                     null,
+                    null,
                     maxSignificantDigits,
                     maxScale,
                     maxFractionDigits,
