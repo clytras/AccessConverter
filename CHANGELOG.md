@@ -7,6 +7,11 @@ fixes the patch version.
 
 ## [Unreleased]
 
+### Fixed
+
+- The README and the migration notes no longer promise `--progress` and `--linked resolve` for 3.1; they are planned,
+  for no release yet.
+
 ## [3.1.0] - 2026-09-25
 
 ### Added

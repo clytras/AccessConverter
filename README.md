@@ -379,7 +379,7 @@ each column that holds one (`TEXT_PRIVATE_USE`). A byte no charset can decode is
   server.
 - **Access security** (user-level permissions and workgroup files).
 
-## Planned for 3.1
+## Planned
 
 - `--linked resolve`: convert linked Access tables together with the database that links them, instead of
   converting the back-end file separately.
