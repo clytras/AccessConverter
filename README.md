@@ -221,6 +221,7 @@ The warnings you are most likely to meet:
 | `DECIMAL_STORED_AS_TEXT` (info) | SQLite: a decimal with more than 13 digits is stored as text to stay exact; `CAST(col AS REAL)` makes it numeric. | — |
 | `STATEMENT_EXCEEDS_PACKET` | MySQL/MariaDB: a row is bigger than the server's default `max_allowed_packet`. | Raise it, or convert with `--binary files`. |
 | `LINKED_TABLE_SKIPPED` | A linked table: its data lives in another database and isn't converted. | Convert that database too. |
+| `LINKED_CONNECTION_PASSWORD` | JSON: a linked table's ODBC connection string, kept as Access stores it, holds a password. | Remove it before sharing the file, or export with `--no-schema`. |
 | `CATALOG_INDEX_UNUSABLE` | The database's catalog index couldn't be used (common in non-English Access 97 files); the catalog was read by scanning instead. | Nothing: every table and relationship is still found. |
 
 ## MySQL and MariaDB
