@@ -288,7 +288,7 @@ The output is a finished SQLite database. Every conversion runs `foreign_key_che
 JSON holds the whole database: the schema (tables, columns with every Access property, keys, indexes and all
 relationships, including those Access doesn't enforce) and every value, spelled exactly. The format is documented
 in [docs/json-format.md](docs/json-format.md) and published as a JSON Schema,
-[`accessconverter-json-v1.schema.json`](src/main/resources/com/lytrax/accessconverter/target/json/accessconverter-json-v1.schema.json).
+[`accessconverter-json-v1.schema.json`](src/main/resources/io/lytrax/accessconverter/target/json/accessconverter-json-v1.schema.json).
 The output streams, so a database of any size converts in little memory, and `--json-layout ndjson` gives one file
 per table for tools that read a row per line.
 
