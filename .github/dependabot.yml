@@ -4,6 +4,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # jqwik 1.10 is built against JUnit Platform 1.14, so JUnit stays on 5.x
+      - dependency-name: org.junit:junit-bom
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:

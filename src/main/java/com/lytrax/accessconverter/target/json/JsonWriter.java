@@ -255,6 +255,18 @@ public final class JsonWriter {
         g.writeEndObject();
         if (json.schema()) {
             schema(g, plan);
+            for (TableModel linked : plan.linked()) {
+                if (linked.link().hasPassword()) {
+                    // Kept verbatim, as Access stores it; whoever shares the file should know what it carries
+                    issues.add(
+                            IssueCode.LINKED_CONNECTION_PASSWORD,
+                            linked.name(),
+                            null,
+                            "the schema's linkedTables entry holds this table's ODBC connection string as Access"
+                                    + " stores it, password included; remove it before sharing the file, or"
+                                    + " export with --no-schema");
+                }
+            }
         }
     }
 

@@ -11,9 +11,15 @@ import com.lytrax.accessconverter.model.ForeignKeyModel;
 import com.lytrax.accessconverter.model.TableModel;
 import com.lytrax.accessconverter.report.IssueCode;
 import com.lytrax.accessconverter.source.AccessSource;
+import com.lytrax.accessconverter.target.json.JsonFixture;
+import com.lytrax.accessconverter.target.json.JsonOptions;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * F-14: a linked table broke v2. Opening it failed, and so did {@code db.getRelationships()} as soon as a
@@ -21,6 +27,45 @@ import org.junit.jupiter.api.Test;
  * its stored target, and reported.
  */
 class LinkedTablesSkippedTest {
+
+    @TempDir
+    Path dir;
+
+    /**
+     * The JSON export keeps a linked table's connection string as Access stores it, so an ODBC password goes into
+     * the file: the report says so, naming the table, and nothing is said when the schema is left out or the link
+     * is to a file.
+     */
+    @Test
+    void aJsonExportThatCarriesAnOdbcPasswordSaysSo() throws IOException {
+        Path odbc = CorpusFile.get("jackcess/V2007/linkedOdbcV2007.accdb").file();
+        var converted = JsonFixture.convert(odbc, dir.resolve("odbc.json"));
+        assertThat(converted.issues(IssueCode.LINKED_CONNECTION_PASSWORD))
+                .singleElement()
+                .satisfies(i -> {
+                    assertThat(i.table()).isEqualTo("Ordrar");
+                    assertThat(i.message()).contains("password included", "--no-schema");
+                });
+        assertThat(Files.readString(converted.output(), StandardCharsets.UTF_8)).contains("PWD=DummyPassword");
+
+        JsonOptions noSchema = new JsonOptions(
+                JsonOptions.Layout.DOCUMENT,
+                JsonOptions.Rows.OBJECT,
+                JsonOptions.NumberForm.NUMBER,
+                JsonOptions.NumberForm.NUMBER,
+                JsonOptions.Hyperlinks.STRING,
+                false,
+                false);
+        assertThat(JsonFixture.convert(odbc, dir.resolve("noschema.json"), noSchema)
+                        .issues(IssueCode.LINKED_CONNECTION_PASSWORD))
+                .isEmpty();
+        assertThat(JsonFixture.convert(
+                                CorpusFile.get("jackcess/V2007/linkedV2007.accdb")
+                                        .file(),
+                                dir.resolve("file.json"))
+                        .issues(IssueCode.LINKED_CONNECTION_PASSWORD))
+                .isEmpty();
+    }
 
     @Test
     void theLinkedTableIsInTheModelButNotRead() {

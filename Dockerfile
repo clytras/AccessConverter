@@ -10,7 +10,7 @@ ARG JAR=target/accessconverter.jar
 LABEL org.opencontainers.image.title="AccessConverter" \
       org.opencontainers.image.description="Converts Microsoft Access databases to MySQL/MariaDB dumps, SQLite and JSON" \
       org.opencontainers.image.source="https://github.com/clytras/AccessConverter" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="Apache-2.0"
 
 COPY LICENSE NOTICE /opt/accessconverter/
 COPY packaging/licenses /opt/accessconverter/licenses/

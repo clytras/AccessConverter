@@ -78,6 +78,11 @@ public record TableModel(
     public record LinkInfo(String database, String remoteTable, boolean odbc) {
         private static final Pattern PASSWORD = Pattern.compile("(?i)\\b(PWD|PASSWORD)=[^;]*");
 
+        /** Whether the stored database, an ODBC connection string, holds a password. */
+        public boolean hasPassword() {
+            return database != null && PASSWORD.matcher(database).find();
+        }
+
         /** The database for messages and inspect: an ODBC connection string's password is masked. */
         public String displayDatabase() {
             return database == null ? null : PASSWORD.matcher(database).replaceAll("$1=***");
