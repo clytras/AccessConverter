@@ -338,9 +338,16 @@ overrides it. Access 2000 and later store Unicode, and ignore `--charset` with a
 
 - **Queries, forms, reports, macros and VBA modules.** Jackcess doesn't read them, and they have no equivalent in
   the targets.
-- **Linked tables.** Their data lives in another database; they are listed in the report (and in JSON's schema), and
-  that database can be converted on its own.
+- **Linked tables.** Their data lives in another database; they are listed in the report (and in JSON's schema). For
+  a table linked to another Access file, convert that back-end file directly; an ODBC link's data lives on its
+  server.
 - **Access security** (user-level permissions and workgroup files).
+
+## Planned for 3.1
+
+- `--linked resolve`: convert linked Access tables together with the database that links them, instead of
+  converting the back-end file separately.
+- `--progress`: progress on standard error during long conversions.
 
 ## License
 

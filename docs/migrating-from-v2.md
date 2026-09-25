@@ -42,7 +42,7 @@ in the conversion report.
 | `--json-data array` | `--json-rows array` | A row is `[value, …]` in the order of the schema's columns. |
 | `-json-columns` | *(always)* | The schema (tables, columns with every Access property, keys, indexes, relationships) is always written; `--no-schema` leaves it out. |
 | `-mysql-drop-tables` | `--drop-existing` | |
-| `-show-progress` | — | Removed; 3.0 prints a summary at the end. |
+| `-show-progress` | — | Removed; 3.0 prints a summary at the end. A `--progress` option is planned for 3.1. |
 | `-debug` | `-v`, `--verbose` | Logs Jackcess's warnings and prints stack traces on errors. |
 
 New in 3.0: `inspect`, `verify`, `--verify`, `--password`, `--charset`, `--tables`, `--exclude-tables`,
@@ -63,7 +63,8 @@ The [README](../README.md#commands) lists them all.
   primary key in Access gets none.
 - Relationships Access doesn't enforce become an index, not a foreign key; enforced ones become foreign keys with
   their cascade rules, unless the data has orphans (reported).
-- Linked tables are skipped and reported (2.x's MySQL dump stopped at the first one).
+- Linked tables are skipped and reported (2.x's MySQL dump stopped at the first one); convert a linked back-end
+  file directly.
 - The same database and options always give byte-identical output.
 
 **MySQL.**
@@ -95,8 +96,8 @@ The [README](../README.md#commands) lists them all.
 
 ## Scripts and services
 
-This section is for anything that runs AccessConverter and reads its result, such as the online converter at
-lytrax.io.
+This section is for anything that runs AccessConverter and reads its result: scripts, scheduled jobs and web
+services.
 
 **Exit codes.** 2.x always exited 0 and reported failure only in its output. 3.0:
 
