@@ -31,15 +31,15 @@ What changed in each release is in the [changelog](CHANGELOG.md).
 
 | Platform | File |
 | --- | --- |
-| Linux x64 / arm64 | `accessconverter-3.0.0-linux-x64.zip`, `accessconverter-3.0.0-linux-aarch64.zip` |
-| Windows x64 | `accessconverter-3.0.0-windows-x64.zip` |
-| macOS Intel / Apple silicon | `accessconverter-3.0.0-macos-x64.zip`, `accessconverter-3.0.0-macos-aarch64.zip` |
+| Linux x64 / arm64 | `accessconverter-<version>-linux-x64.zip`, `accessconverter-<version>-linux-aarch64.zip` |
+| Windows x64 | `accessconverter-<version>-windows-x64.zip` |
+| macOS Intel / Apple silicon | `accessconverter-<version>-macos-x64.zip`, `accessconverter-<version>-macos-aarch64.zip` |
 
 Each holds its own Java runtime and never uses an installed one. On macOS, a zip downloaded with a browser is
-quarantined; clear that once with `xattr -dr com.apple.quarantine accessconverter-3.0.0-macos-*`. To pass JVM
+quarantined; clear that once with `xattr -dr com.apple.quarantine accessconverter-<version>-macos-*`. To pass JVM
 options (a larger heap, say), set `ACCESSCONVERTER_JAVA_OPTS=-Xmx4g`.
 
-**Jar.** With Java 21 or later: `java -jar accessconverter-3.0.0.jar …`.
+**Jar.** With Java 21 or later: `java -jar accessconverter-<version>.jar …`.
 
 **Locale.** Java takes the encoding of file names and of standard output from the locale. Under a POSIX locale
 (`LANG` unset or `C`, common for services and cron jobs), a file whose name isn't ASCII can't be opened and non-ASCII
@@ -188,7 +188,7 @@ the same report on standard output.
 {
   "format": "accessconverter-report",
   "formatVersion": 1,
-  "tool": "accessconverter 3.0.0",
+  "tool": "accessconverter 3.1.0",
   "command": "convert",
   "options": { "to": "mysql", "binary": "inline", "collation": "utf8mb4_0900_as_ci", "…": "…" },
   "source": { "file": "Shop.mdb", "fileFormat": "V1997", "codePage": 1253, "charset": "windows-1253" },
