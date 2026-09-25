@@ -85,6 +85,9 @@ final class SqliteMetadata {
             for (TableModel table : plan.model().tables()) {
                 SqlitePlan.PlannedTable planned = plan.table(table.name()).orElse(null);
                 for (ColumnModel column : table.columns()) {
+                    if (column.name().equals(table.generatedKeyColumn())) {
+                        continue; // not an Access column: --add-primary-key added it
+                    }
                     String writtenAs = planned == null
                             ? null
                             : planned.column(column.name())

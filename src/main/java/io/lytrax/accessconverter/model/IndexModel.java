@@ -25,7 +25,12 @@ public record IndexModel(
         /** The primary key or an index the user created. */
         USER,
         /** The child side of a relationship: Access's hidden index on the foreign-key columns. */
-        RELATIONSHIP
+        RELATIONSHIP,
+        /**
+         * A primary key Access doesn't have, added with {@code --add-primary-key}: its one column numbers the rows in
+         * the order they are read, and it has no Access index behind it.
+         */
+        GENERATED
     }
 
     public IndexModel {

@@ -12,6 +12,10 @@ fixes the patch version.
 - The container image can be built from a clone with nothing but Docker installed: `docker build -t accessconverter .`
   compiles the jar inside the build, byte for byte the jar a release builds from the same sources
   ([#14](https://github.com/clytras/AccessConverter/issues/14)).
+- `--add-primary-key[=<column>]` gives every table without a primary key in Access an AutoNumber key column (`id`
+  unless named), numbering the rows 1, 2, 3, ... in the order Access stores them, for the SQLite and MySQL/MariaDB
+  targets; `verify` takes the same option
+  ([#1](https://github.com/clytras/AccessConverter/issues/1)).
 
 ## [3.0.1] - 2026-09-25
 

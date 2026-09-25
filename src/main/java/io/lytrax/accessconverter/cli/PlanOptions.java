@@ -1,9 +1,12 @@
 package io.lytrax.accessconverter.cli;
 
 import io.lytrax.accessconverter.extract.ExtractOptions;
+import io.lytrax.accessconverter.model.SchemaModel;
+import io.lytrax.accessconverter.report.Issues;
 import io.lytrax.accessconverter.target.BinaryMode;
 import io.lytrax.accessconverter.target.ConvertOptions;
 import io.lytrax.accessconverter.target.ConvertOptions.OnTableError;
+import io.lytrax.accessconverter.target.GeneratedKeys;
 import io.lytrax.accessconverter.target.mysql.MySqlDialect;
 import io.lytrax.accessconverter.target.mysql.MySqlOptions;
 import io.lytrax.accessconverter.target.sqlite.SqliteOptions;
@@ -47,6 +50,16 @@ final class PlanOptions {
             names = "--include-hidden",
             description = "Also write Access's own hidden columns (s_GUID, s_Lineage and the like).")
     boolean includeHidden;
+
+    @Option(
+            names = "--add-primary-key",
+            arity = "0..1",
+            fallbackValue = GeneratedKeys.DEFAULT_COLUMN,
+            paramLabel = "<column>",
+            description = "SQLite, MySQL/MariaDB: give every table that has no primary key in Access one, an"
+                    + " AutoNumber column first in the table that numbers the rows 1, 2, 3, ... (named id unless"
+                    + " given; id_2 and on when the name is taken).")
+    String addPrimaryKey;
 
     @Option(names = "--sqlite-strict", description = "SQLite: emit STRICT tables (needs SQLite 3.37 to read).")
     boolean sqliteStrict;
@@ -106,6 +119,12 @@ final class PlanOptions {
 
     /** Rejects the options that don't apply to the target, so none is silently ignored. */
     void check(Target target, CommandLine cli) {
+        if (addPrimaryKey != null && addPrimaryKey.isBlank()) {
+            throw new ParameterException(cli, "--add-primary-key needs a column name, or none for id");
+        }
+        if (target == Target.json && addPrimaryKey != null) {
+            throw new ParameterException(cli, "--add-primary-key applies to --to sqlite, mysql and mariadb");
+        }
         if (target != Target.sqlite && (sqliteStrict || sqliteNocase || sqliteMetadata)) {
             throw new ParameterException(
                     cli, "--sqlite-strict, --sqlite-nocase and --sqlite-metadata apply to --to sqlite");
@@ -151,6 +170,9 @@ final class PlanOptions {
         if (collation != null) {
             described.put("collation", collation);
         }
+        if (addPrimaryKey != null) {
+            described.put("addPrimaryKey", addPrimaryKey);
+        }
         if (tables != null) {
             described.put("tables", String.join(",", tables));
         }
@@ -182,5 +204,10 @@ final class PlanOptions {
 
     static String lower(Enum<?> value) {
         return value.name().toLowerCase(Locale.ROOT);
+    }
+
+    /** The model the SQL targets plan from, with {@code --add-primary-key}'s keys when it was given. */
+    SchemaModel withGeneratedKeys(SchemaModel model, Issues issues) {
+        return addPrimaryKey == null ? model : GeneratedKeys.add(model, addPrimaryKey, issues);
     }
 }

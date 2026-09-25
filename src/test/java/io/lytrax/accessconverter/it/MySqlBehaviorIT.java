@@ -5,8 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.lytrax.accessconverter.fixtures.Access97Fixture;
 import io.lytrax.accessconverter.fixtures.GeneratedFixture;
+import io.lytrax.accessconverter.source.OpenOptions;
+import io.lytrax.accessconverter.target.ConvertOptions;
 import io.lytrax.accessconverter.target.mysql.MySqlFixture;
 import io.lytrax.accessconverter.target.mysql.MySqlFixture.Converted;
+import io.lytrax.accessconverter.target.mysql.MySqlOptions;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -100,6 +103,36 @@ class MySqlBehaviorIT {
             s.execute("INSERT INTO TIncrement (Name) VALUES ('generated')");
             assertThat(strings(s, "SELECT ID FROM TIncrement WHERE Name = 'generated'"))
                     .containsExactly("4");
+        }
+    }
+
+    /**
+     * {@code --add-primary-key}: gr97's Orders has no key in Access; its 40 rows come out numbered 1 to 40, and the
+     * next row inserted without an id gets 41 from AUTO_INCREMENT.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("images")
+    void anAddedPrimaryKeyNumbersTheRowsAndGeneratesTheNext(String image) throws Exception {
+        DatabaseServer server = DatabaseServer.of(image);
+        Path dump = dir.resolve(image.replace(':', '-') + "-gr97-keys.sql");
+        MySqlFixture.convert(
+                Access97Fixture.GR97.file(),
+                dump,
+                OpenOptions.DEFAULT,
+                ConvertOptions.DEFAULT,
+                MySqlOptions.of(server.dialect()),
+                "id");
+        server.recreate("keys");
+        assertThat(server.importDump(dump, "keys")).isEmpty();
+
+        try (Connection db = server.connect("keys");
+                Statement s = db.createStatement()) {
+            assertThat(strings(s, "SELECT count(*), min(id), max(id) FROM Orders"))
+                    .containsExactly("40");
+            assertThat(strings(s, "SELECT min(id) FROM Orders")).containsExactly("1");
+            assertThat(strings(s, "SELECT max(id) FROM Orders")).containsExactly("40");
+            s.execute("INSERT INTO Orders (OrderID) VALUES (9999)");
+            assertThat(strings(s, "SELECT id FROM Orders WHERE OrderID = 9999")).containsExactly("41");
         }
     }
 

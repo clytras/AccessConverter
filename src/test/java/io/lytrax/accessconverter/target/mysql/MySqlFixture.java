@@ -12,6 +12,7 @@ import io.lytrax.accessconverter.source.AccessSource;
 import io.lytrax.accessconverter.source.OpenOptions;
 import io.lytrax.accessconverter.target.ComplexTables;
 import io.lytrax.accessconverter.target.ConvertOptions;
+import io.lytrax.accessconverter.target.GeneratedKeys;
 import io.lytrax.accessconverter.verify.VerifyResult;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -33,9 +34,23 @@ public final class MySqlFixture {
 
     public static Converted convert(
             Path source, Path output, OpenOptions open, ConvertOptions options, MySqlOptions mysql) {
+        return convert(source, output, open, options, mysql, null);
+    }
+
+    /** @param addPrimaryKey {@code --add-primary-key}'s column name, or null without the option */
+    public static Converted convert(
+            Path source,
+            Path output,
+            OpenOptions open,
+            ConvertOptions options,
+            MySqlOptions mysql,
+            String addPrimaryKey) {
         Issues issues = new Issues();
         try (AccessSource db = AccessSource.open(source, open, issues)) {
             SchemaModel model = ComplexTables.expand(SchemaExtractor.extract(db, ExtractOptions.ALL, issues), options);
+            if (addPrimaryKey != null) {
+                model = GeneratedKeys.add(model, addPrimaryKey, issues);
+            }
             DataProfile profile = options.profile() ? DataProfiler.profile(db, model) : null;
             MySqlPlan plan = MySqlPlanner.plan(model, profile, options, mysql, issues);
             MySqlDumpWriter.write(db, plan, output, options, mysql, PRODUCER, issues);

@@ -115,6 +115,7 @@ output.
 | `--exclude-tables <glob>[,<glob>...]` | Leave these tables out. |
 | `--no-profile` | Skip the pass that reads the data before writing. Faster, but every constraint that depends on the data is left out, and SQLite stores exact decimals as text. |
 | `--include-hidden` | Also write Access's own hidden columns (`s_GUID`, `s_Lineage` and the like). |
+| `--add-primary-key[=<column>]` | SQLite, MySQL/MariaDB: give every table that has no primary key in Access one (see [Tables without a primary key](#tables-without-a-primary-key)). |
 | `--binary inline\|files\|omit` | Where the bytes of Binary, OLE and attachment values go (see [Binary data](#binary-data-ole-objects-and-attachments)). Default `inline`. |
 | `--ole-extract` | Also decode OLE objects (see [Binary data](#binary-data-ole-objects-and-attachments)). |
 | `--include-version-history` | Write the version history of append-only memos, which is skipped otherwise. |
@@ -161,7 +162,7 @@ accessconverter verify Shop.accdb --jdbc-url jdbc:mariadb://localhost:3306/shop 
 `verify` plans the conversion again from the source and compares the output with it: every table, column type, key,
 index, foreign key, default and CHECK, and every value (exact decimals, dates at their precision, bytes by
 SHA-256). **Give it the same options the conversion used**, since they decide what the output should hold
-(`--tables`, `--exclude-tables`, `--no-profile`, `--include-hidden`, `--sqlite-strict`, `--sqlite-nocase`,
+(`--tables`, `--exclude-tables`, `--no-profile`, `--include-hidden`, `--add-primary-key`, `--sqlite-strict`, `--sqlite-nocase`,
 `--sqlite-metadata`, `--collation`, `--binary`, `--ole-extract`, `--include-version-history`, `--password`,
 `--charset`). It exits 0 when the output matches and 2 when it doesn't, listing each difference.
 
@@ -297,6 +298,24 @@ in [docs/json-format.md](docs/json-format.md) and published as a JSON Schema,
 [`accessconverter-json-v1.schema.json`](src/main/resources/io/lytrax/accessconverter/target/json/accessconverter-json-v1.schema.json).
 The output streams, so a database of any size converts in little memory, and `--json-layout ndjson` gives one file
 per table for tools that read a row per line.
+
+## Tables without a primary key
+
+Access allows tables without a primary key, and by default the output has none for them either: AccessConverter
+never invents a key. Applications and frameworks that need one on every table can ask for it:
+
+```sh
+accessconverter convert Shop.accdb --to sqlite --add-primary-key            # a column named id
+accessconverter convert Shop.accdb --to mysql  --add-primary-key=row_id     # or any name
+```
+
+Each table without a primary key gets an AutoNumber column, first in the table, that numbers the rows 1, 2, 3, …
+in the order Access stores them: `INTEGER PRIMARY KEY AUTOINCREMENT` in SQLite, `INT AUTO_INCREMENT PRIMARY KEY` in
+MySQL/MariaDB, so new rows get the next number. When the table already has a column of that name, the new one is
+named `id_2` (and so on). MySQL allows only one `AUTO_INCREMENT` column per table: an AutoNumber the table already
+has keeps its values but stops generating them. The report lists every table that got a key (`PRIMARY_KEY_ADDED`).
+Tables with a primary key are left as they are. JSON doesn't need keys, so the option applies to the SQL targets
+only. To verify such an output, pass the same option to `verify`.
 
 ## Binary data, OLE objects and attachments
 
