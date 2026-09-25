@@ -42,7 +42,7 @@
         <picocli.version>4.7.7</picocli.version>
 
         <!-- Test. JUnit stays on 5.14: jqwik 1.10 is built against JUnit Platform 1.14 -->
-        <junit.version>5.14.4</junit.version>
+        <junit.version>6.1.3</junit.version>
         <assertj.version>3.27.7</assertj.version>
         <jqwik.version>1.10.1</jqwik.version>
         <testcontainers.version>2.0.5</testcontainers.version>
