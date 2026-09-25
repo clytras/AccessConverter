@@ -3,7 +3,7 @@
 `accessconverter convert <database> --to json` exports a Microsoft Access database as JSON: the whole schema,
 including relationships Access doesn't enforce, and every value exactly. This document is the contract for
 readers of that output. The machine-readable version is the JSON Schema
-[`accessconverter-json-v1.schema.json`](../src/main/resources/com/lytrax/accessconverter/target/json/accessconverter-json-v1.schema.json),
+[`accessconverter-json-v1.schema.json`](../src/main/resources/io/lytrax/accessconverter/target/json/accessconverter-json-v1.schema.json),
 which ships inside the AccessConverter jar.
 
 `formatVersion` is `1`. It changes whenever the format changes in a way a reader could trip over; new optional

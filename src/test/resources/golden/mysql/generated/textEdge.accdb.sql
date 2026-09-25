@@ -1,5 +1,5 @@
 -- AccessConverter - source: textEdge.accdb (V2010)
--- Target: MySQL 8.0 or later, collation utf8mb4_0900_as_ci
+-- Target: MySQL 8.0.13 or later, collation utf8mb4_0900_as_ci
 
 SET NAMES utf8mb4;
 SET @ac_sql_mode = @@SESSION.sql_mode, @ac_fk = @@SESSION.foreign_key_checks, @ac_ac = @@SESSION.autocommit;

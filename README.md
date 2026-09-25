@@ -122,7 +122,7 @@ output.
 | `--stamp` | MySQL/MariaDB and JSON: put the export time in the output. Without it, the same database always gives byte-identical output. |
 | `--sqlite-strict` | SQLite: `STRICT` tables (readable by SQLite 3.37 or later). |
 | `--sqlite-nocase` | SQLite: `COLLATE NOCASE` on every text column, so comparisons ignore (ASCII) case as Access does. |
-| `--sqlite-metadata` | SQLite: add the tables `_access_columns` and `_access_relationships` with the full Access metadata. |
+| `--sqlite-metadata` | SQLite: add the tables `_access_columns`, `_access_relationships` and `_access_export` with the full Access metadata. |
 | `--analyze` | SQLite: run `ANALYZE` on the finished file, not only `PRAGMA optimize`. |
 | `--json-layout document\|ndjson` | JSON: one file (default), or a directory with `schema.json` and one `<table>.ndjson` file per table, one row per line. |
 | `--json-rows object\|array` | JSON: a row as an object keyed by column name (default) or an array in column order (smaller). |
@@ -276,15 +276,19 @@ The output is a finished SQLite database. Every conversion runs `foreign_key_che
   upward here, from its largest value: SQLite can only generate a key for such a column in sequence, and its 64-bit
   counter never runs out (`AUTONUMBER_RANDOM_SEQUENTIAL`).
 - `--sqlite-metadata` adds `_access_columns` (each column's Access type, length, precision, Required, descriptions,
-  format, default and validation rule as Access wrote them, and what it became) and `_access_relationships` (every
-  relationship, enforced or not, and whether it became a foreign key).
+  format, default and validation rule as Access wrote them, and what it became), `_access_relationships` (every
+  relationship, enforced or not, and whether it became a foreign key) and `_access_export` (the AccessConverter
+  version and the source file, format and code page).
+- **Every file says who wrote it** without an extra table: `PRAGMA application_id` is `0x41434356` ("ACCV") and
+  `PRAGMA user_version` is the layout version, `1`. A MySQL/MariaDB dump names the producer in its first comment
+  line, and JSON in its `producer` property. No output records a time unless `--stamp` is given.
 
 ## JSON
 
 JSON holds the whole database: the schema (tables, columns with every Access property, keys, indexes and all
 relationships, including those Access doesn't enforce) and every value, spelled exactly. The format is documented
 in [docs/json-format.md](docs/json-format.md) and published as a JSON Schema,
-[`accessconverter-json-v1.schema.json`](src/main/resources/com/lytrax/accessconverter/target/json/accessconverter-json-v1.schema.json).
+[`accessconverter-json-v1.schema.json`](src/main/resources/io/lytrax/accessconverter/target/json/accessconverter-json-v1.schema.json).
 The output streams, so a database of any size converts in little memory, and `--json-layout ndjson` gives one file
 per table for tools that read a row per line.
 
@@ -334,6 +338,12 @@ the code page from the file's header, so Greek, Cyrillic, Central European, Japa
 Access 97 files convert without any option; the report's `source.charset` says which charset was used. If a file was
 made on a system whose code page doesn't match its header, `--charset windows-1253` (or any Java charset name)
 overrides it. Access 2000 and later store Unicode, and ignore `--charset` with a warning.
+
+Every byte is decoded as Windows, and so Access, decodes it. A few code pages (Greek 1253, Hebrew 1255, Baltic 1257,
+Thai 874) leave some bytes undefined. Windows turns those into private-use characters (U+E000 to U+F8FF), which map
+back to the same byte but show as blank in most fonts, so AccessConverter writes the same characters and reports
+each column that holds one (`TEXT_PRIVATE_USE`). A byte no charset can decode is written as U+FFFD and reported as
+`TEXT_UNDECODABLE`.
 
 ## What isn't converted
 

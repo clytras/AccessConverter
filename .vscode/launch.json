@@ -3,30 +3,27 @@
     "configurations": [
         {
             "type": "java",
-            "name": "AccessConverter",
+            "name": "convert",
             "request": "launch",
-            "mainClass": "com.lytrax.accessconverter.AccessConverter",
+            "mainClass": "io.lytrax.accessconverter.cli.Main",
             "projectName": "accessconverter",
-            "args": "-compress --access-file \".\\samples\\Northwind-2007.accdb\" --task convert-sqlite -show-progress"
-            // "args": "-compress --access-file \".\\samples\\allTypes.accdb\" --task convert-sqlite"
-            // "args": "-compress --access-file \".\\samples\\allTypes.accdb\" --task convert-json --files-mode inline -show-progress"
-            // "args": "-compress --access-file \".\\samples\\allTypes.accdb\" --task convert-mysql-dump --files-mode file-relative -overwrite-existing-files "
-            // "args": "-compress --access-file \".\\samples\\Northwind-2007.accdb\" --task convert-mysql-dump"
+            "args": "convert samples/Northwind-2007.accdb --to sqlite -o target/run/Northwind-2007.sqlite3 --overwrite --verify"
+            // "args": "convert samples/allTypes.accdb --to json -o target/run/allTypes.json --overwrite --binary files --ole-extract"
+            // "args": "convert samples/Northwind-2007.accdb --to mysql -o target/run/Northwind-2007.sql --overwrite"
         },
         {
             "type": "java",
-            "name": "AccessDebugger",
+            "name": "inspect",
             "request": "launch",
-            "mainClass": "com.lytrax.accessdebugger.AccessDebugger",
+            "mainClass": "io.lytrax.accessconverter.cli.Main",
             "projectName": "accessconverter",
-            "args": "\".\\samples\\allTypes.accdb\" testTable"
-            // "args": "\".\\samples\\Northwind-2007.accdb\" \"Δελτία παραγγελίας\""
+            "args": "inspect samples/Northwind-2007.accdb --profile"
         },
         {
             "type": "java",
             "name": "Current File",
             "request": "launch",
             "mainClass": "${file}"
-        },
+        }
     ]
 }

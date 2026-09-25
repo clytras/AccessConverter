@@ -178,6 +178,15 @@ CREATE TABLE "_access_relationships" (
   "status",
   "written_as_foreign_key"
 );
+CREATE TABLE "_access_export" (
+  -- Access metadata, added by --sqlite-metadata; it describes the source database
+  "producer",
+  "format_version",
+  "source_file",
+  "source_format",
+  "source_code_page",
+  "source_charset"
+);
 CREATE INDEX "CustomerLoyaltyProgramMembershipHistory_CustomerLoyaltyProgramMembersCustomerLoyaltyProgramMembership" ON "CustomerLoyaltyProgramMembershipHistory" ("TierID");
 CREATE INDEX "Customers_IX_Name" ON "Customers" ("Name" DESC);
 CREATE UNIQUE INDEX "Customers_UX_Code" ON "Customers" ("Code");

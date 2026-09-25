@@ -4,7 +4,7 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.lytrax</groupId>
+    <groupId>io.lytrax</groupId>
     <artifactId>accessconverter</artifactId>
     <version>3.0.1</version>
 
@@ -31,7 +31,7 @@
         <!-- Reproducible builds: fixed entry timestamps in every jar -->
         <project.build.outputTimestamp>2026-09-22T00:00:00Z</project.build.outputTimestamp>
 
-        <main.class>com.lytrax.accessconverter.cli.Main</main.class>
+        <main.class>io.lytrax.accessconverter.cli.Main</main.class>
 
         <!-- Runtime -->
         <jackcess.version>5.0.1</jackcess.version>
