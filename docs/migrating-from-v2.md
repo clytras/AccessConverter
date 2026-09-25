@@ -14,7 +14,7 @@ in the conversion report.
 
 | 2.x | 3.0 |
 | --- | --- |
-| `java -jar AccessConverter.jar …` with Java 17 | A runtime image with its own Java (`bin/accessconverter …`), the container `ghcr.io/clytras/accessconverter:3`, or `java -jar accessconverter-3.0.0.jar …` with **Java 21 or later**. The 3.0 jar doesn't start on Java 17. |
+| `java -jar AccessConverter.jar …` with Java 17 | A runtime image with its own Java (`bin/accessconverter …`), the container `ghcr.io/clytras/accessconverter:3`, or `java -jar accessconverter-<version>.jar …` with **Java 21 or later**. The 3.0 jar doesn't start on Java 17. |
 | One command, chosen with `--task` | Three commands: `convert`, `inspect` and `verify`. |
 | Options are `--name value`, flags `-name` | Standard options: `--name value` or `--name=value`, and flags as `--name`. A 2.x flag such as `-compress` is now an error. |
 

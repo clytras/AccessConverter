@@ -7,7 +7,7 @@
 #   docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/data" accessconverter convert Northwind.accdb --to sqlite
 #
 # From a jar built beforehand, as the release workflow does with the jar it has tested:
-#   docker build --build-arg JAR_SOURCE=prebuilt --build-arg JAR=target/accessconverter-3.0.2.jar -t accessconverter .
+#   docker build --build-arg JAR_SOURCE=prebuilt --build-arg JAR=target/accessconverter-<version>.jar -t accessconverter .
 #
 # The base images are pinned by digest; Dependabot proposes new ones.
 ARG JAR_SOURCE=build
