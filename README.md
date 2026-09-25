@@ -50,6 +50,10 @@ container image sets one.
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/data" ghcr.io/clytras/accessconverter:3 convert Shop.accdb --to sqlite
 ```
 
+To build the image yourself, from a clone with nothing but Docker installed: `docker build -t accessconverter .`, then
+run it the same way with `accessconverter` in place of `ghcr.io/clytras/accessconverter:3`. The jar is compiled
+inside the build, identical byte for byte to the released one for the same version.
+
 **Checking a download.** Every release has `SHA256SUMS` (`sha256sum -c SHA256SUMS --ignore-missing`) and a
 build-provenance attestation (`gh attestation verify <file> --repo clytras/AccessConverter`).
 

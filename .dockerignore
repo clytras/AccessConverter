@@ -1,5 +1,10 @@
+# Everything is excluded except what the image and its build stage use
 *
 !LICENSE
 !NOTICE
 !packaging/licenses/
+!mvnw
+!.mvn/
+!pom.xml
+!src/main/
 !target/*.jar

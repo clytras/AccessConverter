@@ -3,13 +3,19 @@ name: Release
 # A tag v<version> builds and smoke-tests 3.x: the shaded jar, a runtime image per platform (no Java needed) and
 # the container image, and creates a draft release with the jar, the zips, SHA256SUMS and build-provenance
 # attestations. Nothing is public until the maintainer publishes that draft: only then is the container image
-# pushed, built from the release's own jar. A push that changes the packaging, or a run by hand, is a dry run that
-# builds and tests everything and publishes nothing. (Path filters don't apply to tags.)
+# pushed, built from the release's own jar. A pull request or a push to master that changes the packaging, or a run
+# by hand, is a dry run that builds and tests everything and publishes nothing. (Path filters don't apply to tags.)
 on:
   push:
     tags: ['v*']
-    # A change to the packaging is dry-run before any tag needs it
-    branches: [master, v3]
+    # A change to the packaging is dry-run before any tag needs it: on master, and on a pull request that makes one
+    branches: [master]
+    paths:
+      - 'packaging/**'
+      - Dockerfile
+      - .dockerignore
+      - .github/workflows/release.yml
+  pull_request:
     paths:
       - 'packaging/**'
       - Dockerfile
@@ -149,14 +155,23 @@ jobs:
           path: target/
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
-      # Both architectures, smoke-tested; arm64 runs under emulation. Nothing is pushed here.
+      # Both architectures from the tested jar, smoke-tested; arm64 runs under emulation. Nothing is pushed here.
       - name: Smoke test
         run: |
           for arch in amd64 arm64; do
-            docker buildx build --platform "linux/$arch" --build-arg "JAR=target/accessconverter-$VERSION.jar" \
-              --load -t "accessconverter:smoke-$arch" .
+            docker buildx build --platform "linux/$arch" --build-arg JAR_SOURCE=prebuilt \
+              --build-arg "JAR=target/accessconverter-$VERSION.jar" --load -t "accessconverter:smoke-$arch" .
             bash packaging/smoke-test.sh "docker:accessconverter:smoke-$arch" "target/smoke-$arch"
           done
+      # What someone building from a clone gets: the jar compiled inside Docker, byte for byte the tested jar
+      - name: Build from source
+        run: |
+          docker buildx build --load -t accessconverter:from-source .
+          id=$(docker create accessconverter:from-source)
+          docker cp "$id:/opt/accessconverter/accessconverter.jar" target/from-source.jar
+          docker rm "$id" > /dev/null
+          cmp target/from-source.jar "target/accessconverter-$VERSION.jar"
+          bash packaging/smoke-test.sh docker:accessconverter:from-source target/smoke-from-source
 
   release:
     name: draft release
@@ -249,7 +264,9 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          build-args: JAR=${{ steps.jar.outputs.path }}
+          build-args: |
+            JAR_SOURCE=prebuilt
+            JAR=${{ steps.jar.outputs.path }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
