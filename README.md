@@ -109,6 +109,7 @@ output.
 | `--report <file>` | Where the conversion report goes. Default: `<output>.report.json`. |
 | `--no-report` | Don't write the report file; the issues are still printed. |
 | `--format-result text\|json` | How the result is printed on standard output. `json` prints the conversion report itself, for scripts. Default `text`. |
+| `--progress`, `--no-progress` | Show or hide progress on standard error (see [Progress](#progress)). Default: shown when standard input and output are a terminal. |
 | `--on-table-error fail\|continue` | A table that can't be read or written. `fail` (default) deletes the output; `continue` finishes the other tables, leaves the failed one empty and still exits 2. |
 | `--verify` | SQLite and JSON: after writing, compare the output's schema and every value with the source (SQLite also checks its integrity). For a dump, import it and run `verify --jdbc-url`. |
 | `--tables <glob>[,<glob>...]` | Only these tables (`*` and `?` allowed). Relationships to a table left out are skipped and reported. |
@@ -164,7 +165,8 @@ index, foreign key, default and CHECK, and every value (exact decimals, dates at
 SHA-256). **Give it the same options the conversion used**, since they decide what the output should hold
 (`--tables`, `--exclude-tables`, `--no-profile`, `--include-hidden`, `--add-primary-key`, `--sqlite-strict`, `--sqlite-nocase`,
 `--sqlite-metadata`, `--collation`, `--binary`, `--ole-extract`, `--include-version-history`, `--password`,
-`--charset`). It exits 0 when the output matches and 2 when it doesn't, listing each difference.
+`--charset`). It exits 0 when the output matches and 2 when it doesn't, listing each difference. `--progress` and
+`--no-progress` work as for `convert`.
 
 A MySQL or MariaDB output is the database the dump was imported into:
 
@@ -178,6 +180,25 @@ A MySQL or MariaDB output is the database the dump was imported into:
 | `--dump-directory <dir>` | With `--binary files`: the directory the dump was written in, which the stored paths are relative to. Default: the current directory. |
 
 Without an output, `verify <input>` prints the source side: each table's row count and a digest of its rows.
+
+### Progress
+
+`convert` and `verify` show their progress on standard error, on one line that is redrawn in place and erased when
+they finish:
+
+```
+write 3/21 Orders  45,000 / 120,000 rows  37%
+```
+
+It names the stage (`profile`, the pass that reads the data before writing; `write`; `verify`), the table and how
+many of its rows have been read. Nothing is shown in the first half second, and the line changes at most five times
+a second, only when the stage, the table or the percentage changes. Standard output, the output file and the report
+are the same with or without it.
+
+It is on by default when standard input and output are both a terminal, which is all Java can tell: it can't tell
+whether standard error is one. When standard error goes to a file or a log (`2> convert.log`) while the command runs
+at a terminal, pass `--no-progress` so the progress line isn't written there. `--progress` shows it even when standard
+output isn't a terminal, for instance with `--format-result json | jq`.
 
 ## The conversion report
 
@@ -379,11 +400,10 @@ each column that holds one (`TEXT_PRIVATE_USE`). A byte no charset can decode is
   server.
 - **Access security** (user-level permissions and workgroup files).
 
-## Planned for 3.1
+## Planned
 
 - `--linked resolve`: convert linked Access tables together with the database that links them, instead of
   converting the back-end file separately.
-- `--progress`: progress on standard error during long conversions.
 
 ## License
 

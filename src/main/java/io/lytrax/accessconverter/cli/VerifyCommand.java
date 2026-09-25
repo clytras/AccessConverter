@@ -84,6 +84,9 @@ final class VerifyCommand implements Callable<Integer> {
     @Mixin
     SourceOptions source;
 
+    @Mixin
+    ProgressOption progressOption;
+
     @Spec
     CommandSpec spec;
 
@@ -126,13 +129,16 @@ final class VerifyCommand implements Callable<Integer> {
         ConvertOptions convert = plan.convertOptions(OnTableError.FAIL, ConvertOptions.DEFAULT_BATCH_ROWS);
         VerifyResult result;
         SchemaModel model;
-        try (AccessSource db = AccessSource.open(input, options, issues)) {
+        try (AccessSource db = AccessSource.open(input, options, issues);
+                Progress progress = progress(db)) {
             model = SchemaExtractor.extract(db, plan.extractOptions(), issues);
             SchemaModel expanded = plan.withGeneratedKeys(ComplexTables.expand(model, convert), new Issues());
+            progress.stage("profile", expanded.tables());
             DataProfile profile = convert.profile() ? DataProfiler.profile(db, expanded) : null;
             // The issues of planning again are the conversion's, not the verification's: they go nowhere
             SqlitePlan planned =
                     SqlitePlanner.plan(expanded, profile, convert, plan.sqliteOptions(false), new Issues());
+            progress.stage("verify", ConvertCommand.sources(planned.tables(), SqlitePlan.PlannedTable::source));
             result = SqliteVerifier.verify(db, planned, output);
         }
         return print(model, output + " (SQLite)", result, issues);
@@ -146,11 +152,14 @@ final class VerifyCommand implements Callable<Integer> {
         ConvertOptions convert = plan.convertOptions(OnTableError.FAIL, ConvertOptions.DEFAULT_BATCH_ROWS);
         VerifyResult result;
         SchemaModel model;
-        try (AccessSource db = AccessSource.open(input, options, issues)) {
+        try (AccessSource db = AccessSource.open(input, options, issues);
+                Progress progress = progress(db)) {
             model = SchemaExtractor.extract(db, plan.extractOptions(), issues);
+            progress.stage("profile", model.tables());
             DataProfile profile = convert.profile() ? DataProfiler.profile(db, model) : null;
             // The issues of planning again are the conversion's, not the verification's: they go nowhere
             JsonPlan planned = JsonPlanner.plan(model, profile, convert, new Issues());
+            progress.stage("verify", ConvertCommand.sources(planned.tables(), JsonPlan.PlannedTable::source));
             result = JsonVerifier.verify(db, planned, output);
         }
         return print(model, output + " (JSON)", result, issues);
@@ -165,7 +174,8 @@ final class VerifyCommand implements Callable<Integer> {
         SchemaModel model;
         String server;
         try (Connection db = jdbc.connect();
-                AccessSource access = AccessSource.open(input, options, issues)) {
+                AccessSource access = AccessSource.open(input, options, issues);
+                Progress progress = progress(access)) {
             server = version(db);
             MySqlDialect dialect = to != null ? to.dialect() : MySqlDialect.ofVersion(server);
             if (dialect == null) {
@@ -174,16 +184,25 @@ final class VerifyCommand implements Callable<Integer> {
             plan.check(Target.of(dialect), spec.commandLine());
             model = SchemaExtractor.extract(access, plan.extractOptions(), issues);
             SchemaModel expanded = plan.withGeneratedKeys(ComplexTables.expand(model, convert), new Issues());
+            progress.stage("profile", expanded.tables());
             DataProfile profile = convert.profile() ? DataProfiler.profile(access, expanded) : null;
             MySqlOptions mysql = plan.mysqlOptions(dialect, false, null, MySqlOptions.DEFAULT_BATCH_BYTES, false);
             // The issues of planning again are the conversion's, not the verification's: they go nowhere
             MySqlPlan planned = MySqlPlanner.plan(expanded, profile, convert, mysql, new Issues());
+            progress.stage("verify", ConvertCommand.sources(planned.tables(), MySqlPlan.PlannedTable::source));
             result = MySqlVerifier.verify(
                     access, planned, db, jdbc.dumpDirectory == null ? Path.of("") : jdbc.dumpDirectory);
         } catch (SQLException e) {
             throw new IOException("reading the database failed: " + e.getMessage(), e);
         }
         return print(model, jdbc.url + " (" + server + ")", result, issues);
+    }
+
+    /** Progress on standard error, told of every row {@code db} reads. */
+    private Progress progress(AccessSource db) {
+        Progress progress = ((Main) spec.root().userObject()).progress(progressOption.progress);
+        db.listen(progress.listener());
+        return progress;
     }
 
     private static String version(Connection db) throws SQLException {
@@ -245,8 +264,10 @@ final class VerifyCommand implements Callable<Integer> {
         OpenOptions options = source.toOpenOptions();
         Issues issues = new Issues();
         SourceSnapshot snapshot;
-        try (AccessSource db = AccessSource.open(input, options, issues)) {
+        try (AccessSource db = AccessSource.open(input, options, issues);
+                Progress progress = progress(db)) {
             SchemaModel model = SchemaExtractor.extract(db, plan.extractOptions(), issues);
+            progress.stage("read", model.tables());
             snapshot = SourceSnapshot.capture(db, model);
         }
         PrintWriter out = spec.commandLine().getOut();

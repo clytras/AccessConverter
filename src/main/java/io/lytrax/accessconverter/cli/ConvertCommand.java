@@ -2,6 +2,7 @@ package io.lytrax.accessconverter.cli;
 
 import io.lytrax.accessconverter.extract.SchemaExtractor;
 import io.lytrax.accessconverter.model.SchemaModel;
+import io.lytrax.accessconverter.model.TableModel;
 import io.lytrax.accessconverter.profile.DataProfile;
 import io.lytrax.accessconverter.profile.DataProfiler;
 import io.lytrax.accessconverter.report.ConversionReport;
@@ -47,6 +48,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Model.CommandSpec;
@@ -205,6 +207,9 @@ final class ConvertCommand implements Callable<Integer> {
     @Mixin
     SourceOptions source;
 
+    @Mixin
+    ProgressOption progressOption;
+
     @Spec
     CommandSpec spec;
 
@@ -236,7 +241,9 @@ final class ConvertCommand implements Callable<Integer> {
         Map<String, Duration> timings = new LinkedHashMap<>();
         SchemaModel model;
         List<TableResult> tables;
-        try (AccessSource db = AccessSource.open(input, openOptions, issues)) {
+        try (AccessSource db = AccessSource.open(input, openOptions, issues);
+                Progress progress = main.progress(progressOption.progress)) {
+            db.listen(progress.listener());
             long started = System.nanoTime();
             model = SchemaExtractor.extract(db, plan.extractOptions(), issues);
             timings.put("extract", since(started));
@@ -246,6 +253,7 @@ final class ConvertCommand implements Callable<Integer> {
             SchemaModel planned =
                     to == Target.json ? model : plan.withGeneratedKeys(ComplexTables.expand(model, options), issues);
             started = System.nanoTime();
+            progress.stage("profile", planned.tables());
             DataProfile profile = options.profile() ? DataProfiler.profile(db, planned) : null;
             timings.put("profile", since(started));
             if (profile != null) {
@@ -253,9 +261,9 @@ final class ConvertCommand implements Callable<Integer> {
             }
 
             tables = switch (to) {
-                case sqlite -> sqlite(db, planned, profile, out, options, issues, timings);
-                case mysql, mariadb -> mysql(db, planned, profile, out, options, issues, timings);
-                case json -> json(db, planned, profile, out, options, issues, timings);
+                case sqlite -> sqlite(db, planned, profile, out, options, issues, timings, progress);
+                case mysql, mariadb -> mysql(db, planned, profile, out, options, issues, timings, progress);
+                case json -> json(db, planned, profile, out, options, issues, timings, progress);
             };
         }
         ConversionReport conversionReport = new ConversionReport(
@@ -350,7 +358,8 @@ final class ConvertCommand implements Callable<Integer> {
             Path out,
             ConvertOptions options,
             Issues issues,
-            Map<String, Duration> timings)
+            Map<String, Duration> timings,
+            Progress progress)
             throws IOException {
         SqliteOptions sqlite = plan.sqliteOptions(analyze);
         long started = System.nanoTime();
@@ -358,12 +367,14 @@ final class ConvertCommand implements Callable<Integer> {
         timings.put("plan", since(started));
 
         started = System.nanoTime();
+        progress.stage("write", sources(planned.tables(), SqlitePlan.PlannedTable::source));
         WriteOutcome outcome = SqliteWriter.write(
                 db, planned, out, options, sqlite, "AccessConverter " + Main.Version.version(), verify, issues);
         timings.put("write", since(started));
 
         if (verify) {
             started = System.nanoTime();
+            progress.stage("verify", sources(planned.tables(), SqlitePlan.PlannedTable::source));
             VerifyResult result = SqliteVerifier.verify(db, planned, out);
             timings.put("verify", since(started));
             result.report(issues);
@@ -378,7 +389,8 @@ final class ConvertCommand implements Callable<Integer> {
             Path out,
             ConvertOptions options,
             Issues issues,
-            Map<String, Duration> timings)
+            Map<String, Duration> timings,
+            Progress progress)
             throws IOException {
         MySqlOptions mysql = mysqlOptions();
         long started = System.nanoTime();
@@ -386,6 +398,7 @@ final class ConvertCommand implements Callable<Integer> {
         timings.put("plan", since(started));
 
         started = System.nanoTime();
+        progress.stage("write", sources(planned.tables(), MySqlPlan.PlannedTable::source));
         WriteOutcome outcome = MySqlDumpWriter.write(
                 db, planned, out, options, mysql, "AccessConverter " + Main.Version.version(), issues);
         timings.put("write", since(started));
@@ -399,19 +412,22 @@ final class ConvertCommand implements Callable<Integer> {
             Path out,
             ConvertOptions options,
             Issues issues,
-            Map<String, Duration> timings)
+            Map<String, Duration> timings,
+            Progress progress)
             throws IOException {
         long started = System.nanoTime();
         JsonPlan planned = JsonPlanner.plan(model, profile, options, issues);
         timings.put("plan", since(started));
 
         started = System.nanoTime();
+        progress.stage("write", sources(planned.tables(), JsonPlan.PlannedTable::source));
         WriteOutcome outcome = JsonWriter.write(
                 db, planned, out, options, jsonOptions(), "AccessConverter " + Main.Version.version(), issues);
         timings.put("write", since(started));
 
         if (verify) {
             started = System.nanoTime();
+            progress.stage("verify", sources(planned.tables(), JsonPlan.PlannedTable::source));
             VerifyResult result = JsonVerifier.verify(db, planned, out);
             timings.put("verify", since(started));
             result.report(issues);
@@ -540,6 +556,11 @@ final class ConvertCommand implements Callable<Integer> {
 
     private static long total(ConversionReport report) {
         return report.timings().values().stream().mapToLong(Duration::toMillis).sum();
+    }
+
+    /** The Access tables behind a plan's tables, in the order they are written: what progress counts. */
+    static <T> List<TableModel> sources(List<T> planned, Function<T, TableModel> source) {
+        return planned.stream().map(source).toList();
     }
 
     private static Duration since(long startedNanos) {

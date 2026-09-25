@@ -52,6 +52,7 @@ public final class AccessSource implements AutoCloseable {
     private final Database db;
     private final Integer codePage;
     private final Issues issues;
+    private ReadListener listener = ReadListener.NONE;
 
     private AccessSource(Path file, Database db, Integer codePage, Issues issues) {
         this.file = file;
@@ -340,10 +341,19 @@ public final class AccessSource implements AutoCloseable {
      *     ComplexValues}), for a target that inlines them; otherwise only their complex id ({@code ComplexRef})
      */
     public RowStream rows(TableModel table, boolean complexValues) throws IOException {
-        if (table.isComplexChild()) {
-            return ComplexReader.childRows(file, orderedCursor(parentOf(table)), table, table.columns());
-        }
-        return RowStream.of(file, orderedCursor(table), table.columns(), complexValues, table.generatedKeyColumn());
+        RowStream rows = table.isComplexChild()
+                ? ComplexReader.childRows(file, orderedCursor(parentOf(table)), table, table.columns())
+                : RowStream.of(file, orderedCursor(table), table.columns(), complexValues, table.generatedKeyColumn());
+        return observed(table, rows);
+    }
+
+    private RowStream observed(TableModel table, RowStream rows) {
+        return listener == ReadListener.NONE ? rows : rows.observed(listener.started(table));
+    }
+
+    /** Who hears of each table and row read from here on; {@link ReadListener#NONE} for nobody. */
+    public void listen(ReadListener listener) {
+        this.listener = Objects.requireNonNull(listener, "listener");
     }
 
     private Cursor orderedCursor(TableModel table) throws IOException {
@@ -366,12 +376,15 @@ public final class AccessSource implements AutoCloseable {
 
     /** Selected columns of a local table in physical order: the profiler's targeted pass. */
     public RowStream scan(TableModel table, List<ColumnModel> columns) throws IOException {
-        if (table.isComplexChild()) {
-            return ComplexReader.childRows(
-                    file, CursorBuilder.createCursor(localTable(parentOf(table))), table, columns);
-        }
-        return RowStream.of(
-                file, CursorBuilder.createCursor(localTable(table)), columns, false, table.generatedKeyColumn());
+        RowStream rows = table.isComplexChild()
+                ? ComplexReader.childRows(file, CursorBuilder.createCursor(localTable(parentOf(table))), table, columns)
+                : RowStream.of(
+                        file,
+                        CursorBuilder.createCursor(localTable(table)),
+                        columns,
+                        false,
+                        table.generatedKeyColumn());
+        return observed(table, rows);
     }
 
     /** The Access table a complex child's values come from, with the key that orders it. */

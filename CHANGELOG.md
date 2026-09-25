@@ -7,6 +7,12 @@ fixes the patch version.
 
 ## [Unreleased]
 
+### Added
+
+- `--progress` / `--no-progress` on `convert` and `verify`: the stage, the table and its rows on one line on standard
+  error, redrawn at most five times a second and erased at the end. It is on by default when standard input and
+  output are a terminal; standard output, the output and the report are unchanged by it.
+
 ## [3.1.0] - 2026-09-25
 
 ### Added

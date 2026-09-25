@@ -403,4 +403,96 @@ class ConvertCommandTest {
         assertThat(blank.exitCode()).isEqualTo(ExitCodes.USAGE);
         assertThat(blank.err()).contains("--add-primary-key needs a column name");
     }
+
+    /**
+     * Progress goes to standard error only, one line redrawn in place and erased at the end: standard output still
+     * carries the JSON result, and the output is byte for byte what a conversion without progress writes.
+     */
+    @Test
+    void progressIsOnStandardErrorAndChangesNoOutput() throws IOException {
+        String input = GeneratedFixture.HUNDRED_ROWS.path().toString();
+        Path with = dir.resolve("with.json");
+        Path without = dir.resolve("without.json");
+
+        Cli shown = Cli.atTerminal(
+                false,
+                "convert",
+                "--to",
+                "json",
+                "--verify",
+                "--progress",
+                "--format-result",
+                "json",
+                "--no-report",
+                "-o",
+                with.toString(),
+                input);
+        Cli quiet = Cli.atTerminal(
+                true,
+                "convert",
+                "--to",
+                "json",
+                "--verify",
+                "--no-progress",
+                "--no-report",
+                "-o",
+                without.toString(),
+                input);
+
+        assertThat(shown.exitCode()).isEqualTo(ExitCodes.OK);
+        assertThat(shown.out())
+                .startsWith("{\n  \"format\": \"accessconverter-report\"")
+                .doesNotContain("\r");
+        assertThat(shown.err())
+                .startsWith("\r")
+                .contains("write 2/2 Hundred  0 / 100 rows  0%", "verify 2/2 Hundred  100 / 100 rows  100%")
+                .doesNotContain("\n")
+                .endsWith(" \r");
+        String last =
+                shown.err().substring(shown.err().lastIndexOf('\r', shown.err().length() - 2) + 1);
+        assertThat(last).isBlank();
+        assertThat(quiet.exitCode()).isEqualTo(ExitCodes.OK);
+        assertThat(quiet.err()).isEmpty();
+        assertThat(Files.readAllBytes(with)).isEqualTo(Files.readAllBytes(without));
+    }
+
+    /** Without --progress or --no-progress, progress is on when standard input and output are a terminal. */
+    @Test
+    void progressIsOnByDefaultOnlyAtATerminal() {
+        String input = GeneratedFixture.HUNDRED_ROWS.path().toString();
+        Cli terminal = Cli.atTerminal(
+                true,
+                "convert",
+                "--to",
+                "sqlite",
+                "--no-report",
+                "-o",
+                dir.resolve("a.sqlite3").toString(),
+                input);
+        Cli redirected = Cli.atTerminal(
+                false,
+                "convert",
+                "--to",
+                "sqlite",
+                "--no-report",
+                "-o",
+                dir.resolve("b.sqlite3").toString(),
+                input);
+
+        assertThat(terminal.exitCode()).isEqualTo(ExitCodes.OK);
+        assertThat(terminal.err()).contains("write 2/2 Hundred");
+        assertThat(redirected.exitCode()).isEqualTo(ExitCodes.OK);
+        assertThat(redirected.err()).isEmpty();
+
+        Cli verify =
+                Cli.atTerminal(true, "verify", input, dir.resolve("a.sqlite3").toString());
+        assertThat(verify.exitCode()).isEqualTo(ExitCodes.OK);
+        assertThat(verify.err()).contains("verify 2/2 Hundred  100 / 100 rows  100%");
+        assertThat(verify.out()).contains("verify: the output matches the source");
+        Cli snapshot = Cli.atTerminal(true, "verify", "--no-progress", input);
+        assertThat(snapshot.err()).isEmpty();
+
+        // inspect reads no rows and has no such option
+        assertThat(Cli.run("inspect", "--progress", input).exitCode()).isEqualTo(ExitCodes.USAGE);
+    }
 }

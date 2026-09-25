@@ -42,7 +42,7 @@ in the conversion report.
 | `--json-data array` | `--json-rows array` | A row is `[value, …]` in the order of the schema's columns. |
 | `-json-columns` | *(always)* | The schema (tables, columns with every Access property, keys, indexes, relationships) is always written; `--no-schema` leaves it out. |
 | `-mysql-drop-tables` | `--drop-existing` | |
-| `-show-progress` | — | Removed; 3.0 prints a summary at the end. A `--progress` option is planned for 3.1. |
+| `-show-progress` | `--progress` | Progress on standard error, one line erased at the end; on by default at a terminal, `--no-progress` turns it off. A summary is printed at the end either way. |
 | `-debug` | `-v`, `--verbose` | Logs Jackcess's warnings and prints stack traces on errors. |
 
 New in 3.0: `inspect`, `verify`, `--verify`, `--password`, `--charset`, `--tables`, `--exclude-tables`,
