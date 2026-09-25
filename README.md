@@ -352,5 +352,6 @@ overrides it. Access 2000 and later store Unicode, and ignore `--charset` with a
 
 ## License
 
-AccessConverter is released under the [MIT License](LICENSE). The runtime images and the container image bundle
-third-party software under its own licenses: see [NOTICE](NOTICE).
+AccessConverter is released under the [Apache License, Version 2.0](LICENSE), from 3.0.1 on; versions 2.x and earlier
+were released under the MIT License. The runtime images and the container image bundle third-party software under
+its own licenses: see [NOTICE](NOTICE).
