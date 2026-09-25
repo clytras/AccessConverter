@@ -65,6 +65,11 @@ jobs:
             echo "::error::the tag $GITHUB_REF_NAME doesn't match the project version $version"
             exit 1
           fi
+          # A release's description is its CHANGELOG.md section: fail now rather than after every build
+          if [[ "$GITHUB_REF_TYPE" == tag ]] && ! bash packaging/release-notes.sh "$version" > /dev/null; then
+            echo "::error::CHANGELOG.md has no section for $version"
+            exit 1
+          fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - run: ./mvnw -B -ntp verify
       - run: |
@@ -202,20 +207,10 @@ jobs:
           subject-path: |
             dist/*.jar
             dist/*.zip
-      # A draft: the maintainer reviews the artifacts and publishes the release
+      # A draft, described by the version's CHANGELOG.md section: the maintainer reviews it and publishes the release
       - name: Draft release
         run: |
-          cat > notes.md << EOF
-          AccessConverter $VERSION.
-
-          - Runtime images (no Java needed): unzip, then run \`bin/accessconverter\` (\`bin\\accessconverter.cmd\` on Windows).
-          - Jar: \`java -jar accessconverter-$VERSION.jar\` with Java 21 or later.
-          - Container: \`docker run --rm -u "\$(id -u):\$(id -g)" -v "\$PWD:/data" $IMAGE:$VERSION --help\`
-          - Upgrading from 2.x: [migration notes](https://github.com/clytras/AccessConverter/blob/$GITHUB_REF_NAME/docs/migrating-from-v2.md).
-
-          Check a download with \`sha256sum -c SHA256SUMS --ignore-missing\`, or its provenance with
-          \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`.
-          EOF
+          bash packaging/release-notes.sh "$VERSION" "$GITHUB_REF_NAME" > notes.md
           gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "AccessConverter $VERSION" \
             --notes-file notes.md dist/*.jar dist/*.zip dist/SHA256SUMS
 

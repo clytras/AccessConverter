@@ -21,6 +21,8 @@ AccessConverter is built on [Jackcess](https://jackcess.sourceforge.io/). The on
 Upgrading from 2.x? The command line, the outputs and the result format all changed: see
 [Migrating from AccessConverter 2](docs/migrating-from-v2.md).
 
+What changed in each release is in the [changelog](CHANGELOG.md).
+
 ## Install
 
 **Runtime image (no Java needed).** Download the zip for your platform from the
