@@ -128,7 +128,7 @@ final class VerifyCommand implements Callable<Integer> {
         SchemaModel model;
         try (AccessSource db = AccessSource.open(input, options, issues)) {
             model = SchemaExtractor.extract(db, plan.extractOptions(), issues);
-            SchemaModel expanded = ComplexTables.expand(model, convert);
+            SchemaModel expanded = plan.withGeneratedKeys(ComplexTables.expand(model, convert), new Issues());
             DataProfile profile = convert.profile() ? DataProfiler.profile(db, expanded) : null;
             // The issues of planning again are the conversion's, not the verification's: they go nowhere
             SqlitePlan planned =
@@ -173,7 +173,7 @@ final class VerifyCommand implements Callable<Integer> {
             }
             plan.check(Target.of(dialect), spec.commandLine());
             model = SchemaExtractor.extract(access, plan.extractOptions(), issues);
-            SchemaModel expanded = ComplexTables.expand(model, convert);
+            SchemaModel expanded = plan.withGeneratedKeys(ComplexTables.expand(model, convert), new Issues());
             DataProfile profile = convert.profile() ? DataProfiler.profile(access, expanded) : null;
             MySqlOptions mysql = plan.mysqlOptions(dialect, false, null, MySqlOptions.DEFAULT_BATCH_BYTES, false);
             // The issues of planning again are the conversion's, not the verification's: they go nowhere

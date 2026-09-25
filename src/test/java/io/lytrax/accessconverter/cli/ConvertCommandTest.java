@@ -359,4 +359,48 @@ class ConvertCommandTest {
                         + " source, as in the conversion:")
                 .contains("warning CATALOG_INDEX_UNUSABLE");
     }
+
+    /**
+     * {@code --add-primary-key} from the command line: named or not, on convert and verify alike, and refused where
+     * it doesn't apply.
+     */
+    @Test
+    void addPrimaryKeyNumbersTheRowsOfKeylessTablesAndVerifies() {
+        String input = Access97Fixture.GR97.file().toString();
+        Path output = dir.resolve("keys.sqlite3");
+
+        Cli convert = Cli.run(
+                "convert", input, "--to", "sqlite", "-o", output.toString(), "--add-primary-key=row_id", "--verify");
+        assertThat(convert.exitCode()).as(convert.err()).isIn(ExitCodes.OK, ExitCodes.WARNINGS);
+        try (Sqlite sqlite = Sqlite.open(output)) {
+            assertThat(sqlite.strings("SELECT min(row_id) || '-' || max(row_id) FROM Orders"))
+                    .containsExactly("1-40");
+        }
+
+        Cli verify = Cli.run("verify", input, output.toString(), "--add-primary-key=row_id");
+        assertThat(verify.exitCode()).as(verify.out() + verify.err()).isIn(ExitCodes.OK, ExitCodes.WARNINGS);
+        // Without the option, verify expects no row_id column, and finds one
+        assertThat(Cli.run("verify", input, output.toString()).exitCode()).isEqualTo(ExitCodes.FAILED);
+    }
+
+    @Test
+    void addPrimaryKeyIsRefusedWhereItDoesNotApply() {
+        String input = Access97Fixture.GR97.file().toString();
+
+        Cli json = Cli.run(
+                "convert", input, "--to", "json", "-o", dir.resolve("k.json").toString(), "--add-primary-key");
+        assertThat(json.exitCode()).isEqualTo(ExitCodes.USAGE);
+        assertThat(json.err()).contains("--add-primary-key applies to --to sqlite, mysql and mariadb");
+
+        Cli blank = Cli.run(
+                "convert",
+                input,
+                "--to",
+                "sqlite",
+                "-o",
+                dir.resolve("k.sqlite3").toString(),
+                "--add-primary-key=");
+        assertThat(blank.exitCode()).isEqualTo(ExitCodes.USAGE);
+        assertThat(blank.err()).contains("--add-primary-key needs a column name");
+    }
 }

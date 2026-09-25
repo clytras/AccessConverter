@@ -343,13 +343,14 @@ public final class AccessSource implements AutoCloseable {
         if (table.isComplexChild()) {
             return ComplexReader.childRows(file, orderedCursor(parentOf(table)), table, table.columns());
         }
-        return RowStream.of(file, orderedCursor(table), table.columns(), complexValues);
+        return RowStream.of(file, orderedCursor(table), table.columns(), complexValues, table.generatedKeyColumn());
     }
 
     private Cursor orderedCursor(TableModel table) throws IOException {
         Table jt = localTable(table);
         Cursor cursor = null;
-        if (table.primaryKey() != null) {
+        // A key --add-primary-key added has no Access index: its rows are numbered in physical order
+        if (table.primaryKey() != null && table.generatedKeyColumn() == null) {
             try {
                 cursor = CursorBuilder.createCursor(jackcessIndex(jt, table.primaryKey()));
             } catch (RuntimeException e) {
@@ -369,7 +370,8 @@ public final class AccessSource implements AutoCloseable {
             return ComplexReader.childRows(
                     file, CursorBuilder.createCursor(localTable(parentOf(table))), table, columns);
         }
-        return RowStream.of(file, CursorBuilder.createCursor(localTable(table)), columns, false);
+        return RowStream.of(
+                file, CursorBuilder.createCursor(localTable(table)), columns, false, table.generatedKeyColumn());
     }
 
     /** The Access table a complex child's values come from, with the key that orders it. */

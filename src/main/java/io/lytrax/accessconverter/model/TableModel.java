@@ -49,6 +49,13 @@ public record TableModel(
         return link != null;
     }
 
+    /** The column {@code --add-primary-key} added, which numbers the rows; null for a key Access has. */
+    public String generatedKeyColumn() {
+        return primaryKey != null && primaryKey.origin() == IndexModel.Origin.GENERATED
+                ? primaryKey.columns().get(0).name()
+                : null;
+    }
+
     /** A child table made of a complex column's values, not a table of the Access database. */
     public boolean isComplexChild() {
         return complex != null;

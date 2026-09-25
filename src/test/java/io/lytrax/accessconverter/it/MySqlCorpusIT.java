@@ -6,6 +6,7 @@ import io.lytrax.accessconverter.extract.ExtractOptions;
 import io.lytrax.accessconverter.extract.SchemaExtractor;
 import io.lytrax.accessconverter.fixtures.CorpusCase;
 import io.lytrax.accessconverter.model.SchemaModel;
+import io.lytrax.accessconverter.report.IssueCode;
 import io.lytrax.accessconverter.report.Issues;
 import io.lytrax.accessconverter.report.Severity;
 import io.lytrax.accessconverter.source.AccessSource;
@@ -108,6 +109,59 @@ class MySqlCorpusIT {
         try (Connection connection = server.connect(db)) {
             VerifyResult verified = converted.verify(connection, dumps);
             assertThat(verified.differences()).isEmpty();
+        }
+    }
+
+    /** The databases with a table Access keeps without a primary key, on every server. */
+    static Stream<Arguments> keylessCases() {
+        List<CorpusCase> keyless =
+                CorpusCase.databases().filter(MySqlCorpusIT::hasKeylessTable).toList();
+        return DatabaseServer.images().stream()
+                .flatMap(image -> keyless.stream().map(database -> Arguments.of(image, database)));
+    }
+
+    /**
+     * {@code --add-primary-key} on the servers: every keyless table gets an {@code id} AUTO_INCREMENT key (an existing
+     * AutoNumber that isn't the key gives up AUTO_INCREMENT to it, reported); the dump imports without a warning and
+     * verifies with the numbered rows.
+     */
+    @ParameterizedTest(name = "{0} {1}")
+    @MethodSource("keylessCases")
+    void importsCleanlyAndVerifiesWithAddedPrimaryKeys(String image, CorpusCase database) throws Exception {
+        DatabaseServer server = DatabaseServer.of(image);
+        String name = database.id().replaceAll("[^A-Za-z0-9]", "_");
+        Path dump = dir.resolve(image.replace(':', '-') + "_" + name + "-keys.sql");
+        Converted converted = MySqlFixture.convert(
+                database.file(),
+                dump,
+                database.options(),
+                ConvertOptions.DEFAULT,
+                MySqlOptions.of(server.dialect()),
+                "id");
+        assertThat(converted.issues().list())
+                .as("errors in the conversion report")
+                .noneMatch(issue -> issue.severity() == Severity.ERROR);
+        assertThat(converted.issues(IssueCode.PRIMARY_KEY_ADDED)).isNotEmpty();
+
+        String db = "k_" + Integer.toHexString(name.hashCode());
+        server.recreate(db);
+        assertThat(server.importDump(dump, db))
+                .as("what the client printed (warnings)")
+                .isEmpty();
+
+        try (Connection connection = server.connect(db)) {
+            VerifyResult verified = converted.verify(connection);
+            assertThat(verified.differences()).isEmpty();
+            assertThat(verified.matches()).isTrue();
+        }
+    }
+
+    private static boolean hasKeylessTable(CorpusCase database) {
+        try (AccessSource source = AccessSource.open(database.file(), database.options(), new Issues())) {
+            SchemaModel model = SchemaExtractor.extract(source, ExtractOptions.ALL, new Issues());
+            return model.tables().stream().anyMatch(t -> !t.isLinked() && t.primaryKey() == null);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 

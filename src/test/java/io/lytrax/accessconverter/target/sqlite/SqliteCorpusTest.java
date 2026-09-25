@@ -3,11 +3,14 @@ package io.lytrax.accessconverter.target.sqlite;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.lytrax.accessconverter.fixtures.CorpusCase;
+import io.lytrax.accessconverter.report.IssueCode;
 import io.lytrax.accessconverter.report.Severity;
 import io.lytrax.accessconverter.target.BinaryMode;
 import io.lytrax.accessconverter.target.ConvertOptions;
+import io.lytrax.accessconverter.target.IdentifierPolicy;
 import io.lytrax.accessconverter.target.sqlite.SqliteFixture.Converted;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -65,6 +68,39 @@ class SqliteCorpusTest {
         assertThat(converted.issues().list())
                 .as("errors in the conversion report")
                 .noneMatch(issue -> issue.severity() == Severity.ERROR);
+    }
+
+    /**
+     * {@code --add-primary-key} on every database: each table Access keeps without a key gets an {@code id}, the file
+     * is still consistent, verifies with the numbered rows, and every written table now has a primary key.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("databases")
+    void convertsAndVerifiesWithAddedPrimaryKeys(CorpusCase database) {
+        Path output = dir.resolve(database.id().replace('/', '_') + "-keys.sqlite3");
+        Converted converted = SqliteFixture.convert(
+                database.file(), output, database.options(), ConvertOptions.DEFAULT, SqliteOptions.DEFAULT, "id");
+
+        try (Sqlite sqlite = converted.open()) {
+            sqlite.assertIsConsistent();
+            for (var added : converted.issues(IssueCode.PRIMARY_KEY_ADDED)) {
+                String table = converted.table(added.table()).name();
+                String column = converted.column(added.table(), added.object()).name();
+                List<Object> numbers = sqlite.query("SELECT count(*), min(" + IdentifierPolicy.quote(column) + "), max("
+                                + IdentifierPolicy.quote(column) + ") FROM " + IdentifierPolicy.quote(table))
+                        .get(0);
+                List<Long> longs = numbers.stream()
+                        .map(n -> n == null ? null : ((Number) n).longValue())
+                        .toList();
+                long rows = longs.get(0);
+                // Numbered 1, 2, 3, ... with no gap
+                assertThat(longs).as(table).containsExactly(rows, rows == 0 ? null : 1L, rows == 0 ? null : rows);
+            }
+        }
+        assertThat(converted.plan().tables())
+                .allSatisfy(t -> assertThat(t.primaryKey()).as(t.name()).isNotNull());
+        assertThat(converted.verified().differences()).isEmpty();
+        assertThat(converted.issues(IssueCode.NO_PRIMARY_KEY)).isEmpty();
     }
 
     /**

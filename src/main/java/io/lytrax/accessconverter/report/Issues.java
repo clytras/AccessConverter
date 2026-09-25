@@ -34,6 +34,11 @@ public final class Issues {
         }
     }
 
+    /** Withdraws an issue a later stage made untrue, such as a missing primary key that a target now adds. */
+    public void remove(IssueCode code, String table, String object) {
+        entries.remove(new Key(code, table, object));
+    }
+
     public boolean isEmpty() {
         return entries.isEmpty();
     }

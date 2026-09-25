@@ -44,19 +44,31 @@ public final class RowStream implements Iterator<Object[]> {
      *
      * @param complexValues read the values of attachment, multi-value and version-history cells too ({@link
      *     ComplexReader}), instead of only their complex id
+     * @param generatedKey the column {@code --add-primary-key} added, which isn't in Access and is filled with the row
+     *     number (1, 2, 3, ... in cursor order); null when there is none
      */
-    static RowStream of(Path file, Cursor cursor, List<ColumnModel> columns, boolean complexValues) {
+    static RowStream of(
+            Path file, Cursor cursor, List<ColumnModel> columns, boolean complexValues, String generatedKey) {
         Set<String> names = new LinkedHashSet<>();
         columns.forEach(c -> names.add(c.name()));
+        if (generatedKey != null) {
+            names.remove(generatedKey);
+        }
         List<ColumnModel> copy = List.copyOf(columns);
+        long[] number = {0};
         return new RowStream(file, "table " + cursor.getTable().getName(), copy, () -> {
             Row row = cursor.getNextRow(names);
             if (row == null) {
                 return null;
             }
+            number[0]++;
             Object[] values = new Object[copy.size()];
             for (int i = 0; i < values.length; i++) {
                 ColumnModel column = copy.get(i);
+                if (column.name().equals(generatedKey)) {
+                    values[i] = AccessValues.canonical(column.type(), (int) number[0]);
+                    continue;
+                }
                 Object raw = row.get(column.name());
                 values[i] = complexValues && ComplexReader.readsValues(column.type())
                         ? ComplexReader.cell(column, raw)

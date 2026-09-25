@@ -241,8 +241,10 @@ final class ConvertCommand implements Callable<Integer> {
             model = SchemaExtractor.extract(db, plan.extractOptions(), issues);
             timings.put("extract", since(started));
 
-            // The SQL targets write attachment and multi-value columns as child tables, profiled like any table (08)
-            SchemaModel planned = to == Target.json ? model : ComplexTables.expand(model, options);
+            // The SQL targets write attachment and multi-value columns as child tables, profiled like any table (08),
+            // and with --add-primary-key give a key to the tables Access keeps without one
+            SchemaModel planned =
+                    to == Target.json ? model : plan.withGeneratedKeys(ComplexTables.expand(model, options), issues);
             started = System.nanoTime();
             DataProfile profile = options.profile() ? DataProfiler.profile(db, planned) : null;
             timings.put("profile", since(started));
