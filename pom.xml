@@ -6,7 +6,7 @@
 
     <groupId>com.lytrax</groupId>
     <artifactId>accessconverter</artifactId>
-    <version>3.0.0</version>
+    <version>3.0.1-SNAPSHOT</version>
 
     <name>AccessConverter</name>
     <description>Converts Microsoft Access databases (.mdb, .accdb) to MySQL/MariaDB dumps, SQLite and JSON</description>
