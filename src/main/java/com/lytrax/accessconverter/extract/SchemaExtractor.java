@@ -54,8 +54,7 @@ public final class SchemaExtractor {
                     IssueCode.LINKED_TABLE_SKIPPED,
                     linked.name(),
                     null,
-                    "linked to " + linked.remoteTable() + " in " + linked.database()
-                            + "; its data lives in that database and is not read");
+                    linkMessage(new TableModel.LinkInfo(linked.database(), linked.remoteTable(), linked.odbc())));
         }
         tables.sort(Comparator.comparing(TableModel::name, AccessSource.NAME_ORDER));
 
@@ -86,5 +85,14 @@ public final class SchemaExtractor {
                         source.charset().name()),
                 tables,
                 relationships);
+    }
+
+    /** What a linked table is, and what to convert instead: the back-end file, or nothing for an ODBC source. */
+    private static String linkMessage(TableModel.LinkInfo link) {
+        return link.odbc()
+                ? "linked through ODBC to " + link.remoteTable() + " in " + link.displayDatabase()
+                        + "; its data lives on that server and is not read"
+                : "linked to " + link.remoteTable() + " in " + link.displayDatabase()
+                        + "; its data lives in that database and is not read: convert that file directly";
     }
 }

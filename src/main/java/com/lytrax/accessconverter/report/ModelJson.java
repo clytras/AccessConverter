@@ -66,7 +66,7 @@ public final class ModelJson {
         g.writeStringProperty("name", t.name());
         if (t.isLinked()) {
             g.writeObjectPropertyStart("linked");
-            g.writeStringProperty("database", t.link().database());
+            g.writeStringProperty("database", t.link().displayDatabase());
             g.writeStringProperty("remoteTable", t.link().remoteTable());
             g.writeBooleanProperty("odbc", t.link().odbc());
             g.writeEndObject();

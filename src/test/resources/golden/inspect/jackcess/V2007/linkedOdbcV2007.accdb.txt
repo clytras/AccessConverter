@@ -17,11 +17,11 @@ Table Lokal (1 rows)
     Staging         BOOLEAN  default False from "No"  format "Yes/No"
   primary key: PrimaryKey (ID)
 
-Linked table Ordrar -> dbo.Ordrar in DSN=Magnapinna;Description=Safexit;UID=safexit;PWD=DummyPassword;APP=Microsoft Office;DATABASE=safexit (ODBC)
+Linked table Ordrar -> dbo.Ordrar in DSN=Magnapinna;Description=Safexit;UID=safexit;PWD=***;APP=Microsoft Office;DATABASE=safexit (ODBC)
 
 Profile:
   Lokal: 1 rows scanned
     ID: nulls 0, max-autonumber 1
 
 Issues: 1
-  warning LINKED_TABLE_SKIPPED Ordrar: linked to dbo.Ordrar in DSN=Magnapinna;Description=Safexit;UID=safexit;PWD=DummyPassword;APP=Microsoft Office;DATABASE=safexit; its data lives in that database and is not read
+  warning LINKED_TABLE_SKIPPED Ordrar: linked through ODBC to dbo.Ordrar in DSN=Magnapinna;Description=Safexit;UID=safexit;PWD=***;APP=Microsoft Office;DATABASE=safexit; its data lives on that server and is not read

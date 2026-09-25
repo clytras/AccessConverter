@@ -3,6 +3,7 @@ package com.lytrax.accessconverter.model;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
@@ -74,7 +75,14 @@ public record TableModel(
      * @param database the linked database path as Access stored it, or the ODBC connection string
      * @param remoteTable the table's name in that database
      */
-    public record LinkInfo(String database, String remoteTable, boolean odbc) {}
+    public record LinkInfo(String database, String remoteTable, boolean odbc) {
+        private static final Pattern PASSWORD = Pattern.compile("(?i)\\b(PWD|PASSWORD)=[^;]*");
+
+        /** The database for messages and inspect: an ODBC connection string's password is masked. */
+        public String displayDatabase() {
+            return database == null ? null : PASSWORD.matcher(database).replaceAll("$1=***");
+        }
+    }
 
     /**
      * Where a complex child table's rows come from: the values of {@code parentColumn} in each row of

@@ -59,7 +59,7 @@ final class ModelText {
     private void table(TableModel table) {
         if (table.isLinked()) {
             TableModel.LinkInfo link = table.link();
-            line("Linked table " + table.name() + " -> " + link.remoteTable() + " in " + link.database()
+            line("Linked table " + table.name() + " -> " + link.remoteTable() + " in " + link.displayDatabase()
                     + (link.odbc() ? " (ODBC)" : ""));
             return;
         }
