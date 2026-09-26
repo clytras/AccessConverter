@@ -82,6 +82,17 @@ public final class RowStream implements Iterator<Object[]> {
         return columns;
     }
 
+    /** The same rows, running {@code onRow} as each one is read. */
+    RowStream observed(Runnable onRow) {
+        return new RowStream(file, what, columns, () -> {
+            Object[] row = producer.next();
+            if (row != null) {
+                onRow.run();
+            }
+            return row;
+        });
+    }
+
     @Override
     public boolean hasNext() {
         if (next == null && !done) {

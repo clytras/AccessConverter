@@ -39,6 +39,7 @@ public final class Main implements Callable<Integer> {
 
     private final OutputStream stdout;
     private final PasswordReader passwordReader;
+    private final Terminal terminal;
 
     @Spec
     CommandSpec spec;
@@ -49,9 +50,10 @@ public final class Main implements Callable<Integer> {
             description = "Log Jackcess warnings, and print stack traces on errors.")
     boolean verbose;
 
-    private Main(OutputStream stdout, PasswordReader passwordReader) {
+    private Main(OutputStream stdout, PasswordReader passwordReader, Terminal terminal) {
         this.stdout = stdout;
         this.passwordReader = passwordReader;
+        this.terminal = terminal;
     }
 
     public static void main(String[] args) {
@@ -63,13 +65,23 @@ public final class Main implements Callable<Integer> {
      * console's encoding, so it displays correctly); machine-readable output such as JSON is always UTF-8.
      */
     public static int run(OutputStream stdout, Charset textCharset, PrintWriter err, String... args) {
-        return run(Main::readPassword, stdout, textCharset, err, args);
+        return run(Main::readPassword, Terminal.SYSTEM, stdout, textCharset, err, args);
     }
 
     static int run(
             PasswordReader passwordReader, OutputStream stdout, Charset textCharset, PrintWriter err, String... args) {
+        return run(passwordReader, Terminal.SYSTEM, stdout, textCharset, err, args);
+    }
+
+    static int run(
+            PasswordReader passwordReader,
+            Terminal terminal,
+            OutputStream stdout,
+            Charset textCharset,
+            PrintWriter err,
+            String... args) {
         PrintWriter out = new PrintWriter(new OutputStreamWriter(stdout, textCharset), true);
-        Main main = new Main(stdout, passwordReader);
+        Main main = new Main(stdout, passwordReader, terminal);
         CommandLine cli = new CommandLine(main)
                 .setOut(out)
                 .setErr(err)
@@ -106,6 +118,15 @@ public final class Main implements Callable<Integer> {
         return new OutputStreamWriter(stdout, StandardCharsets.UTF_8);
     }
 
+    /**
+     * Progress on standard error: as {@code requested} ({@code --progress} or {@code --no-progress}), or when neither
+     * was given, on when the user is at a terminal.
+     */
+    Progress progress(Boolean requested) {
+        boolean on = requested != null ? requested : terminal.interactive();
+        return on ? Progress.on(spec.commandLine().getErr(), terminal::nanoTime) : Progress.off();
+    }
+
     /** Asks for the password of a {@code --password} without a value. */
     char[] askPassword() throws IOException {
         return passwordReader.read(spec.commandLine().getErr());
@@ -125,6 +146,45 @@ public final class Main implements Callable<Integer> {
         Charset charset = Charset.forName(System.getProperty("native.encoding"), Charset.defaultCharset());
         String line = new BufferedReader(new InputStreamReader(System.in, charset)).readLine();
         return line == null ? null : line.toCharArray();
+    }
+
+    /** Whether the user is at a terminal, and the clock progress is timed by: the system's, or a test's. */
+    interface Terminal {
+        Terminal SYSTEM = new Terminal() {
+            @Override
+            public boolean interactive() {
+                return Main.interactive();
+            }
+
+            @Override
+            public long nanoTime() {
+                return System.nanoTime();
+            }
+        };
+
+        boolean interactive();
+
+        long nanoTime();
+    }
+
+    /**
+     * Whether standard input and output are both a terminal. That is all the JDK can tell (02): {@link System#console()}
+     * is null unless both are, on Java 21 and 25 alike, and nothing says whether standard error is one. Java 22 to 24
+     * return a console even when output is redirected, and only {@code Console.isTerminal()} (Java 22 and later) says
+     * so; it is looked up by reflection, since the code is compiled for Java 21.
+     */
+    static boolean interactive() {
+        Console console = System.console();
+        if (console == null) {
+            return false;
+        }
+        try {
+            return (Boolean) Console.class.getMethod("isTerminal").invoke(console);
+        } catch (NoSuchMethodException e) {
+            return true; // Java 21: a console exists only on a terminal
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return false;
+        }
     }
 
     /** Where an asked-for password comes from: the user, or a fixed answer in tests. */
