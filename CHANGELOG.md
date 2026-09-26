@@ -7,6 +7,8 @@ fixes the patch version.
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-09-26
+
 ### Added
 
 - `--progress` / `--no-progress` on `convert` and `verify`: the stage, the table and its rows on one line on standard
@@ -109,7 +111,8 @@ AccessConverter 3 is a complete rewrite of 2.x: a new command line, new output f
 
 - First release: Access databases to JSON, MySQL dumps and SQLite.
 
-[Unreleased]: https://github.com/clytras/AccessConverter/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/clytras/AccessConverter/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/clytras/AccessConverter/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/clytras/AccessConverter/compare/v3.0.1...v3.1.0
 [3.0.1]: https://github.com/clytras/AccessConverter/compare/v2.0...v3.0.1
 [2.0]: https://github.com/clytras/AccessConverter/compare/v1.1.1...v2.0

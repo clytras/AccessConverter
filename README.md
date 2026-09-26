@@ -211,7 +211,7 @@ the same report on standard output.
 {
   "format": "accessconverter-report",
   "formatVersion": 1,
-  "tool": "accessconverter 3.1.0",
+  "tool": "accessconverter 3.2.0",
   "command": "convert",
   "options": { "to": "mysql", "binary": "inline", "collation": "utf8mb4_0900_as_ci", "…": "…" },
   "source": { "file": "Shop.mdb", "fileFormat": "V1997", "codePage": 1253, "charset": "windows-1253" },
