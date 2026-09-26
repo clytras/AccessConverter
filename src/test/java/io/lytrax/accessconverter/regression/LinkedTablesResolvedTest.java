@@ -275,7 +275,16 @@ class LinkedTablesResolvedTest {
         }
         Extraction stored = extract(front, resolve(null));
         assertThat(stored.table("Secret").isResolvedLink()).isTrue();
-        assertThat(stored.issues()).allSatisfy(i -> assertThat(i.message()).doesNotContain(encrypted.password()));
+        // The messages name the file read, whose temporary directory can hold the digits of a short password: look
+        // at them without it
+        List<String> paths = List.of(dir.toRealPath().toString(), dir.toString());
+        assertThat(stored.issues()).allSatisfy(i -> {
+            String message = i.message();
+            for (String path : paths) {
+                message = message.replace(path, "");
+            }
+            assertThat(message).doesNotContain("PWD").doesNotContain(encrypted.password());
+        });
     }
 
     /** A link to a table that is itself a link in its back-end isn't followed. */
