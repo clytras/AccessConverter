@@ -25,7 +25,7 @@ Both are UTF-8 with LF line ends. The same database and options always give byte
 {
   "format": "accessconverter",
   "formatVersion": 1,
-  "producer": "AccessConverter 3.1.0",
+  "producer": "AccessConverter 3.2.0",
   "layout": "document",
   "encoding": { "rows": "object", "bigint": "number", "decimals": "number", "hyperlinks": "string",
                 "binary": "base64", "ole": "raw" },

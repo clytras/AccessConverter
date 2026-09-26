@@ -211,7 +211,7 @@ the same report on standard output.
 {
   "format": "accessconverter-report",
   "formatVersion": 1,
-  "tool": "accessconverter 3.1.0",
+  "tool": "accessconverter 3.2.0",
   "command": "convert",
   "options": { "to": "mysql", "binary": "inline", "collation": "utf8mb4_0900_as_ci", "…": "…" },
   "source": { "file": "Shop.mdb", "fileFormat": "V1997", "codePage": 1253, "charset": "windows-1253" },
@@ -435,6 +435,6 @@ accessconverter convert Front.accdb --to sqlite --linked resolve --linked-root /
 
 ## License
 
-AccessConverter is released under the [Apache License, Version 2.0](LICENSE), from 3.0.1 on; versions 2.x and earlier
+AccessConverter is released under the [Apache License, Version 2.0](LICENSE), from 3 on; versions 2.x and earlier
 were released under the MIT License. The runtime images and the container image bundle third-party software under
 its own licenses: see [NOTICE](NOTICE).
