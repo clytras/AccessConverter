@@ -300,6 +300,13 @@ public final class JsonWriter {
         TableModel source = table.source();
         g.writeStartObject();
         g.writeStringProperty("name", table.name());
+        if (source.isResolvedLink()) {
+            // Where Access says the data lives, as it stores it; never the local path it was read from
+            g.writeObjectPropertyStart("linkedFrom");
+            g.writeStringProperty("database", source.link().database());
+            g.writeStringProperty("remoteTable", source.link().remoteTable());
+            g.writeEndObject();
+        }
         g.writeStringProperty("description", source.description());
         g.writeArrayPropertyStart("columns");
         for (PlannedColumn column : table.columns()) {

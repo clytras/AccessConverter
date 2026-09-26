@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import picocli.CommandLine;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
@@ -40,7 +42,43 @@ final class SourceOptions {
             })
     String charset;
 
+    /** What happens to linked tables (D11). */
+    enum Linked {
+        skip,
+        resolve
+    }
+
+    @Option(
+            names = "--linked",
+            paramLabel = "<mode>",
+            description = {
+                "Linked tables: skip (the default) lists and reports them without their data; resolve reads a table"
+                        + " linked to another Access file from that file, found by its file name in --linked-root."
+                        + " ODBC links are always skipped."
+            })
+    Linked linked;
+
+    @Option(
+            names = "--linked-root",
+            paramLabel = "<dir>",
+            description = {
+                "With --linked resolve: the only directory the back-end files are looked for in (default: the"
+                        + " input's directory). The paths Access stored are never opened."
+            })
+    Path linkedRoot;
+
+    boolean resolvesLinks() {
+        return linked == Linked.resolve;
+    }
+
     OpenOptions toOpenOptions() throws IOException {
+        if (linkedRoot != null && !resolvesLinks()) {
+            throw new CommandLine.ParameterException(spec.commandLine(), "--linked-root applies to --linked resolve");
+        }
+        if (linkedRoot != null && !Files.isDirectory(linkedRoot)) {
+            throw new CommandLine.ParameterException(
+                    spec.commandLine(), "--linked-root: " + linkedRoot + " is not a directory");
+        }
         Charset decoded = null;
         if (charset != null) {
             try {
@@ -54,6 +92,7 @@ final class SourceOptions {
             given = ((Main) spec.root().userObject()).askPassword();
         }
         String pw = given == null || given.length == 0 ? null : new String(given);
-        return new OpenOptions(pw, decoded);
+        return new OpenOptions(
+                pw, decoded, resolvesLinks() ? OpenOptions.Links.resolve(linkedRoot) : OpenOptions.Links.SKIP);
     }
 }

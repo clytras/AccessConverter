@@ -29,7 +29,9 @@ public final class SourceException extends IOException {
         /** The file is damaged or truncated. */
         CORRUPT,
         /** Opened, but reading a table failed. */
-        READ_FAILED
+        READ_FAILED,
+        /** A linked table's back-end, or its table there, can't be found or read ({@code --linked resolve}). */
+        LINK_UNRESOLVED
     }
 
     private final Kind kind;
@@ -51,6 +53,11 @@ public final class SourceException extends IOException {
                 "reading " + what + " failed (" + describe(cause)
                         + "); the file may be damaged: try Compact and Repair in Access",
                 cause);
+    }
+
+    /** A linked table that {@code --linked resolve} can't read; {@code file} is the database that links it. */
+    public static SourceException linkUnresolved(Path file, String message, Throwable cause) {
+        return new SourceException(Kind.LINK_UNRESOLVED, file, message, cause);
     }
 
     static String describe(Throwable e) {

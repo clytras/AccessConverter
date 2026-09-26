@@ -27,15 +27,23 @@ final class TableReader {
 
     /** Reads a table's metadata; anything Jackcess fails on becomes a typed error naming the table. */
     static TableModel read(Path file, Table table, Issues issues) throws SourceException {
+        return read(file, table, table.getName(), null, issues);
+    }
+
+    /**
+     * As {@link #read(Path, Table, Issues)}, for a table known here by another name: a linked table read from its
+     * back-end is named as the database that links it names it, and reported under that name.
+     */
+    static TableModel read(Path file, Table table, String name, TableModel.LinkInfo link, Issues issues)
+            throws SourceException {
         try {
-            return read(table, issues);
+            return read(table, name, link, issues);
         } catch (RuntimeException e) {
             throw SourceException.readFailed(file, "table " + table.getName(), e);
         }
     }
 
-    private static TableModel read(Table table, Issues issues) {
-        String name = table.getName();
+    private static TableModel read(Table table, String name, TableModel.LinkInfo link, Issues issues) {
         List<ColumnModel> columns = new ArrayList<>();
         for (Column column : table.getColumns()) {
             columns.add(column(name, column, issues));
@@ -69,7 +77,7 @@ final class TableReader {
         }
         return new TableModel(
                 name,
-                null,
+                link,
                 columns,
                 indexes.primaryKey(),
                 indexes.indexes(),

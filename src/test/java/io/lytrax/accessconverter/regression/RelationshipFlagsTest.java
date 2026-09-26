@@ -15,6 +15,7 @@ import io.lytrax.accessconverter.model.ForeignKeyModel.Action;
 import io.lytrax.accessconverter.model.ForeignKeyModel.Join;
 import io.lytrax.accessconverter.source.OpenOptions;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
@@ -80,7 +81,9 @@ class RelationshipFlagsTest {
 
     /** Jackcess can't build the relationship to a linked table (its target isn't there): see LinkedTablesSkipped. */
     static Stream<CorpusCase> withoutLinkedTables() {
-        return CorpusCase.databases().filter(c -> !c.id().equals("jackcess/V2007/linkedV2007.accdb"));
+        return CorpusCase.databases()
+                .filter(c -> !c.id().equals("jackcess/V2007/linkedV2007.accdb")
+                        && !c.id().equals("access97/linkFront97.mdb"));
     }
 
     @ParameterizedTest
@@ -90,13 +93,17 @@ class RelationshipFlagsTest {
     }
 
     static void assertAgrees(Path file, OpenOptions options) throws IOException {
+        Extraction extraction = Extraction.of(file, options);
         List<Flags> jackcess;
-        try (Database db = Fixtures.openReadOnly(file, options.password())) {
+        // Names in the charset the converter decodes with: an Access 97 file's are in its code page
+        try (Database db = Fixtures.openReadOnly(
+                file,
+                options.password(),
+                Charset.forName(extraction.model().source().charset()))) {
             jackcess = db.getRelationships().stream().map(Flags::of).toList();
         }
-        List<Flags> decoded = Extraction.of(file, options).model().relationships().stream()
-                .map(Flags::of)
-                .toList();
+        List<Flags> decoded =
+                extraction.model().relationships().stream().map(Flags::of).toList();
         assertThat(decoded).containsExactlyInAnyOrderElementsOf(jackcess);
     }
 

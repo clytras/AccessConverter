@@ -12,6 +12,7 @@ import io.lytrax.accessconverter.target.json.JsonOptions.Layout;
 import io.lytrax.accessconverter.target.json.JsonOptions.Rows;
 import io.lytrax.accessconverter.verify.VerifyResult;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -78,6 +79,38 @@ class JsonCorpusTest {
 
         Converted second = convert(variant, database, "-2");
         assertSameOutput(first.output(), second.output());
+    }
+
+    static Stream<Arguments> linkedCases() {
+        return Stream.of(Variant.values())
+                .flatMap(variant -> CorpusCase.linkedResolved().map(database -> Arguments.of(variant, database)));
+    }
+
+    /**
+     * {@code --linked resolve}: each linked table is a table with its data and a {@code linkedFrom}, the file still
+     * validates against the published schema and verifies, and no linked table is left in {@code linkedTables}.
+     */
+    @ParameterizedTest(name = "{0} {1}")
+    @MethodSource("linkedCases")
+    void exportsValidatesAndVerifiesWithLinkedTablesResolved(Variant variant, CorpusCase database) throws IOException {
+        Converted first = convert(variant, database, "-1");
+
+        assertThat(first.issues().list())
+                .as("errors in the conversion report")
+                .noneMatch(issue -> issue.severity() == Severity.ERROR);
+        assertThat(JsonSchemaCheck.errors(first.output()))
+                .as("violations of the published JSON Schema")
+                .isEmpty();
+        assertThat(first.plan().linked()).isEmpty();
+        assertThat(first.plan().tables()).anyMatch(t -> t.source().isResolvedLink());
+        String schema = Files.readString(
+                variant.options.layout() == Layout.DOCUMENT
+                        ? first.output()
+                        : first.output().resolve("schema.json"),
+                StandardCharsets.UTF_8);
+        assertThat(schema).contains("\"linkedFrom\"");
+        assertThat(first.verify().differences()).as("verify").isEmpty();
+        assertSameOutput(first.output(), convert(variant, database, "-2").output());
     }
 
     private static Converted convert(Variant variant, CorpusCase database, String suffix) {

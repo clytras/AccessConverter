@@ -69,6 +69,21 @@ class MySqlCorpusIT {
         }
     }
 
+    static Stream<Arguments> linkedCases() {
+        return DatabaseServer.images().stream()
+                .flatMap(image -> CorpusCase.linkedResolved().map(database -> Arguments.of(image, database)));
+    }
+
+    /**
+     * {@code --linked resolve} on the servers: the linked tables and the back-end's enforced relationship between them
+     * import without a warning and verify.
+     */
+    @ParameterizedTest(name = "{0} {1}")
+    @MethodSource("linkedCases")
+    void importsCleanlyAndVerifiesWithLinkedTablesResolved(String image, CorpusCase database) throws Exception {
+        importsCleanlyAndVerifies(image, database);
+    }
+
     /** The databases with bytes or complex values, and each way 08 can write them that keeps the dump small. */
     static Stream<Arguments> binaryCases() {
         List<CorpusCase> binary =

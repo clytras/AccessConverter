@@ -115,8 +115,30 @@ class SqliteCorpusTest {
                 .isEqualTo(Sqlite.dump(convert(database, "-2").file()));
     }
 
+    /**
+     * {@code --linked resolve}: the linked tables are written with their back-end's data, the back-end's enforced
+     * relationship between them becomes a foreign key, the file is consistent, verifies, and is the same every run.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("io.lytrax.accessconverter.fixtures.CorpusCase#linkedResolved")
+    void convertsAndVerifiesWithLinkedTablesResolved(CorpusCase database) {
+        Converted converted = convert(database, "-resolved");
+
+        try (Sqlite sqlite = converted.open()) {
+            sqlite.assertIsConsistent();
+        }
+        assertThat(converted.model().tables()).noneMatch(t -> t.isLinked());
+        assertThat(converted.model().tables()).anyMatch(t -> t.isResolvedLink());
+        assertThat(converted.verified().differences()).isEmpty();
+        assertThat(converted.issues().list())
+                .as("errors in the conversion report")
+                .noneMatch(issue -> issue.severity() == Severity.ERROR);
+        assertThat(Sqlite.dump(converted.file()))
+                .isEqualTo(Sqlite.dump(convert(database, "-resolved-2").file()));
+    }
+
     private static Converted convert(CorpusCase database, String suffix) {
-        Path output = dir.resolve(database.id().replace('/', '_') + suffix + ".sqlite3");
+        Path output = dir.resolve(database.id().replaceAll("[/ ]", "_") + suffix + ".sqlite3");
         return SqliteFixture.convert(
                 database.file(), output, database.options(), ConvertOptions.DEFAULT, SqliteOptions.DEFAULT);
     }

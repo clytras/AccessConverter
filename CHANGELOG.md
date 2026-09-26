@@ -12,6 +12,18 @@ fixes the patch version.
 - `--progress` / `--no-progress` on `convert` and `verify`: the stage, the table and its rows on one line on standard
   error, redrawn at most five times a second and erased at the end. It is on by default when standard input and
   output are a terminal; standard output, the output and the report are unchanged by it.
+- `--linked resolve` on `convert`, `verify` and `inspect`: a table linked to another Access file is read from that
+  file and converted like any other table, under its name in the linking database. The back-end is found by its
+  file name in `--linked-root` (default: the input's directory), never at the path Access stored; an Access 97
+  back-end is read with its own code page, an encrypted one with the password its link stores, else `--password`.
+  The back-end's own relationships between the tables read from it come along, as foreign keys where Access
+  enforces them. ODBC links, and links to links, stay skipped. JSON gives such a table a `linkedFrom`, and the
+  published JSON Schema allows it.
+
+### Changed
+
+- The `LINKED_TABLE_SKIPPED` message now also suggests `--linked resolve`, so the conversion report and `inspect`
+  output of a database with linked tables differ; the issue code and the converted outputs don't.
 
 ## [3.1.0] - 2026-09-25
 

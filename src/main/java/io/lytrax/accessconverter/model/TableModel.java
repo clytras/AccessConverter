@@ -7,7 +7,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * An Access table. A linked table has a {@link LinkInfo} and no columns or indexes.
+ * An Access table. A linked table has a {@link LinkInfo}: without {@code --linked resolve} it has no columns or indexes
+ * and no data ({@link #isLinked()}); read from its back-end, it is a table like any other, under its name here, and
+ * its {@link LinkInfo} says where it came from.
  *
  * @param primaryKey null when the table has none (targets then emit none, never an invented one)
  * @param indexes the normalized secondary indexes, ordered by name
@@ -45,8 +47,14 @@ public record TableModel(
         this(name, link, columns, primaryKey, indexes, description, validation, rowCount, null);
     }
 
+    /** A linked table that isn't read: its data lives elsewhere and nothing is written for it. */
     public boolean isLinked() {
-        return link != null;
+        return link != null && link.readFrom() == null;
+    }
+
+    /** A linked table read from its back-end ({@code --linked resolve}): a table like any other. */
+    public boolean isResolvedLink() {
+        return link != null && link.readFrom() != null;
     }
 
     /** The column {@code --add-primary-key} added, which numbers the rows; null for a key Access has. */
@@ -81,9 +89,14 @@ public record TableModel(
      *
      * @param database the linked database path as Access stored it, or the ODBC connection string
      * @param remoteTable the table's name in that database
+     * @param readFrom the back-end file the table was read from ({@code --linked resolve}), or null when it isn't read
      */
-    public record LinkInfo(String database, String remoteTable, boolean odbc) {
+    public record LinkInfo(String database, String remoteTable, boolean odbc, String readFrom) {
         private static final Pattern PASSWORD = Pattern.compile("(?i)\\b(PWD|PASSWORD)=[^;]*");
+
+        public LinkInfo(String database, String remoteTable, boolean odbc) {
+            this(database, remoteTable, odbc, null);
+        }
 
         /** Whether the stored database, an ODBC connection string, holds a password. */
         public boolean hasPassword() {

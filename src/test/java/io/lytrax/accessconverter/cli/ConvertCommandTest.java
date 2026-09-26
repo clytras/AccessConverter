@@ -495,4 +495,90 @@ class ConvertCommandTest {
         // inspect reads no rows and has no such option
         assertThat(Cli.run("inspect", "--progress", input).exitCode()).isEqualTo(ExitCodes.USAGE);
     }
+
+    /**
+     * --linked resolve on the command line: the Greek Access 97 front-end and its back-end, copied together, convert
+     * with the linked tables' data and verify when verify is told the same; without it, verify finds the output
+     * holds tables the source doesn't have.
+     */
+    @Test
+    void linkedTablesAreConvertedFromTheirBackEndWhenAskedTo() throws IOException {
+        Path front = Files.copy(Access97Fixture.LINK_FRONT.file(), dir.resolve("front97.mdb"));
+        Files.copy(Access97Fixture.LINK_BACK.file(), dir.resolve("LinkBack97.mdb"));
+        Path output = dir.resolve("front97.sqlite3");
+
+        Cli converted = Cli.run("convert", front.toString(), "--to", "sqlite", "--linked", "resolve", "--verify");
+
+        assertThat(converted.exitCode()).as(converted.err()).isEqualTo(ExitCodes.WARNINGS);
+        assertThat(converted.out()).contains("4 tables, 14 rows");
+        try (Sqlite sqlite = Sqlite.open(output)) {
+            assertThat(sqlite.value("SELECT count(*) FROM \"Είδη\"")).isEqualTo(6);
+            assertThat(sqlite.value("SELECT \"Όνομα\" FROM \"Κατηγορίες\" WHERE CategoryID = 2"))
+                    .isEqualTo("Γαλακτοκομικά");
+        }
+        String report = Files.readString(dir.resolve("front97.sqlite3.report.json"), StandardCharsets.UTF_8);
+        assertThat(report)
+                .contains("\"linked\": \"resolve\"", "\"code\": \"LINKED_TABLE_RESOLVED\"")
+                .doesNotContain("backpass");
+
+        Cli verified = Cli.run("verify", front.toString(), output.toString(), "--linked", "resolve");
+        assertThat(verified.out()).contains("verify: the output matches the source");
+        Cli planned = Cli.run("verify", front.toString(), output.toString());
+        assertThat(planned.exitCode()).isEqualTo(ExitCodes.FAILED);
+
+        Cli inspected = Cli.run("inspect", front.toString(), "--linked", "resolve");
+        assertThat(inspected.out())
+                .contains("Tables: 2 local, 2 linked (2 read from their back-end)")
+                .contains("linked to Προϊόντα in C:\\WORK\\LINKBACK97.MDB, read from ");
+    }
+
+    /**
+     * A back-end that isn't there is a table error: one line and no output by default; with --on-table-error continue
+     * the rest is written and the exit code is still 2.
+     */
+    @Test
+    void aMissingBackEndIsATableError() throws IOException {
+        Path front = Files.copy(Access97Fixture.LINK_FRONT.file(), dir.resolve("alone.mdb"));
+
+        Cli failed = Cli.run("convert", front.toString(), "--to", "json", "--linked", "resolve");
+        assertThat(failed.exitCode()).isEqualTo(ExitCodes.FAILED);
+        assertThat(failed.err())
+                .startsWith("error: alone.mdb: linked table ")
+                .contains("no file named LINKBACK97.MDB in " + dir);
+        assertThat(dir.resolve("alone.json")).doesNotExist();
+
+        Cli continued = Cli.run(
+                "convert", front.toString(), "--to", "json", "--linked", "resolve", "--on-table-error", "continue");
+        assertThat(continued.exitCode()).isEqualTo(ExitCodes.FAILED);
+        assertThat(continued.out()).contains("error TABLE_READ_FAILED Είδη");
+        assertThat(dir.resolve("alone.json")).exists();
+    }
+
+    @Test
+    void theLinkRootBelongsToResolveAndMustBeADirectory() {
+        String input = Access97Fixture.LINK_FRONT.file().toString();
+        Cli withoutResolve = Cli.run("inspect", input, "--linked-root", dir.toString());
+        assertThat(withoutResolve.exitCode()).isEqualTo(ExitCodes.USAGE);
+        assertThat(withoutResolve.err()).contains("--linked-root applies to --linked resolve");
+
+        Cli missing = Cli.run(
+                "inspect",
+                input,
+                "--linked",
+                "resolve",
+                "--linked-root",
+                dir.resolve("nowhere").toString());
+        assertThat(missing.exitCode()).isEqualTo(ExitCodes.USAGE);
+        assertThat(missing.err()).contains("is not a directory");
+
+        Cli root = Cli.run(
+                "inspect",
+                input,
+                "--linked",
+                "resolve",
+                "--linked-root",
+                Access97Fixture.LINK_BACK.file().getParent().toString());
+        assertThat(root.exitCode()).isEqualTo(ExitCodes.WARNINGS);
+        assertThat(root.out()).contains("2 read from their back-end");
+    }
 }
