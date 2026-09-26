@@ -73,6 +73,13 @@ public final class ModelJson {
             g.writeEndObject();
             return;
         }
+        if (t.isResolvedLink()) {
+            g.writeObjectPropertyStart("linkedFrom");
+            g.writeStringProperty("database", t.link().displayDatabase());
+            g.writeStringProperty("remoteTable", t.link().remoteTable());
+            g.writeStringProperty("readFrom", t.link().readFrom());
+            g.writeEndObject();
+        }
         g.writeNumberProperty("rowCount", t.rowCount());
         optional(g, "description", t.description());
         rule(g, "validationRule", t.validation());

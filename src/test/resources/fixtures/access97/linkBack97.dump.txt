@@ -1,0 +1,40 @@
+database: C:\WORK\LINKBACK97.MDB
+jet format: 3.0   DAO: 3.51
+size: 73728 bytes
+
+TABLE Suppliers
+  field SupplierID : Long(4)
+  field Name : Text(50) allows-''
+  index PrimaryKey PRIMARY UNIQUE
+  | 1	Φάρμα Κρήτης
+  | 2	Aegean Foods
+  rows: 2
+
+TABLE Κατηγορίες
+  field CategoryID : Long(4)
+  field Όνομα : Text(50) allows-''
+  index PrimaryKey PRIMARY UNIQUE
+  | 1	Ποτά
+  | 2	Γαλακτοκομικά
+  | 3	Αρτοσκευάσματα
+  rows: 3
+
+TABLE Προϊόντα
+  field ProductID : Long(4)
+  field CategoryID : Long(4)
+  field SupplierID : Long(4)
+  field Όνομα : Text(60) allows-''
+  field Τιμή : Currency(8)
+  index PrimaryKey PRIMARY UNIQUE
+  index SuppliersΠροϊόντα
+  index ΚατηγορίεςΠροϊόντα
+  | 10	1	1	Καφές ελληνικός	2,35
+  | 11	1	2	Τσάι του βουνού	4,7
+  | 12	2	1	Γιαούρτι στραγγιστό	7,05
+  | 13	2	2	Φέτα ΠΟΠ	9,4
+  | 14	3	1	Ψωμί χωριάτικο	11,75
+  | 15	<NULL>	2	ΐΰ ς σ ΆΈΉΊΌΎΏ άέήίόύώ	14,1
+  rows: 6
+
+RELATION SuppliersΠροϊόντα: Suppliers -> Προϊόντα on SupplierID=SupplierID 
+RELATION ΚατηγορίεςΠροϊόντα: Κατηγορίες -> Προϊόντα on CategoryID=CategoryID 

@@ -85,6 +85,16 @@
       "required": ["name", "description", "columns", "primaryKey", "indexes", "validationRule"],
       "properties": {
         "name": { "type": "string" },
+        "linkedFrom": {
+          "type": "object",
+          "description": "Only for a linked table read from its back-end (--linked resolve, since 3.2): where Access says its data lives. name is the table's name in this database.",
+          "required": ["database", "remoteTable"],
+          "properties": {
+            "database": { "type": "string", "description": "The back-end's path as Access stored it." },
+            "remoteTable": { "type": "string", "description": "The table's name in the back-end." }
+          },
+          "additionalProperties": false
+        },
         "description": { "type": ["string", "null"] },
         "columns": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/column" } },
         "primaryKey": { "oneOf": [{ "$ref": "#/$defs/index" }, { "type": "null" }] },

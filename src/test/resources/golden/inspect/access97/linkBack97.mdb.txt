@@ -1,0 +1,48 @@
+Source: linkBack97.mdb (V1997)
+Text: code page 1253, charset windows-1253
+Tables: 3 local, 0 linked; relationships: 2
+
+Table Suppliers (2 rows)
+  columns:
+    SupplierID  LONG
+    Name        TEXT(50)
+  primary key: PrimaryKey (SupplierID)
+
+Table Κατηγορίες (3 rows)
+  columns:
+    CategoryID  LONG
+    Όνομα       TEXT(50)
+  primary key: PrimaryKey (CategoryID)
+
+Table Προϊόντα (6 rows)
+  columns:
+    ProductID   LONG
+    CategoryID  LONG
+    SupplierID  LONG
+    Όνομα       TEXT(60)
+    Τιμή        MONEY(19,4)
+  primary key: PrimaryKey (ProductID)
+  indexes:
+    SuppliersΠροϊόντα (SupplierID) relationship
+    ΚατηγορίεςΠροϊόντα (CategoryID) relationship
+
+Relationships:
+  SuppliersΠροϊόντα: Suppliers (SupplierID) -> Προϊόντα (SupplierID); enforced [EMIT via PrimaryKey]
+  ΚατηγορίεςΠροϊόντα: Κατηγορίες (CategoryID) -> Προϊόντα (CategoryID); enforced, on update cascade [EMIT via PrimaryKey]
+
+Profile:
+  Suppliers: 2 rows scanned
+    SupplierID: nulls 0
+  Κατηγορίες: 3 rows scanned
+    CategoryID: nulls 0
+  Προϊόντα: 6 rows scanned
+    ProductID: nulls 0
+    Τιμή: max-digits 4 max-scale 2
+  SuppliersΠροϊόντα: 6 keys checked, 0 orphans
+  ΚατηγορίεςΠροϊόντα: 5 keys checked, 0 orphans
+
+Issues: 4
+  info PASSWORD_NOT_REQUIRED: Access asks for a database password, but a V1997 password doesn't encrypt the data: it was read without one
+  warning CATALOG_INDEX_UNUSABLE: Jackcess can't use this database's catalog index (2 of 3 tables can't be looked up, MSysRelationships is invisible); the catalog was read by scanning it instead
+  info INDEX_BACKING_DROPPED Suppliers / .rB: hidden relationship index on (SupplierID) repeats the primary key PrimaryKey; dropped
+  info INDEX_BACKING_DROPPED Κατηγορίες / .rB: hidden relationship index on (CategoryID) repeats the primary key PrimaryKey; dropped

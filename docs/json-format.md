@@ -81,8 +81,12 @@ system, so always look them up in `files` rather than deriving them.
   of the index; `required` means the columns can't be NULL.
 - `validationRule` is the table-level rule, `{ "access": "[EndDate]>=[StartDate]", "validationText": … }`, or `null`.
   Access doesn't recheck old rows when a rule is added, so the data may not satisfy it.
-- `linkedTables` lists linked tables (`name`, `database`, `remoteTable`, `odbc`). Their data lives in another
-  database and is not exported. `database` is exactly what Access stores: a file path, or an ODBC connection string,
+- `linkedFrom` (new in 3.2) is only there for a linked table read from its back-end with `--linked resolve`:
+  `{ "database": …, "remoteTable": … }`, the back-end's path as Access stored it and the table's name there. The
+  table is otherwise like any other, named as the linking database names it, with its rows in `data`. Readers that
+  don't know the property can ignore it; `formatVersion` stays `1`.
+- `linkedTables` lists linked tables that aren't read (`name`, `database`, `remoteTable`, `odbc`). Their data lives
+  in another database and is not exported. `database` is exactly what Access stores: a file path, or an ODBC connection string,
   which may hold a password (`PWD=`). When it does, the conversion report raises `LINKED_CONNECTION_PASSWORD` for that
   table; `--no-schema` leaves the section out.
 

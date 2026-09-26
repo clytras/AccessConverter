@@ -63,8 +63,8 @@ The [README](../README.md#commands) lists them all.
   primary key in Access gets none.
 - Relationships Access doesn't enforce become an index, not a foreign key; enforced ones become foreign keys with
   their cascade rules, unless the data has orphans (reported).
-- Linked tables are skipped and reported (2.x's MySQL dump stopped at the first one); convert a linked back-end
-  file directly.
+- Linked tables are skipped and reported (2.x's MySQL dump stopped at the first one); `--linked resolve` converts a
+  table linked to another Access file from that file, or convert the back-end directly.
 - The same database and options always give byte-identical output.
 
 **MySQL.**

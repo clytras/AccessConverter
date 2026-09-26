@@ -245,7 +245,8 @@ final class ConvertCommand implements Callable<Integer> {
                 Progress progress = main.progress(progressOption.progress)) {
             db.listen(progress.listener());
             long started = System.nanoTime();
-            model = SchemaExtractor.extract(db, plan.extractOptions(), issues);
+            model = SchemaExtractor.extract(
+                    db, plan.extractOptions().continueOnTableError(onTableError == OnTableError.CONTINUE), issues);
             timings.put("extract", since(started));
 
             // The SQL targets write attachment and multi-value columns as child tables, profiled like any table (08),
@@ -477,6 +478,12 @@ final class ConvertCommand implements Callable<Integer> {
         }
         if (source.charset != null) {
             options.put("charset", source.charset);
+        }
+        if (source.resolvesLinks()) {
+            options.put("linked", "resolve");
+            if (source.linkedRoot != null) {
+                options.put("linkedRoot", source.linkedRoot.toString());
+            }
         }
         return options;
     }

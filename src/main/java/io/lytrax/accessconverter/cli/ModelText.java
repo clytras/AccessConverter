@@ -38,12 +38,17 @@ final class ModelText {
     }
 
     private void model(SchemaModel model) {
-        long local = model.tables().stream().filter(t -> !t.isLinked()).count();
+        long local = model.tables().stream()
+                .filter(t -> !t.isLinked() && !t.isResolvedLink())
+                .count();
+        long resolved =
+                model.tables().stream().filter(TableModel::isResolvedLink).count();
         SchemaModel.Source source = model.source();
         line("Source: " + source.fileName() + " (" + source.fileFormat() + ")");
         line("Text: " + (source.codePage() == null ? "" : "code page " + source.codePage() + ", ") + "charset "
                 + source.charset());
-        line("Tables: " + local + " local, " + (model.tables().size() - local) + " linked; relationships: "
+        line("Tables: " + local + " local, " + (model.tables().size() - local) + " linked"
+                + (resolved == 0 ? "" : " (" + resolved + " read from their back-end)") + "; relationships: "
                 + model.relationships().size());
         for (TableModel table : model.tables()) {
             line("");
@@ -64,6 +69,11 @@ final class ModelText {
             return;
         }
         line("Table " + table.name() + " (" + table.rowCount() + " rows)");
+        if (table.isResolvedLink()) {
+            TableModel.LinkInfo link = table.link();
+            line("  linked to " + link.remoteTable() + " in " + link.displayDatabase() + ", read from "
+                    + link.readFrom());
+        }
         if (table.description() != null) {
             line("  description: " + quote(table.description()));
         }

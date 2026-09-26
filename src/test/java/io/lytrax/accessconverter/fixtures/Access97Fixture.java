@@ -27,7 +27,22 @@ public enum Access97Fixture {
      * files its catalog index is usable. The primary keys, the Increment table and the ceiling row were added through
      * DAO 3.51, which stores them as Access does.
      */
-    RANDOM_AUTO_NUMBER("randomAutoNumber", "randomAutoNumber", null);
+    RANDOM_AUTO_NUMBER("randomAutoNumber", "randomAutoNumber", null),
+    /**
+     * A Greek Access 97 front-end made with DAO 3.51 in the guest: local tables Orders and Suppliers, and two tables
+     * linked to {@link #LINK_BACK}, {@code Είδη} (its {@code Προϊόντα}, under another name) and {@code Κατηγορίες}.
+     * The links store {@code C:\\WORK\\LINKBACK97.MDB}, upper case, and the back-end's password in their connect
+     * string ({@code MS Access;PWD=backpass;}). A relationship from the linked {@code Είδη} to the local Orders can't
+     * be enforced across files; one Orders row is an orphan. The dump reads the linked tables through Access.
+     */
+    LINK_FRONT("linkFront97", "linkFront97", null),
+    /**
+     * Its back-end, Greek too, with a database password ({@code backpass}; Jet 3 doesn't encrypt with it): {@code
+     * Κατηγορίες}, {@code Προϊόντα} and a Suppliers table that isn't linked, whose name the front-end also uses for a
+     * table of its own; enforced relationships {@code ΚατηγορίεςΠροϊόντα} (cascading updates) and {@code
+     * SuppliersΠροϊόντα}.
+     */
+    LINK_BACK("linkBack97", "linkBack97", null);
 
     private final String name;
     private final String dumpName;

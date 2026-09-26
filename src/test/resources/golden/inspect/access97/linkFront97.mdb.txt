@@ -1,0 +1,37 @@
+Source: linkFront97.mdb (V1997)
+Text: code page 1253, charset windows-1253
+Tables: 2 local, 2 linked; relationships: 1
+
+Table Orders (4 rows)
+  columns:
+    OrderID    LONG
+    ProductID  LONG
+    Ποσότητα   LONG
+    Placed     SHORT_DATE_TIME
+  primary key: PrimaryKey (OrderID)
+
+Table Suppliers (1 rows)
+  columns:
+    SupplierID  LONG
+    Επωνυμία    TEXT(50)
+  primary key: PrimaryKey (SupplierID)
+
+Linked table Είδη -> Προϊόντα in C:\WORK\LINKBACK97.MDB
+
+Linked table Κατηγορίες -> Κατηγορίες in C:\WORK\LINKBACK97.MDB
+
+Relationships:
+  ΕίδηOrders: Είδη (ProductID) -> Orders (ProductID); not enforced [SKIPPED_LINKED_TABLE]
+
+Profile:
+  Orders: 4 rows scanned
+    OrderID: nulls 0
+    Placed: fraction-digits 0
+  Suppliers: 1 rows scanned
+    SupplierID: nulls 0
+
+Issues: 4
+  warning CATALOG_INDEX_UNUSABLE: Jackcess can't use this database's catalog index (2 of 4 tables can't be looked up, MSysRelationships is invisible); the catalog was read by scanning it instead
+  warning FK_SKIPPED_LINKED_TABLE Orders / ΕίδηOrders: relationship skipped: table Είδη is linked
+  warning LINKED_TABLE_SKIPPED Είδη: linked to Προϊόντα in C:\WORK\LINKBACK97.MDB; its data lives in that database and is not read: convert that file directly, or pass --linked resolve
+  warning LINKED_TABLE_SKIPPED Κατηγορίες: linked to Κατηγορίες in C:\WORK\LINKBACK97.MDB; its data lives in that database and is not read: convert that file directly, or pass --linked resolve

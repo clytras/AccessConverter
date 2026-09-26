@@ -1,0 +1,50 @@
+database: C:\WORK\LINKFRONT97.MDB
+jet format: 3.0   DAO: 3.51
+size: 61440 bytes
+
+TABLE Orders
+  field OrderID : Long(4)
+  field ProductID : Long(4)
+  field Ποσότητα : Long(4)
+  field Placed : Date(8)
+  index PrimaryKey PRIMARY UNIQUE
+  | 1	10	3	11/1/1998
+  | 2	11	6	12/2/1998
+  | 3	12	9	13/3/1998
+  | 4	99	12	14/4/1998
+  rows: 4
+
+TABLE Suppliers
+  field SupplierID : Long(4)
+  field Επωνυμία : Text(50) allows-''
+  index PrimaryKey PRIMARY UNIQUE
+  | 7	Τοπικός προμηθευτής
+  rows: 1
+
+TABLE Είδη
+  field ProductID : Long(4)
+  field CategoryID : Long(4)
+  field SupplierID : Long(4)
+  field Όνομα : Text(60) allows-''
+  field Τιμή : Currency(8)
+  index PrimaryKey PRIMARY UNIQUE
+  index SuppliersΠροϊόντα
+  index ΚατηγορίεςΠροϊόντα
+  | 10	1	1	Καφές ελληνικός	2,35
+  | 11	1	2	Τσάι του βουνού	4,7
+  | 12	2	1	Γιαούρτι στραγγιστό	7,05
+  | 13	2	2	Φέτα ΠΟΠ	9,4
+  | 14	3	1	Ψωμί χωριάτικο	11,75
+  | 15	<NULL>	2	ΐΰ ς σ ΆΈΉΊΌΎΏ άέήίόύώ	14,1
+  rows: 6
+
+TABLE Κατηγορίες
+  field CategoryID : Long(4)
+  field Όνομα : Text(50) allows-''
+  index PrimaryKey PRIMARY UNIQUE
+  | 1	Ποτά
+  | 2	Γαλακτοκομικά
+  | 3	Αρτοσκευάσματα
+  rows: 3
+
+RELATION ΕίδηOrders: Είδη -> Orders on ProductID=ProductID 

@@ -71,7 +71,8 @@ final class InspectCommand implements Callable<Integer> {
         SchemaModel model;
         DataProfile data = null;
         try (AccessSource db = AccessSource.open(input, options, issues)) {
-            model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
+            // A linked table that can't be read is shown as an error, not a reason to show nothing
+            model = SchemaExtractor.extract(db, ExtractOptions.ALL.continueOnTableError(true), issues);
             if (profile) {
                 data = DataProfiler.profile(db, model);
             }
