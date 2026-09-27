@@ -160,13 +160,15 @@ jobs:
           path: target/
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
-      # Both architectures from the tested jar, smoke-tested; arm64 runs under emulation. Nothing is pushed here.
+      # Both architectures from the tested jar, smoke-tested; arm64 runs under emulation. Nothing is pushed here. Each
+      # also runs with a read-only root filesystem and no tmpfs, as hardened deployments run it: SQLite must work there
       - name: Smoke test
         run: |
           for arch in amd64 arm64; do
             docker buildx build --platform "linux/$arch" --build-arg JAR_SOURCE=prebuilt \
               --build-arg "JAR=target/accessconverter-$VERSION.jar" --load -t "accessconverter:smoke-$arch" .
             bash packaging/smoke-test.sh "docker:accessconverter:smoke-$arch" "target/smoke-$arch"
+            bash packaging/smoke-test.sh "docker:accessconverter:smoke-$arch" "target/smoke-$arch-read-only" --read-only
           done
       # What someone building from a clone gets: the jar compiled inside Docker, byte for byte the tested jar
       - name: Build from source

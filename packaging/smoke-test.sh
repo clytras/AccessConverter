@@ -2,7 +2,10 @@
 # Smoke test of a release build, run where no Java is installed or none is used (02, acceptance criteria):
 #
 #   packaging/smoke-test.sh <unpacked image directory> <work directory>
-#   packaging/smoke-test.sh docker:<image> <work directory>
+#   packaging/smoke-test.sh docker:<image> <work directory> [docker run options]
+#
+# Options after the work directory go to every docker run, such as --read-only: the image writes nothing outside the
+# mounted directory, so it works with a read-only root filesystem and no tmpfs, SQLite included.
 #
 # - every Access 97 code page is available (a missing jdk.charsets makes --charset a usage error, exit 64)
 # - the Greek Access 97 fixture converts to every target and its text comes out exactly
@@ -13,6 +16,8 @@ set -euo pipefail
 
 subject=$1
 work=$2
+shift 2
+docker_options=("$@")
 root=$(cd "$(dirname "$0")/.." && pwd)
 mkdir -p "$work"
 work=$(cd "$work" && pwd)
@@ -22,8 +27,8 @@ if [[ "$subject" == docker:* ]]; then
     # Git Bash on Windows: a Windows path for the mount, and no rewriting of /data into C:/Program Files/Git/data
     host=$(cd "$work" && (pwd -W 2> /dev/null || pwd))
     ac() {
-        MSYS_NO_PATHCONV=1 docker run --rm -u "$(id -u):$(id -g)" -e ACCESSCONVERTER_PASSWORD -v "$host:/data" \
-            "$image" "$@"
+        MSYS_NO_PATHCONV=1 docker run --rm -u "$(id -u):$(id -g)" ${docker_options[@]+"${docker_options[@]}"} \
+            -e ACCESSCONVERTER_PASSWORD -v "$host:/data" "$image" "$@"
     }
 elif [[ -f "$subject/bin/accessconverter.cmd" ]]; then
     launcher="$(cd "$subject" && pwd)/bin/accessconverter.cmd"
@@ -100,4 +105,4 @@ for db in complexDataV2010 extDateV2019; do
 done
 ACCESSCONVERTER_PASSWORD=password run convert office-agile-4.2.accdb --to sqlite -o out-agile.sqlite3 --verify
 
-echo "smoke test passed: $subject"
+echo "smoke test passed: $subject${docker_options[*]:+ (${docker_options[*]})}"

@@ -22,6 +22,11 @@ fixes the patch version.
   It used to exit 1, which reads as success with warnings, with the JVM's stack trace and the `.partial` file left.
 - An encrypted file opened without `--password` is now called "the file", not "the database": a Microsoft Money file
   isn't a database to its user (`the file is encrypted: pass --password`).
+- The container image converts to SQLite with a read-only root filesystem (`--read-only`), or a `noexec` `/tmp`:
+  sqlite-jdbc's native library is now part of the image instead of being unpacked into `/tmp` at run time, and the
+  JVM keeps no performance data there. SQLite used to fail with `Error opening connection`.
+- When the SQLite library can't be loaded, sqlite-jdbc's own log records (a timestamped line and a stack trace each)
+  are no longer printed before the one `error:` line; `--verbose` shows them.
 
 ## [3.2.0] - 2026-09-26
 
