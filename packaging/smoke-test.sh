@@ -2,10 +2,13 @@
 # Smoke test of a release build, run where no Java is installed or none is used (02, acceptance criteria):
 #
 #   packaging/smoke-test.sh <unpacked image directory> <work directory>
+#   packaging/smoke-test.sh --read-only-root <unpacked Linux image directory> <work directory> [docker run options]
 #   packaging/smoke-test.sh docker:<image> <work directory> [docker run options]
 #
 # Options after the work directory go to every docker run, such as --read-only: the image writes nothing outside the
-# mounted directory, so it works with a read-only root filesystem and no tmpfs, SQLite included.
+# mounted directory, so it works with a read-only root filesystem and no tmpfs, SQLite included. --read-only-root
+# holds the runtime image to the same: it runs mounted read-only in a plain Ubuntu container (no Java) with a
+# read-only root filesystem and no tmpfs, so only the work directory is writable.
 #
 # - every Access 97 code page is available (a missing jdk.charsets makes --charset a usage error, exit 64)
 # - the Greek Access 97 fixture converts to every target and its text comes out exactly
@@ -14,6 +17,11 @@
 #   Extended (Access 2019) and Agile encryption (BouncyCastle), pinned by commit and SHA-256 like the test corpus
 set -euo pipefail
 
+read_only_root=false
+if [[ "$1" == --read-only-root ]]; then
+    read_only_root=true
+    shift
+fi
 subject=$1
 work=$2
 shift 2
@@ -22,10 +30,21 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 mkdir -p "$work"
 work=$(cd "$work" && pwd)
 
-if [[ "$subject" == docker:* ]]; then
+# Git Bash on Windows: a Windows path for a mount, and no rewriting of /data into C:/Program Files/Git/data
+host_path() { (cd "$1" && (pwd -W 2> /dev/null || pwd)); }
+
+if [[ "$read_only_root" == true ]]; then
+    runtime=$(host_path "$subject")
+    host=$(host_path "$work")
+    ac() {
+        MSYS_NO_PATHCONV=1 docker run --rm -u "$(id -u):$(id -g)" --read-only \
+            ${docker_options[@]+"${docker_options[@]}"} -e ACCESSCONVERTER_PASSWORD \
+            -v "$runtime:/opt/accessconverter:ro" -v "$host:/data" -w /data ubuntu:24.04 \
+            /opt/accessconverter/bin/accessconverter "$@"
+    }
+elif [[ "$subject" == docker:* ]]; then
     image=${subject#docker:}
-    # Git Bash on Windows: a Windows path for the mount, and no rewriting of /data into C:/Program Files/Git/data
-    host=$(cd "$work" && (pwd -W 2> /dev/null || pwd))
+    host=$(host_path "$work")
     ac() {
         MSYS_NO_PATHCONV=1 docker run --rm -u "$(id -u):$(id -g)" ${docker_options[@]+"${docker_options[@]}"} \
             -e ACCESSCONVERTER_PASSWORD -v "$host:/data" "$image" "$@"
@@ -105,4 +124,7 @@ for db in complexDataV2010 extDateV2019; do
 done
 ACCESSCONVERTER_PASSWORD=password run convert office-agile-4.2.accdb --to sqlite -o out-agile.sqlite3 --verify
 
+if [[ "$read_only_root" == true ]]; then
+    subject="$subject, read-only root"
+fi
 echo "smoke test passed: $subject${docker_options[*]:+ (${docker_options[*]})}"

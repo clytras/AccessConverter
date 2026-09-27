@@ -13,5 +13,19 @@ while [ -h "$self" ]; do
 done
 home=$(cd "$(dirname "$self")/.." && pwd -P)
 
+# Where the image holds sqlite-jdbc's native library (the Linux images), sqlite-jdbc loads it from lib/native instead
+# of unpacking it into java.io.tmpdir, and the JVM keeps no performance data there: nothing is written outside the
+# output's folder, so SQLite works with a read-only root filesystem or a noexec /tmp. The macOS images hold none, and
+# sqlite-jdbc unpacks its own. ACCESSCONVERTER_JAVA_OPTS comes after these options, so it can override them.
+sqlite=
+for library in "$home"/lib/native/*; do
+    [ -f "$library" ] && sqlite=$library
+done
+
 # shellcheck disable=SC2086 # the options are meant to be split into words
-exec "$home/runtime/bin/java" $ACCESSCONVERTER_JAVA_OPTS -jar "$home/lib/accessconverter.jar" "$@"
+if [ -n "$sqlite" ]; then
+    exec "$home/runtime/bin/java" -XX:-UsePerfData "-Dorg.sqlite.lib.path=$home/lib/native" \
+        "-Dorg.sqlite.lib.name=${sqlite##*/}" $ACCESSCONVERTER_JAVA_OPTS -jar "$home/lib/accessconverter.jar" "$@"
+fi
+# shellcheck disable=SC2086
+exec "$home/runtime/bin/java" -XX:-UsePerfData $ACCESSCONVERTER_JAVA_OPTS -jar "$home/lib/accessconverter.jar" "$@"

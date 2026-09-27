@@ -37,7 +37,9 @@ What changed in each release is in the [changelog](CHANGELOG.md).
 
 Each holds its own Java runtime and never uses an installed one. On macOS, a zip downloaded with a browser is
 quarantined; clear that once with `xattr -dr com.apple.quarantine accessconverter-<version>-macos-*`. To pass JVM
-options (a larger heap, say), set `ACCESSCONVERTER_JAVA_OPTS=-Xmx4g`.
+options (a larger heap, say), set `ACCESSCONVERTER_JAVA_OPTS=-Xmx4g`. The Linux and Windows images write nothing
+outside the output's folder, so they also run in a sandbox with a read-only root filesystem or a `noexec` temporary
+folder; on macOS, SQLite needs a writable temporary folder that allows running programs (`$TMPDIR` is one).
 
 **Jar.** With Java 21 or later: `java -jar accessconverter-<version>.jar …`.
 
