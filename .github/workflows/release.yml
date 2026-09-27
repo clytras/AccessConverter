@@ -127,7 +127,9 @@ jobs:
           esac
           ls -l "$native"
           [[ "$(ls "$native")" == "${expected[0]}" ]] || { echo "::error::expected only ${expected[0]}"; exit 1; }
-          file "$native/${expected[0]}" | tee /dev/stderr | grep -qE "${expected[1]}"
+          type=$(file "$native/${expected[0]}")
+          echo "$type"
+          grep -qE "${expected[1]}" <<< "$type" || { echo "::error::not built for ${{ matrix.platform }}"; exit 1; }
       # The zip as users get it, unpacked where no Java is installed (Linux: a bare Ubuntu container) or where any
       # Java but the image's own fails loudly (macOS and Windows have JDKs installed: a poisoned java comes first
       # on the PATH, JAVA_HOME points nowhere and the JDKs are off the PATH). The images that hold the SQLite library
