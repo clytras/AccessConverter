@@ -72,6 +72,10 @@
         <argLine/>
         <fixtures.dir>${project.build.directory}/fixtures</fixtures.dir>
         <test.excludedGroups>local-samples,perf</test.excludedGroups>
+        <!-- -DskipUTs skips only the unit tests (surefire), where -DskipTests skips the ITs too: the integration
+             jobs run the ITs alone. skipTests is declared so that -DskipTests still skips the unit tests. -->
+        <skipTests>false</skipTests>
+        <skipUTs>${skipTests}</skipUTs>
         <skipITs>true</skipITs>
         <it.db.images>mysql:8.0,mysql:8.4,mariadb:10.11,mariadb:11.4,mariadb:11.8</it.db.images>
     </properties>
@@ -307,6 +311,8 @@
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <!-- Both executions below inherit it -->
+                    <skipTests>${skipUTs}</skipTests>
                     <excludedGroups>${test.excludedGroups}</excludedGroups>
                     <trimStackTrace>false</trimStackTrace>
                     <systemPropertyVariables>

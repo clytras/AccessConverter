@@ -146,32 +146,39 @@ jobs:
           if-no-files-found: error
 
   container:
-    name: container image
+    name: container image (${{ matrix.arch }})
     needs: jar
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {arch: amd64, os: ubuntu-24.04}
+          - {arch: arm64, os: ubuntu-24.04-arm}
     env:
       VERSION: ${{ needs.jar.outputs.version }}
+      ARCH: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           name: jar
           path: target/
-      - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
-      # Both architectures from the tested jar, smoke-tested; arm64 runs under emulation. Nothing is pushed here. Each
-      # also runs with a read-only root filesystem and no tmpfs, as hardened deployments run it: SQLite must work there
+      # Each architecture from the tested jar, on a runner of its own architecture (no emulation), smoke-tested. Nothing
+      # is pushed here. It also runs with a read-only root filesystem and no tmpfs, as hardened deployments run it:
+      # SQLite must work there
       - name: Smoke test
         run: |
-          for arch in amd64 arm64; do
-            docker buildx build --platform "linux/$arch" --build-arg JAR_SOURCE=prebuilt \
-              --build-arg "JAR=target/accessconverter-$VERSION.jar" --load -t "accessconverter:smoke-$arch" .
-            bash packaging/smoke-test.sh "docker:accessconverter:smoke-$arch" "target/smoke-$arch"
-            bash packaging/smoke-test.sh "docker:accessconverter:smoke-$arch" "target/smoke-$arch-read-only" --read-only
-          done
-      # What someone building from a clone gets: the jar compiled inside Docker, byte for byte the tested jar
+          docker buildx build --platform "linux/$ARCH" --build-arg JAR_SOURCE=prebuilt \
+            --build-arg "JAR=target/accessconverter-$VERSION.jar" --load -t "accessconverter:smoke-$ARCH" .
+          bash packaging/smoke-test.sh "docker:accessconverter:smoke-$ARCH" "target/smoke-$ARCH"
+          bash packaging/smoke-test.sh "docker:accessconverter:smoke-$ARCH" "target/smoke-$ARCH-read-only" --read-only
+      # What someone building from a clone gets: the jar compiled inside Docker, byte for byte the tested jar. The build
+      # doesn't depend on the architecture, so one checks it
       - name: Build from source
+        if: matrix.arch == 'amd64'
         run: |
           docker buildx build --load -t accessconverter:from-source .
           id=$(docker create accessconverter:from-source)
