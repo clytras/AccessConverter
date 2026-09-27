@@ -136,7 +136,7 @@ public final class JsonWriter {
                     return null;
                 });
             }
-        } catch (IOException | RuntimeException e) {
+        } catch (IOException | RuntimeException | Error e) {
             if (writer.files != null) {
                 writer.files.discard();
             }

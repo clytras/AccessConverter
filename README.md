@@ -92,7 +92,7 @@ Jackcess's warnings and prints stack traces on errors.
 | --- | --- |
 | `0` | Success. |
 | `1` | Success with warnings: the output is complete and correct, and the report names what differs from Access (a constraint left out, a value that doesn't fit, …). |
-| `2` | Failed: the database can't be read (not an Access file, a wrong or missing password, a damaged file), a table failed, or `verify` found a difference. Unless `--on-table-error continue` was given, no output is left behind. |
+| `2` | Failed: the database can't be read (not an Access file, a wrong or missing password, a damaged file), a table failed, memory ran out, or `verify` found a difference. Unless `--on-table-error continue` was given, no output is left behind. |
 | `64` | Usage error: an unknown option, a missing value, an unknown charset. |
 
 A database that can't be read prints one line on standard error, `error: <file>: <reason>`, and nothing on standard

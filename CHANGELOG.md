@@ -17,6 +17,11 @@ fixes the patch version.
   `--batch-bytes` is written as it is built, its binary values turned into hex a piece at a time. A database whose
   largest value is 6 MB needed more than 64 MB of heap, and one with a 50 MB value 384 MB; both now convert in the
   heap a JSON export of them needs. The dump itself is unchanged.
+- Running out of memory is now a failed conversion like any other: exit 2 and one `error:` line naming the file and
+  saying how to give Java more memory, with nothing on standard output and no output or `.partial` file left behind.
+  It used to exit 1, which reads as success with warnings, with the JVM's stack trace and the `.partial` file left.
+- An encrypted file opened without `--password` is now called "the file", not "the database": a Microsoft Money file
+  isn't a database to its user (`the file is encrypted: pass --password`).
 
 ## [3.2.0] - 2026-09-26
 

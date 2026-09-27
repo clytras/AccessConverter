@@ -11,7 +11,8 @@ import java.util.function.Predicate;
 
 /**
  * Builds an output as {@code <output>.partial} next to it and renames it into place only when everything
- * succeeded, so a failed conversion never leaves a half-written output behind (03, finalize; F-42).
+ * succeeded, so a failed conversion never leaves a half-written output behind (03, finalize; F-42). That includes a
+ * conversion ended by an error, such as running out of memory: by the time it reaches here the stack has unwound.
  */
 public final class AtomicOutput {
 
@@ -30,7 +31,7 @@ public final class AtomicOutput {
             T result = build.into(partial);
             Files.move(partial, output, ATOMIC_MOVE, REPLACE_EXISTING);
             return result;
-        } catch (IOException | RuntimeException e) {
+        } catch (IOException | RuntimeException | Error e) {
             try {
                 Files.deleteIfExists(partial);
             } catch (IOException suppressed) {
@@ -59,7 +60,7 @@ public final class AtomicOutput {
         T result;
         try {
             result = build.into(partial);
-        } catch (IOException | RuntimeException e) {
+        } catch (IOException | RuntimeException | Error e) {
             try {
                 removeOwn(partial, ours);
             } catch (IOException suppressed) {
