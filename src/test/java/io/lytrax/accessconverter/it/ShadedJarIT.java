@@ -75,11 +75,18 @@ class ShadedJarIT {
         command.add("--no-progress");
         Path stdout = Files.createTempFile(dir, "stdout", ".txt");
         Path stderr = Files.createTempFile(dir, "stderr", ".txt");
-        Process process = new ProcessBuilder(command)
-                .redirectOutput(stdout.toFile())
-                .redirectError(stderr.toFile())
-                .start();
-        assertThat(process.waitFor(2, TimeUnit.MINUTES)).isTrue();
+        ProcessBuilder builder =
+                new ProcessBuilder(command).redirectOutput(stdout.toFile()).redirectError(stderr.toFile());
+        // The JVM announces these on stderr ("Picked up …"); IDEs and CI images set them, and they aren't the jar's
+        builder.environment().keySet().removeAll(List.of("JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "_JAVA_OPTIONS"));
+        Process process = builder.start();
+        boolean finished = process.waitFor(2, TimeUnit.MINUTES);
+        if (!finished) {
+            process.destroyForcibly(); // a hung child mustn't outlive the test
+        }
+        assertThat(finished)
+                .as("%s finished within 2 minutes", String.join(" ", args))
+                .isTrue();
         String err = new String(Files.readAllBytes(stderr), StandardCharsets.UTF_8);
         assertThat(process.exitValue())
                 .as("%s%n%s", String.join(" ", args), err)
