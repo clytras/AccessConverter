@@ -141,15 +141,19 @@ public final class BinaryFiles {
             return;
         }
         if (!Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS)) {
-            throw new IOException(root + " exists and is not a directory of extracted files; it won't be replaced");
+            throw new OutputException(
+                    root, "it exists and is not a folder of extracted files; it won't be replaced", null);
         }
         try (var walk = Files.walk(root)) {
             for (Path p : (Iterable<Path>) walk::iterator) {
                 if (Files.isSymbolicLink(p)
                         || !(Files.isRegularFile(p, LinkOption.NOFOLLOW_LINKS)
                                 || Files.isDirectory(p, LinkOption.NOFOLLOW_LINKS))) {
-                    throw new IOException(root + " holds " + root.relativize(p)
-                            + ", which this conversion doesn't write; it won't be replaced");
+                    throw new OutputException(
+                            root,
+                            "it holds " + root.relativize(p) + ", which this conversion doesn't write; it won't be"
+                                    + " replaced",
+                            null);
                 }
             }
         }

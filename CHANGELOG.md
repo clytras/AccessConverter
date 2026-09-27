@@ -15,6 +15,15 @@ fixes the patch version.
   performance data there. SQLite used to fail with `Error opening connection` unless `java.io.tmpdir` was pointed at
   a writable folder that allows running programs. The container image was fixed in 3.2.1; the macOS images are
   unchanged, since macOS's temporary folder is always the user's own.
+- An output that can't be written now fails with `error: <output>: <reason>`, naming the output as it was given and
+  saying why in words: `error: nodir/out.json: the folder nodir doesn't exist`, and likewise `… is not a folder`,
+  `no permission to write in the folder …`, `the disk is full` and `it is a folder`. It used to name a Java class
+  and, for JSON and MySQL/MariaDB, the internal `.partial` file (`error: NoSuchFileException: nodir/out.json.partial`);
+  SQLite said only `the SQLite output could not be written` and SQLite's own error.
+- When the SQLite library can't be loaded, the error now says so, where it was loaded from or unpacked into, and what
+  to do: `error: out.sqlite3: the SQLite library could not be unpacked into /tmp and loaded from there: make
+  java.io.tmpdir a writable folder that allows running programs (…)`. It used to read as a problem with the output:
+  `the SQLite output could not be written: Error opening connection`. `verify` of a SQLite file says the same.
 
 ## [3.2.1] - 2026-09-27
 
