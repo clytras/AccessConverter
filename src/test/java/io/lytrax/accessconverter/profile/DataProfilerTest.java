@@ -1,6 +1,7 @@
 package io.lytrax.accessconverter.profile;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.healthmarketscience.jackcess.Column;
 import com.healthmarketscience.jackcess.ColumnBuilder;
@@ -14,12 +15,22 @@ import com.healthmarketscience.jackcess.Table;
 import com.healthmarketscience.jackcess.TableBuilder;
 import io.lytrax.accessconverter.Extraction;
 import io.lytrax.accessconverter.fixtures.GeneratedFixture;
+import io.lytrax.accessconverter.model.SchemaModel;
+import io.lytrax.accessconverter.model.TableModel;
 import io.lytrax.accessconverter.profile.DataProfile.ColumnStats;
+import io.lytrax.accessconverter.report.IssueCode;
+import io.lytrax.accessconverter.report.Issues;
 import io.lytrax.accessconverter.source.AccessSource;
+import io.lytrax.accessconverter.source.SourceException;
+import io.lytrax.accessconverter.target.ConvertOptions;
+import io.lytrax.accessconverter.target.ConvertOptions.OnTableError;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -145,6 +156,47 @@ class DataProfilerTest {
                         .rule()
                         .holds())
                 .isTrue();
+    }
+
+    /**
+     * A parent table that can't be read while its children's keys are checked (04) is the parent's failure, not the
+     * child's: under {@code continue} the child is profiled without that relationship, and under {@code fail} the error
+     * names the parent. Orders is profiled first here, so its check is what reads Customers.
+     */
+    @Test
+    void aParentThatCannotBeReadFailsItselfNotItsChild() throws IOException {
+        SchemaModel model =
+                Extraction.of(GeneratedFixture.SCHEMA_FIDELITY.path()).model();
+        List<TableModel> ordersFirst = new ArrayList<>(model.tables());
+        ordersFirst.sort(Comparator.comparing((TableModel t) -> !t.name().equals("Orders")));
+        SchemaModel reordered = new SchemaModel(model.source(), ordersFirst, model.relationships());
+        ConvertOptions continueOn =
+                new ConvertOptions(true, false, OnTableError.CONTINUE, ConvertOptions.DEFAULT_BATCH_ROWS);
+
+        try (AccessSource source = AccessSource.open(GeneratedFixture.SCHEMA_FIDELITY.path())) {
+            FailingProfileSource failing = new FailingProfileSource(source, "Customers");
+
+            Issues continued = new Issues();
+            DataProfile profile = DataProfiler.profile(failing, reordered, continueOn, continued);
+            assertThat(profile.failedTables()).containsExactly("Customers");
+            assertThat(profile.table("Orders")).isPresent();
+            assertThat(profile.relationships())
+                    .doesNotContainKey("CustomersOrders")
+                    .containsKey("OrdersOrder Details");
+            assertThat(continued.list())
+                    .filteredOn(i -> i.code() == IssueCode.TABLE_READ_FAILED)
+                    .singleElement()
+                    .satisfies(i -> assertThat(i.table()).isEqualTo("Customers"));
+
+            Issues failed = new Issues();
+            assertThatThrownBy(() -> DataProfiler.profile(failing, reordered, ConvertOptions.DEFAULT, failed))
+                    .isInstanceOf(SourceException.class)
+                    .hasMessageContaining("reading table Customers failed");
+            assertThat(failed.list())
+                    .filteredOn(i -> i.code() == IssueCode.TABLE_READ_FAILED)
+                    .singleElement()
+                    .satisfies(i -> assertThat(i.table()).isEqualTo("Customers"));
+        }
     }
 
     private static ColumnStats column(String name) {

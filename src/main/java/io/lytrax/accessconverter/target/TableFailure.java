@@ -24,7 +24,23 @@ public final class TableFailure {
      */
     public static void handle(Issues issues, ConvertOptions options, String table, long rowsWritten, Exception e)
             throws IOException {
-        boolean reading = e instanceof IOException || e instanceof UncheckedIOException;
+        if (e instanceof AlreadyReported) {
+            return;
+        }
+        handle(issues, options, table, rowsWritten, e, e instanceof IOException || e instanceof UncheckedIOException);
+    }
+
+    /**
+     * A table the profiling pass couldn't read (04): reported as {@code TABLE_READ_FAILED} with the message a writer
+     * gives, whatever the exception, and handled as {@link #handle} does.
+     */
+    public static void readFailed(Issues issues, ConvertOptions options, String table, Exception e) throws IOException {
+        handle(issues, options, table, 0, e instanceof UncheckedIOException u ? u.getCause() : e, true);
+    }
+
+    private static void handle(
+            Issues issues, ConvertOptions options, String table, long rowsWritten, Exception e, boolean reading)
+            throws IOException {
         issues.add(
                 reading ? IssueCode.TABLE_READ_FAILED : IssueCode.TABLE_WRITE_FAILED,
                 table,
@@ -34,6 +50,19 @@ public final class TableFailure {
             throw e instanceof SourceException source
                     ? source
                     : new IOException("table " + table + " failed: " + message(e), e);
+        }
+    }
+
+    /**
+     * What a writer's row source throws for a table that failed while profiling, under {@code --on-table-error
+     * continue}: the writer handles it like any failed table and writes the table empty, and {@link #handle} doesn't
+     * report it again.
+     */
+    public static final class AlreadyReported extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        public AlreadyReported(String table) {
+            super("table " + table + " failed while profiling", null, false, false);
         }
     }
 

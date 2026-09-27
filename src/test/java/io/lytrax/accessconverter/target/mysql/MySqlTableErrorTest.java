@@ -8,7 +8,9 @@ import io.lytrax.accessconverter.extract.SchemaExtractor;
 import io.lytrax.accessconverter.fixtures.GeneratedFixture;
 import io.lytrax.accessconverter.model.SchemaModel;
 import io.lytrax.accessconverter.model.TableModel;
+import io.lytrax.accessconverter.profile.DataProfile;
 import io.lytrax.accessconverter.profile.DataProfiler;
+import io.lytrax.accessconverter.profile.FailingProfileSource;
 import io.lytrax.accessconverter.report.IssueCode;
 import io.lytrax.accessconverter.report.Issues;
 import io.lytrax.accessconverter.report.Severity;
@@ -65,6 +67,39 @@ class MySqlTableErrorTest {
                 .filteredOn(i -> i.code() == IssueCode.FOREIGN_KEY_CHECK_FAILED)
                 .singleElement()
                 .satisfies(i -> assertThat(i.object()).isEqualTo("CustomersOrders"));
+        assertThat(issues.highestSeverity()).isEqualTo(Severity.ERROR);
+    }
+
+    /** A table the profiling pass can't read (04) is rolled back like one that fails in the writer, and reported once. */
+    @Test
+    void continueRollsBackATableThatFailedWhileProfiling() throws IOException {
+        Path output = dir.resolve("profile.sql");
+        Issues issues = new Issues();
+        ConvertOptions options =
+                new ConvertOptions(true, false, OnTableError.CONTINUE, ConvertOptions.DEFAULT_BATCH_ROWS);
+        MySqlOptions mysql = MySqlOptions.of(MySqlDialect.MYSQL);
+        WriteOutcome outcome;
+        try (AccessSource db = AccessSource.open(GeneratedFixture.SCHEMA_FIDELITY.path())) {
+            SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
+            DataProfile profile =
+                    DataProfiler.profile(new FailingProfileSource(db, "Customers"), model, options, issues);
+            MySqlPlan plan = MySqlPlanner.plan(model, profile, options, mysql, issues);
+            outcome = MySqlDumpWriter.write(
+                    db, profile.failedTables(), plan, output, options, mysql, MySqlFixture.PRODUCER, issues);
+        }
+
+        assertThat(outcome.tableFailed()).isTrue();
+        String dump = Files.readString(output, StandardCharsets.UTF_8);
+        assertThat(dump).doesNotContain("INSERT INTO `Customers`").contains("ROLLBACK;");
+        assertThat(dump).contains("INSERT INTO `Orders`");
+        assertThat(dump).doesNotContain("ADD CONSTRAINT `CustomersOrders`");
+        assertThat(issues.list())
+                .filteredOn(i -> i.code() == IssueCode.TABLE_READ_FAILED)
+                .singleElement()
+                .satisfies(i -> {
+                    assertThat(i.table()).isEqualTo("Customers");
+                    assertThat(i.message()).contains("reading the table failed after 0 rows", "page 42 is damaged");
+                });
         assertThat(issues.highestSeverity()).isEqualTo(Severity.ERROR);
     }
 

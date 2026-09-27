@@ -126,7 +126,8 @@ final class VerifyCommand implements Callable<Integer> {
         }
         OpenOptions options = source.toOpenOptions();
         Issues issues = new Issues();
-        ConvertOptions convert = plan.convertOptions(OnTableError.FAIL, ConvertOptions.DEFAULT_BATCH_ROWS);
+        // A table that can't be read doesn't stop the profiling: the comparison reports it as a difference
+        ConvertOptions convert = plan.convertOptions(OnTableError.CONTINUE, ConvertOptions.DEFAULT_BATCH_ROWS);
         VerifyResult result;
         SchemaModel model;
         try (AccessSource db = AccessSource.open(input, options, issues);
@@ -134,7 +135,7 @@ final class VerifyCommand implements Callable<Integer> {
             model = SchemaExtractor.extract(db, plan.extractOptions(), issues);
             SchemaModel expanded = plan.withGeneratedKeys(ComplexTables.expand(model, convert), new Issues());
             progress.stage("profile", expanded.tables());
-            DataProfile profile = convert.profile() ? DataProfiler.profile(db, expanded) : null;
+            DataProfile profile = convert.profile() ? DataProfiler.profile(db, expanded, convert, new Issues()) : null;
             // The issues of planning again are the conversion's, not the verification's: they go nowhere
             SqlitePlan planned =
                     SqlitePlanner.plan(expanded, profile, convert, plan.sqliteOptions(false), new Issues());
@@ -149,14 +150,15 @@ final class VerifyCommand implements Callable<Integer> {
         plan.check(Target.json, spec.commandLine());
         OpenOptions options = source.toOpenOptions();
         Issues issues = new Issues();
-        ConvertOptions convert = plan.convertOptions(OnTableError.FAIL, ConvertOptions.DEFAULT_BATCH_ROWS);
+        // A table that can't be read doesn't stop the profiling: the comparison reports it as a difference
+        ConvertOptions convert = plan.convertOptions(OnTableError.CONTINUE, ConvertOptions.DEFAULT_BATCH_ROWS);
         VerifyResult result;
         SchemaModel model;
         try (AccessSource db = AccessSource.open(input, options, issues);
                 Progress progress = progress(db)) {
             model = SchemaExtractor.extract(db, plan.extractOptions(), issues);
             progress.stage("profile", model.tables());
-            DataProfile profile = convert.profile() ? DataProfiler.profile(db, model) : null;
+            DataProfile profile = convert.profile() ? DataProfiler.profile(db, model, convert, new Issues()) : null;
             // The issues of planning again are the conversion's, not the verification's: they go nowhere
             JsonPlan planned = JsonPlanner.plan(model, profile, convert, new Issues());
             progress.stage("verify", ConvertCommand.sources(planned.tables(), JsonPlan.PlannedTable::source));
@@ -169,7 +171,8 @@ final class VerifyCommand implements Callable<Integer> {
     private Integer compareDatabase() throws IOException {
         OpenOptions options = source.toOpenOptions();
         Issues issues = new Issues();
-        ConvertOptions convert = plan.convertOptions(OnTableError.FAIL, ConvertOptions.DEFAULT_BATCH_ROWS);
+        // A table that can't be read doesn't stop the profiling: the comparison reports it as a difference
+        ConvertOptions convert = plan.convertOptions(OnTableError.CONTINUE, ConvertOptions.DEFAULT_BATCH_ROWS);
         VerifyResult result;
         SchemaModel model;
         String server;
@@ -185,7 +188,8 @@ final class VerifyCommand implements Callable<Integer> {
             model = SchemaExtractor.extract(access, plan.extractOptions(), issues);
             SchemaModel expanded = plan.withGeneratedKeys(ComplexTables.expand(model, convert), new Issues());
             progress.stage("profile", expanded.tables());
-            DataProfile profile = convert.profile() ? DataProfiler.profile(access, expanded) : null;
+            DataProfile profile =
+                    convert.profile() ? DataProfiler.profile(access, expanded, convert, new Issues()) : null;
             MySqlOptions mysql = plan.mysqlOptions(dialect, false, null, MySqlOptions.DEFAULT_BATCH_BYTES, false);
             // The issues of planning again are the conversion's, not the verification's: they go nowhere
             MySqlPlan planned = MySqlPlanner.plan(expanded, profile, convert, mysql, new Issues());

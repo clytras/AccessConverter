@@ -50,6 +50,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.ObjectWriteContext;
 
@@ -92,11 +93,13 @@ public final class JsonWriter {
     }
 
     /**
+     * @param failedTables the tables profiling couldn't read (04): written empty, as tables that failed
      * @param output the document, or the ndjson directory
      * @param producer the tool and its version ({@code AccessConverter 3.0.0})
      */
     public static WriteOutcome write(
             AccessSource source,
+            Set<String> failedTables,
             JsonPlan plan,
             Path output,
             ConvertOptions options,
@@ -105,7 +108,8 @@ public final class JsonWriter {
             Issues issues)
             throws IOException {
         // JSON inlines attachment, multi-value and version-history values, so their cells are read with them (08)
-        return write(t -> source.rows(t, true), plan, output, options, json, producer, issues);
+        RowSource rows = t -> source.rows(t, true);
+        return write(rows.skipping(failedTables), plan, output, options, json, producer, issues);
     }
 
     /** As {@link #write}, reading the rows from somewhere else; for the {@code --on-table-error} test. */

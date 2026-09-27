@@ -20,9 +20,10 @@ import io.lytrax.accessconverter.report.IssueCode;
 import io.lytrax.accessconverter.report.Issues;
 import io.lytrax.accessconverter.source.AccessSource;
 import io.lytrax.accessconverter.source.RowStream;
+import io.lytrax.accessconverter.target.ConvertOptions;
+import io.lytrax.accessconverter.target.TableFailure;
 import io.lytrax.accessconverter.value.CanonicalText;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -94,24 +95,84 @@ public final class DataProfiler {
 
     private DataProfiler() {}
 
+    /** Profiles every local table; one that can't be read stops it, as {@code --on-table-error fail} does. */
     public static DataProfile profile(AccessSource source, SchemaModel model) throws IOException {
-        Map<String, TableProfile> tables = new LinkedHashMap<>();
-        Map<String, RelationshipProfile> relationships = new LinkedHashMap<>();
-        Evaluators evaluators = new Evaluators(
-                new RuleEvaluator(TextComparison.ACCESS), new RuleEvaluator(TextComparison.ASCII_NOCASE));
+        return profile(source, model, ConvertOptions.DEFAULT, new Issues());
+    }
+
+    /** As {@link #profile(ProfileSource, SchemaModel, ConvertOptions, Issues)}, reading {@code source}. */
+    public static DataProfile profile(AccessSource source, SchemaModel model, ConvertOptions options, Issues issues)
+            throws IOException {
+        return profile(ProfileSource.of(source), model, options, issues);
+    }
+
+    /**
+     * Profiles every local table. A table that can't be read, here or as the parent of a relationship being checked,
+     * is reported as {@code TABLE_READ_FAILED} and handled as {@code options.onTableError()} says: {@code fail}
+     * throws, {@code continue} goes on and leaves the table without statistics, in {@link DataProfile#failedTables}.
+     */
+    public static DataProfile profile(ProfileSource source, SchemaModel model, ConvertOptions options, Issues issues)
+            throws IOException {
+        Profiling run = new Profiling(source, model, options, issues);
         for (TableModel table : model.tables()) {
-            if (!table.isLinked()) {
-                new TablePass(source, model, table, evaluators).run(tables, relationships);
+            if (!table.isLinked() && !run.failed.contains(table.name())) {
+                new TablePass(run, table).run();
             }
         }
-        return new DataProfile(tables, relationships);
+        return new DataProfile(run.tables, run.relationships, run.failed);
     }
 
     /** Rules are evaluated as Access compares text, and as a SQLite CHECK does. */
     private record Evaluators(RuleEvaluator access, RuleEvaluator asciiNocase) {}
 
+    /** What the passes share: the source, what they found so far and the tables that failed. */
+    private static final class Profiling {
+        final ProfileSource source;
+        final SchemaModel model;
+        final ConvertOptions options;
+        final Issues issues;
+        final Evaluators evaluators = new Evaluators(
+                new RuleEvaluator(TextComparison.ACCESS), new RuleEvaluator(TextComparison.ASCII_NOCASE));
+        final Map<String, TableProfile> tables = new LinkedHashMap<>();
+        final Map<String, RelationshipProfile> relationships = new LinkedHashMap<>();
+        final Set<String> failed = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+
+        Profiling(ProfileSource source, SchemaModel model, ConvertOptions options, Issues issues) {
+            this.source = source;
+            this.model = model;
+            this.options = options;
+            this.issues = issues;
+        }
+
+        /** Reports a table that couldn't be read and drops its statistics; under {@code fail}, throws. */
+        void failed(String table, Exception e) throws IOException {
+            if (failed.add(table)) {
+                tables.keySet().removeIf(table::equalsIgnoreCase);
+                relationships
+                        .values()
+                        .removeIf(r -> model.relationships().stream()
+                                .anyMatch(fk -> fk.name().equals(r.relationship())
+                                        && (fk.parentTable().equalsIgnoreCase(table)
+                                                || fk.childTable().equalsIgnoreCase(table))));
+                TableFailure.readFailed(issues, options, table, e);
+            }
+        }
+    }
+
+    /** A relationship's parent table couldn't be read while a child row was checked: the parent's failure. */
+    private static final class ParentFailed extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+        final String parent;
+
+        ParentFailed(String parent, Exception cause) {
+            super(cause);
+            this.parent = parent;
+        }
+    }
+
     private static final class TablePass {
-        private final AccessSource source;
+        private final Profiling run;
+        private final ProfileSource source;
         private final SchemaModel model;
         private final TableModel table;
         private final Evaluators evaluators;
@@ -122,18 +183,49 @@ public final class DataProfiler {
         private RuleAccumulator tableRule;
         private long rows;
 
-        TablePass(AccessSource source, SchemaModel model, TableModel table, Evaluators evaluators) {
-            this.source = source;
-            this.model = model;
+        TablePass(Profiling run, TableModel table) {
+            this.run = run;
+            this.source = run.source;
+            this.model = run.model;
             this.table = table;
-            this.evaluators = evaluators;
+            this.evaluators = run.evaluators;
         }
 
-        void run(Map<String, TableProfile> tables, Map<String, RelationshipProfile> relationships) throws IOException {
-            plan();
-            if (scanned.isEmpty()) {
-                return; // no statistic decides anything for this table
+        void run() throws IOException {
+            try {
+                plan();
+                if (scanned.isEmpty()) {
+                    return; // no statistic decides anything for this table
+                }
+                scan();
+            } catch (ParentFailed e) {
+                run.failed(e.parent, (Exception) e.getCause());
+                return;
+            } catch (IOException | RuntimeException e) {
+                run.failed(table.name(), e);
+                return;
             }
+            if (run.failed.contains(table.name())) {
+                return; // it is its own parent, and reading its keys failed
+            }
+            run.tables.put(
+                    table.name(),
+                    new TableProfile(
+                            table.name(),
+                            rows,
+                            columns.stream()
+                                    .filter(ColumnAccumulator::reports)
+                                    .map(ColumnAccumulator::stats)
+                                    .toList(),
+                            tableRule == null ? null : tableRule.stats()));
+            for (ForeignKeyCheck fk : foreignKeys) {
+                if (!run.failed.contains(fk.relationship.parentTable())) {
+                    run.relationships.put(fk.relationship.name(), fk.profile());
+                }
+            }
+        }
+
+        private void scan() throws IOException {
             RowStream stream = source.scan(table, scanned);
             while (stream.hasNext()) {
                 Object[] row = stream.next();
@@ -154,19 +246,6 @@ public final class DataProfiler {
                 for (ForeignKeyCheck fk : foreignKeys) {
                     fk.accept(row, () -> key(row));
                 }
-            }
-            tables.put(
-                    table.name(),
-                    new TableProfile(
-                            table.name(),
-                            rows,
-                            columns.stream()
-                                    .filter(ColumnAccumulator::reports)
-                                    .map(ColumnAccumulator::stats)
-                                    .toList(),
-                            tableRule == null ? null : tableRule.stats()));
-            for (ForeignKeyCheck fk : foreignKeys) {
-                relationships.put(fk.relationship.name(), fk.profile());
             }
         }
 
@@ -210,11 +289,17 @@ public final class DataProfiler {
             }
             for (ForeignKeyModel fk : model.relationships()) {
                 // A complex child table's rows are read from its parent's cells, so none can be an orphan
+                // A parent that couldn't be read leaves the relationship unchecked, as without profiling
                 if (fk.status() == ForeignKeyModel.Status.EMIT
                         && fk.childTable().equalsIgnoreCase(table.name())
-                        && !table.isComplexChild()) {
+                        && !table.isComplexChild()
+                        && !run.failed.contains(fk.parentTable())) {
                     fk.childColumns().forEach(this::scan);
-                    foreignKeys.add(new ForeignKeyCheck(fk));
+                    try {
+                        foreignKeys.add(new ForeignKeyCheck(fk));
+                    } catch (ParentFailed e) {
+                        parentFailed(e);
+                    }
                     needsKeys = true;
                 }
             }
@@ -224,6 +309,17 @@ public final class DataProfiler {
             for (ColumnAccumulator acc : columns) {
                 acc.at = position.get(acc.column.name());
             }
+        }
+
+        /**
+         * Under {@code continue} the parent is reported and the child goes on without that relationship's check; under
+         * {@code fail} the pass stops, and the failure is the parent's.
+         */
+        private void parentFailed(ParentFailed e) throws IOException {
+            if (run.options.onTableError() == ConvertOptions.OnTableError.FAIL) {
+                throw e;
+            }
+            run.failed(e.parent, (Exception) e.getCause());
         }
 
         private void scan(String name) {
@@ -264,7 +360,11 @@ public final class DataProfiler {
                         .findFirst()
                         .orElseThrow(() -> new IllegalStateException("relationship " + fk.name() + ": no key "
                                 + fk.parentKey() + " on " + fk.parentTable()));
-                this.lookup = ParentKeys.of(source, parent, key);
+                try {
+                    this.lookup = ParentKeys.of(source, parent, key);
+                } catch (IOException | RuntimeException e) {
+                    throw new ParentFailed(parent.name(), e);
+                }
                 // The lookup wants the key in index order; map each index column to its child column
                 this.childPositions = new int[key.columns().size()];
                 for (int j = 0; j < childPositions.length; j++) {
@@ -274,7 +374,10 @@ public final class DataProfiler {
                 }
             }
 
-            void accept(Object[] row, Supplier<String> key) {
+            void accept(Object[] row, Supplier<String> key) throws IOException {
+                if (run.failed.contains(relationship.parentTable())) {
+                    return; // the parent failed at an earlier row, under continue
+                }
                 Object[] childKey = new Object[childPositions.length];
                 for (int j = 0; j < childKey.length; j++) {
                     childKey[j] = row[childPositions[j]];
@@ -286,8 +389,9 @@ public final class DataProfiler {
                 Optional<Object[]> parentKey;
                 try {
                     parentKey = lookup.find(childKey);
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
+                } catch (IOException | RuntimeException e) {
+                    parentFailed(new ParentFailed(relationship.parentTable(), e));
+                    return;
                 }
                 if (parentKey.isEmpty()) {
                     orphans++;

@@ -339,10 +339,10 @@ public final class SqliteVerifier {
                         ? java.util.stream.IntStream.range(0, columns.size()).toArray()
                         : new int[] {0};
                 differences.rows(RowComparison.unordered(
-                        table.name(), compared, key, source.rows(table.source()), rows, differences));
+                        table.name(), compared, key, () -> source.rows(table.source()), rows, differences));
             } else {
-                differences.rows(
-                        RowComparison.ordered(table.name(), compared, source.rows(table.source()), rows, differences));
+                differences.rows(RowComparison.ordered(
+                        table.name(), compared, () -> source.rows(table.source()), rows, differences));
             }
         }
     }

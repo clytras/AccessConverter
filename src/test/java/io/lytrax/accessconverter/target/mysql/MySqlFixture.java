@@ -19,6 +19,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.util.List;
+import java.util.Set;
 
 /** Test helper: converts an Access database to a MySQL/MariaDB dump in process, keeping the plan and the issues. */
 public final class MySqlFixture {
@@ -53,7 +54,7 @@ public final class MySqlFixture {
             }
             DataProfile profile = options.profile() ? DataProfiler.profile(db, model) : null;
             MySqlPlan plan = MySqlPlanner.plan(model, profile, options, mysql, issues);
-            MySqlDumpWriter.write(db, plan, output, options, mysql, PRODUCER, issues);
+            MySqlDumpWriter.write(db, Set.of(), plan, output, options, mysql, PRODUCER, issues);
             return new Converted(source, open, output, plan, model, profile, issues);
         } catch (IOException e) {
             throw new UncheckedIOException("converting " + source, e);

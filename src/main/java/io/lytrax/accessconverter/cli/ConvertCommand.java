@@ -45,6 +45,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
@@ -255,7 +256,7 @@ final class ConvertCommand implements Callable<Integer> {
                     to == Target.json ? model : plan.withGeneratedKeys(ComplexTables.expand(model, options), issues);
             started = System.nanoTime();
             progress.stage("profile", planned.tables());
-            DataProfile profile = options.profile() ? DataProfiler.profile(db, planned) : null;
+            DataProfile profile = options.profile() ? DataProfiler.profile(db, planned, options, issues) : null;
             timings.put("profile", since(started));
             if (profile != null) {
                 DataProfiler.reportCodePageText(profile, model.source(), issues);
@@ -370,7 +371,15 @@ final class ConvertCommand implements Callable<Integer> {
         started = System.nanoTime();
         progress.stage("write", sources(planned.tables(), SqlitePlan.PlannedTable::source));
         WriteOutcome outcome = SqliteWriter.write(
-                db, planned, out, options, sqlite, "AccessConverter " + Main.Version.version(), verify, issues);
+                db,
+                failedTables(profile),
+                planned,
+                out,
+                options,
+                sqlite,
+                "AccessConverter " + Main.Version.version(),
+                verify,
+                issues);
         timings.put("write", since(started));
 
         if (verify) {
@@ -401,7 +410,14 @@ final class ConvertCommand implements Callable<Integer> {
         started = System.nanoTime();
         progress.stage("write", sources(planned.tables(), MySqlPlan.PlannedTable::source));
         WriteOutcome outcome = MySqlDumpWriter.write(
-                db, planned, out, options, mysql, "AccessConverter " + Main.Version.version(), issues);
+                db,
+                failedTables(profile),
+                planned,
+                out,
+                options,
+                mysql,
+                "AccessConverter " + Main.Version.version(),
+                issues);
         timings.put("write", since(started));
         return outcome.tables();
     }
@@ -423,7 +439,14 @@ final class ConvertCommand implements Callable<Integer> {
         started = System.nanoTime();
         progress.stage("write", sources(planned.tables(), JsonPlan.PlannedTable::source));
         WriteOutcome outcome = JsonWriter.write(
-                db, planned, out, options, jsonOptions(), "AccessConverter " + Main.Version.version(), issues);
+                db,
+                failedTables(profile),
+                planned,
+                out,
+                options,
+                jsonOptions(),
+                "AccessConverter " + Main.Version.version(),
+                issues);
         timings.put("write", since(started));
 
         if (verify) {
@@ -434,6 +457,11 @@ final class ConvertCommand implements Callable<Integer> {
             result.report(issues);
         }
         return outcome.tables();
+    }
+
+    /** The tables profiling couldn't read under {@code --on-table-error continue}, which are written empty. */
+    private static Set<String> failedTables(DataProfile profile) {
+        return profile == null ? Set.of() : profile.failedTables();
     }
 
     private MySqlOptions mysqlOptions() {

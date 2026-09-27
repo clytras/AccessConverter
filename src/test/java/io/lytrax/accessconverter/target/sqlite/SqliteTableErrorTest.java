@@ -8,7 +8,9 @@ import io.lytrax.accessconverter.extract.SchemaExtractor;
 import io.lytrax.accessconverter.fixtures.GeneratedFixture;
 import io.lytrax.accessconverter.model.SchemaModel;
 import io.lytrax.accessconverter.model.TableModel;
+import io.lytrax.accessconverter.profile.DataProfile;
 import io.lytrax.accessconverter.profile.DataProfiler;
+import io.lytrax.accessconverter.profile.FailingProfileSource;
 import io.lytrax.accessconverter.report.Issue;
 import io.lytrax.accessconverter.report.IssueCode;
 import io.lytrax.accessconverter.report.Issues;
@@ -101,6 +103,73 @@ class SqliteTableErrorTest {
         assertThat(issues.list())
                 .filteredOn(i -> i.code() == IssueCode.TABLE_READ_FAILED)
                 .hasSize(1);
+    }
+
+    /**
+     * A table the profiling pass can't read (04): under {@code continue} it has no statistics, the writer doesn't read
+     * it again and writes it empty, and it is reported once, as when it fails in the writer.
+     */
+    @Test
+    void continueWritesATableThatFailedWhileProfilingEmpty() throws IOException {
+        Path output = dir.resolve("profile.sqlite3");
+        Issues issues = new Issues();
+        ConvertOptions options =
+                new ConvertOptions(true, false, OnTableError.CONTINUE, ConvertOptions.DEFAULT_BATCH_ROWS);
+        WriteOutcome outcome;
+        try (AccessSource db = AccessSource.open(GeneratedFixture.SCHEMA_FIDELITY.path())) {
+            SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
+            DataProfile profile =
+                    DataProfiler.profile(new FailingProfileSource(db, "Customers"), model, options, issues);
+            assertThat(profile.failedTables()).containsExactly("Customers");
+            assertThat(profile.table("Customers")).isEmpty();
+            SqlitePlan plan = SqlitePlanner.plan(model, profile, options, SqliteOptions.DEFAULT, issues);
+            outcome = SqliteWriter.write(
+                    db,
+                    profile.failedTables(),
+                    plan,
+                    output,
+                    options,
+                    SqliteOptions.DEFAULT,
+                    "AccessConverter",
+                    true,
+                    issues);
+        }
+
+        assertThat(outcome.tableFailed()).isTrue();
+        try (Sqlite sqlite = Sqlite.open(output)) {
+            assertThat(sqlite.value("SELECT count(*) FROM Customers")).isEqualTo(0);
+            assertThat(sqlite.value("SELECT count(*) FROM Orders")).isEqualTo(2);
+            assertThat(sqlite.value("SELECT count(*) FROM \"Order Details\"")).isEqualTo(3);
+        }
+        assertThat(issues.list())
+                .filteredOn(i -> i.code() == IssueCode.TABLE_READ_FAILED)
+                .singleElement()
+                .satisfies(i -> {
+                    assertThat(i.table()).isEqualTo("Customers");
+                    assertThat(i.message()).contains("reading the table failed after 0 rows", "page 42 is damaged");
+                });
+        assertThat(issues.list())
+                .filteredOn(i -> i.code() == IssueCode.FOREIGN_KEY_CHECK_FAILED)
+                .singleElement()
+                .satisfies(i -> assertThat(i.message()).contains("CustomersOrders"));
+        assertThat(issues.highestSeverity()).isEqualTo(Severity.ERROR);
+    }
+
+    @Test
+    void failStopsAtATableThatFailsWhileProfiling() throws IOException {
+        Issues issues = new Issues();
+        try (AccessSource db = AccessSource.open(GeneratedFixture.SCHEMA_FIDELITY.path())) {
+            SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
+
+            assertThatThrownBy(() -> DataProfiler.profile(
+                            new FailingProfileSource(db, "Customers"), model, ConvertOptions.DEFAULT, issues))
+                    .isInstanceOf(SourceException.class)
+                    .hasMessageContaining("reading table Customers failed");
+        }
+        assertThat(issues.list())
+                .filteredOn(i -> i.code() == IssueCode.TABLE_READ_FAILED)
+                .singleElement()
+                .satisfies(i -> assertThat(i.table()).isEqualTo("Customers"));
     }
 
     @Test

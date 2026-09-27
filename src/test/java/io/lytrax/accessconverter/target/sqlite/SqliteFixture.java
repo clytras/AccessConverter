@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 /** Test helper: converts an Access database to SQLite in process, keeping the plan and the issues for assertions. */
 public final class SqliteFixture {
@@ -53,7 +54,7 @@ public final class SqliteFixture {
             }
             DataProfile profile = options.profile() ? DataProfiler.profile(db, model) : null;
             SqlitePlan plan = SqlitePlanner.plan(model, profile, options, sqlite, issues);
-            SqliteWriter.write(db, plan, output, options, sqlite, "AccessConverter", true, issues);
+            SqliteWriter.write(db, Set.of(), plan, output, options, sqlite, "AccessConverter", true, issues);
             VerifyResult verified = SqliteVerifier.verify(db, plan, output);
             return new Converted(output, plan, model, profile, issues, verified);
         } catch (IOException e) {

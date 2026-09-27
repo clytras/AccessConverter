@@ -55,9 +55,13 @@ public record VerifyResult(List<Difference> differences, long differenceCount, L
 
     public record TableRows(String table, long expected, long actual) {}
 
-    /** Collects differences while a verifier runs: all are counted, the first few kept. */
+    /**
+     * Collects differences while a verifier runs: all are counted, the first few kept, and so is every source table
+     * that could not be read.
+     */
     public static final class Collector {
         private final List<Difference> kept = new ArrayList<>();
+        private final List<Difference> alwaysKept = new ArrayList<>();
         private final List<TableRows> tables = new ArrayList<>();
         private long count;
 
@@ -66,6 +70,15 @@ public record VerifyResult(List<Difference> differences, long differenceCount, L
             if (kept.size() < MAX_DIFFERENCES) {
                 kept.add(difference);
             }
+        }
+
+        /**
+         * Counts a difference and keeps it even past the first {@value #MAX_DIFFERENCES}: a source table that can't be
+         * read must be named, however many row differences came before it.
+         */
+        public void keep(Difference difference) {
+            count++;
+            alwaysKept.add(difference);
         }
 
         public void add(String table, String object, String what, String expected, String actual) {
@@ -79,6 +92,7 @@ public record VerifyResult(List<Difference> differences, long differenceCount, L
                     kept.add(difference);
                 }
             }
+            alwaysKept.addAll(other.alwaysKept);
             count += other.count;
             tables.addAll(other.tables);
         }
@@ -92,7 +106,9 @@ public record VerifyResult(List<Difference> differences, long differenceCount, L
         }
 
         public VerifyResult result() {
-            return new VerifyResult(kept, count, tables);
+            List<Difference> differences = new ArrayList<>(kept);
+            differences.addAll(alwaysKept);
+            return new VerifyResult(differences, count, tables);
         }
     }
 }

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.lytrax.accessconverter.fixtures.Access97Fixture;
 import io.lytrax.accessconverter.fixtures.CorpusFile;
+import io.lytrax.accessconverter.fixtures.DamagedCopy;
 import io.lytrax.accessconverter.fixtures.GeneratedFixture;
 import io.lytrax.accessconverter.target.sqlite.Sqlite;
 import java.io.IOException;
@@ -283,6 +284,55 @@ class ConvertCommandTest {
                 .allSatisfy(line ->
                         assertThat(line).startsWith("error: " + notADatabase.fileName() + ": not an Access database"));
         assertThat(output).doesNotExist();
+    }
+
+    /**
+     * A table damaged so that the profiling pass can't read it (04): {@code continue} writes the other tables and a
+     * failed report naming it, {@code fail} leaves nothing, and {@code verify} reports it and compares the rest.
+     */
+    @Test
+    void continueGoesOnPastATableThatFailsWhileProfiling() throws IOException {
+        Path damaged = DamagedCopy.withDataPageDamaged(
+                GeneratedFixture.SCHEMA_FIDELITY.path(), "Customers", dir.resolve("damaged.accdb"));
+        Path output = dir.resolve("damaged.sqlite3");
+
+        Cli fail = Cli.run("convert", "--to", "sqlite", "-o", output.toString(), damaged.toString());
+        assertThat(fail.exitCode()).isEqualTo(ExitCodes.FAILED);
+        assertThat(fail.err().lines())
+                .singleElement()
+                .satisfies(line -> assertThat(line).startsWith("error: damaged.accdb: reading table Customers failed"));
+        assertThat(output).doesNotExist();
+        assertThat(dir.resolve("damaged.sqlite3.partial")).doesNotExist();
+
+        Cli cont = Cli.run(
+                "convert",
+                "--to",
+                "sqlite",
+                "--on-table-error",
+                "continue",
+                "--format-result",
+                "json",
+                "-o",
+                output.toString(),
+                damaged.toString());
+        assertThat(cont.exitCode()).isEqualTo(ExitCodes.FAILED);
+        assertThat(cont.err()).isEmpty();
+        assertThat(cont.out())
+                .contains("\"outcome\": \"failed\"")
+                .contains("\"code\": \"TABLE_READ_FAILED\"")
+                .contains("reading the table failed after 0 rows: damaged.accdb: reading table Customers failed");
+        assertThat(dir.resolve("damaged.sqlite3.report.json")).exists();
+        try (Sqlite sqlite = Sqlite.open(output)) {
+            assertThat(sqlite.value("SELECT count(*) FROM Customers")).isEqualTo(0);
+            assertThat(sqlite.value("SELECT count(*) FROM Orders")).isEqualTo(2);
+        }
+
+        Cli verify = Cli.run("verify", damaged.toString(), output.toString());
+        assertThat(verify.exitCode()).isEqualTo(ExitCodes.FAILED);
+        assertThat(verify.err()).isEmpty();
+        assertThat(verify.out())
+                .contains("Orders: 2 rows")
+                .contains("Customers: the source table is unreadable: damaged.accdb: reading table Customers failed");
     }
 
     @Test

@@ -8,7 +8,9 @@ import io.lytrax.accessconverter.extract.SchemaExtractor;
 import io.lytrax.accessconverter.fixtures.GeneratedFixture;
 import io.lytrax.accessconverter.model.SchemaModel;
 import io.lytrax.accessconverter.model.TableModel;
+import io.lytrax.accessconverter.profile.DataProfile;
 import io.lytrax.accessconverter.profile.DataProfiler;
+import io.lytrax.accessconverter.profile.FailingProfileSource;
 import io.lytrax.accessconverter.report.IssueCode;
 import io.lytrax.accessconverter.report.Issues;
 import io.lytrax.accessconverter.report.Severity;
@@ -73,6 +75,45 @@ class JsonTableErrorTest {
                 .filteredOn(i -> i.code() == IssueCode.TABLE_READ_FAILED)
                 .singleElement()
                 .satisfies(i -> assertThat(i.message()).contains("page 42 is damaged"));
+        assertThat(issues.highestSeverity()).isEqualTo(Severity.ERROR);
+        assertThat(JsonSchemaCheck.errors(output)).isEmpty();
+    }
+
+    /** A table the profiling pass can't read (04) is left empty like one that fails in the writer, and reported once. */
+    @ParameterizedTest
+    @EnumSource(Layout.class)
+    void continueLeavesATableThatFailedWhileProfilingEmpty(Layout layout) throws IOException {
+        Path output = dir.resolve("profile" + extension(layout));
+        Issues issues = new Issues();
+        ConvertOptions options =
+                new ConvertOptions(true, false, OnTableError.CONTINUE, ConvertOptions.DEFAULT_BATCH_ROWS);
+        WriteOutcome outcome;
+        try (AccessSource db = AccessSource.open(GeneratedFixture.SCHEMA_FIDELITY.path())) {
+            SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
+            DataProfile profile =
+                    DataProfiler.profile(new FailingProfileSource(db, "Customers"), model, options, issues);
+            JsonPlan plan = JsonPlanner.plan(model, profile, options, issues);
+            outcome = JsonWriter.write(
+                    db,
+                    profile.failedTables(),
+                    plan,
+                    output,
+                    options,
+                    JsonOptions.DEFAULT.withLayout(layout),
+                    JsonFixture.PRODUCER,
+                    issues);
+        }
+
+        assertThat(outcome.tableFailed()).isTrue();
+        assertThat(rows(output, layout, "Customers")).isEmpty();
+        assertThat(rows(output, layout, "Orders")).hasSize(2);
+        assertThat(issues.list())
+                .filteredOn(i -> i.code() == IssueCode.TABLE_READ_FAILED)
+                .singleElement()
+                .satisfies(i -> {
+                    assertThat(i.table()).isEqualTo("Customers");
+                    assertThat(i.message()).contains("reading the table failed after 0 rows", "page 42 is damaged");
+                });
         assertThat(issues.highestSeverity()).isEqualTo(Severity.ERROR);
         assertThat(JsonSchemaCheck.errors(output)).isEmpty();
     }

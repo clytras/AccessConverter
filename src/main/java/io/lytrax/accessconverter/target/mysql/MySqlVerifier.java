@@ -421,7 +421,7 @@ public final class MySqlVerifier {
                         table.name(),
                         compared,
                         new int[] {0},
-                        source.rows(table.source()),
+                        () -> source.rows(table.source()),
                         output(rows, columns),
                         differences));
             }
@@ -431,7 +431,7 @@ public final class MySqlVerifier {
         try (Statement statement = db.createStatement();
                 ResultSet rows = statement.executeQuery(select(table, true))) {
             ordered.rows(RowComparison.ordered(
-                    table.name(), compared, source.rows(table.source()), output(rows, columns), ordered));
+                    table.name(), compared, () -> source.rows(table.source()), output(rows, columns), ordered));
         }
         if (ordered.count() == 0 || orderIsAccessOrder(table)) {
             differences.addAll(ordered);
@@ -448,7 +448,12 @@ public final class MySqlVerifier {
         try (Statement statement = db.createStatement();
                 ResultSet rows = statement.executeQuery(select(table, false))) {
             differences.rows(RowComparison.unordered(
-                    table.name(), compared, key, source.rows(table.source()), output(rows, columns), differences));
+                    table.name(),
+                    compared,
+                    key,
+                    () -> source.rows(table.source()),
+                    output(rows, columns),
+                    differences));
         }
     }
 

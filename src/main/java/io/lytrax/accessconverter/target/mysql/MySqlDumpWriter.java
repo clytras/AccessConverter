@@ -33,6 +33,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -84,9 +85,13 @@ public final class MySqlDumpWriter {
         this.issues = issues;
     }
 
-    /** @param producer the tool and its version, for the header ({@code AccessConverter 3.0.0}) */
+    /**
+     * @param failedTables the tables profiling couldn't read (04): written empty, as tables that failed
+     * @param producer the tool and its version, for the header ({@code AccessConverter 3.0.0})
+     */
     public static WriteOutcome write(
             AccessSource source,
+            Set<String> failedTables,
             MySqlPlan plan,
             Path output,
             ConvertOptions options,
@@ -94,7 +99,8 @@ public final class MySqlDumpWriter {
             String producer,
             Issues issues)
             throws IOException {
-        return write(source::rows, plan, output, options, mysql, producer, issues);
+        RowSource rows = source::rows;
+        return write(rows.skipping(failedTables), plan, output, options, mysql, producer, issues);
     }
 
     /** As {@link #write}, reading the rows from somewhere else; for the {@code --on-table-error} test. */

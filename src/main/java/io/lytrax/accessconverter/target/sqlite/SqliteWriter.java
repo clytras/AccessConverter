@@ -35,6 +35,7 @@ import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -83,10 +84,12 @@ public final class SqliteWriter {
     /**
      * @param producer the tool and its version ({@code AccessConverter 3.0.1}), for {@code --sqlite-metadata}
      * @param integrityCheck also run {@code PRAGMA integrity_check}
+     * @param failedTables the tables profiling couldn't read (04): written empty, as tables that failed
      * @return what each table contributed, and whether a table failed while {@code --on-table-error continue}
      */
     public static WriteOutcome write(
             AccessSource source,
+            Set<String> failedTables,
             SqlitePlan plan,
             Path output,
             ConvertOptions options,
@@ -95,7 +98,8 @@ public final class SqliteWriter {
             boolean integrityCheck,
             Issues issues)
             throws IOException {
-        return write(source::rows, plan, output, options, sqlite, producer, integrityCheck, issues);
+        RowSource rows = source::rows;
+        return write(rows.skipping(failedTables), plan, output, options, sqlite, producer, integrityCheck, issues);
     }
 
     /** As {@link #write}, reading the rows from somewhere else; for the {@code --on-table-error} test. */
