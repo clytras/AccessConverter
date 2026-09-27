@@ -22,6 +22,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.IVersionProvider;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.ParseResult;
 import picocli.CommandLine.ScopeType;
 import picocli.CommandLine.Spec;
 
@@ -57,7 +58,32 @@ public final class Main implements Callable<Integer> {
     }
 
     public static void main(String[] args) {
-        System.exit(run(System.out, System.out.charset(), new PrintWriter(System.err, true), args));
+        int code;
+        try {
+            code = run(System.out, System.out.charset(), new PrintWriter(System.err, true), args);
+        } catch (Error e) {
+            // What run() couldn't handle, such as memory running out again while reporting that it ran out: still a
+            // failure (exit 2), never the JVM's exit 1, which reads as success with warnings
+            try {
+                System.err.println("error: " + message(e));
+            } finally {
+                Runtime.getRuntime().halt(ExitCodes.FAILED);
+            }
+            return;
+        }
+        System.exit(code);
+    }
+
+    /** What running out of memory says: which file, and what to do about it. */
+    static String outOfMemory(ParseResult parseResult, OutOfMemoryError e) {
+        ParseResult command = parseResult;
+        while (command.hasSubcommand()) {
+            command = command.subcommand();
+        }
+        Object input = command.matchedPositionalValue(0, null);
+        String file = input instanceof Path path && path.getFileName() != null ? path.getFileName() + ": " : "";
+        return file + "memory ran out (" + e.getMessage() + "): give Java a larger heap (-Xmx; with the runtime image,"
+                + " ACCESSCONVERTER_JAVA_OPTS=-Xmx4g; in a container, more memory), or convert with --binary files";
     }
 
     /**
@@ -89,7 +115,19 @@ public final class Main implements Callable<Integer> {
                 .setExecutionStrategy(parseResult -> {
                     // Jackcess warns through JUL in the default locale; its findings are issues in our output
                     JACKCESS_LOG.setLevel(main.verbose ? Level.WARNING : Level.OFF);
-                    return new CommandLine.RunLast().execute(parseResult);
+                    try {
+                        return new CommandLine.RunLast().execute(parseResult);
+                    } catch (OutOfMemoryError e) {
+                        // The stack has unwound, so what filled the heap is unreachable and there is memory to say so.
+                        // Outputs were deleted on the way (AtomicOutput); like any failure, nothing is on stdout.
+                        PrintWriter errors =
+                                parseResult.commandSpec().commandLine().getErr();
+                        errors.println("error: " + outOfMemory(parseResult, e));
+                        if (main.verbose) {
+                            e.printStackTrace(errors);
+                        }
+                        return ExitCodes.FAILED;
+                    }
                 })
                 .setExecutionExceptionHandler((e, commandLine, parseResult) -> {
                     commandLine.getErr().println("error: " + message(e));

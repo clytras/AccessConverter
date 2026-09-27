@@ -127,7 +127,7 @@ public final class SqliteWriter {
                 }
                 return null;
             });
-        } catch (IOException | RuntimeException e) {
+        } catch (IOException | RuntimeException | Error e) {
             if (files != null) {
                 files.discard();
             }
