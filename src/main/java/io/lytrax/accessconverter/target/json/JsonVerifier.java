@@ -327,8 +327,8 @@ public final class JsonVerifier {
                     column.name(), BinaryCells.comparedType(source, options), column.sourceIndex(), 9, stored));
         }
         try {
-            differences.rows(
-                    RowComparison.ordered(table.name(), columns, source.rows(table.source(), true), rows, differences));
+            differences.rows(RowComparison.ordered(
+                    table.name(), columns, () -> source.rows(table.source(), true), rows, differences));
         } catch (SQLException e) {
             throw new IllegalStateException("not reached: nothing here is SQL", e);
         }

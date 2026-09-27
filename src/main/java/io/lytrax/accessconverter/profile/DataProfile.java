@@ -4,14 +4,24 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 /**
  * What the data allows (04, Profiling pass): the statistics that let a target be as strict as the data is, and no
  * stricter. Only the statistics a target decision depends on are collected; a table none of them applies to is
  * not read and has no entry.
+ *
+ * @param failedTables tables that couldn't be read under {@code --on-table-error continue}: they have no statistics,
+ *     so a target takes the conservative choice for them, and the writers write them empty without reading them
  */
-public record DataProfile(Map<String, TableProfile> tables, Map<String, RelationshipProfile> relationships) {
+public record DataProfile(
+        Map<String, TableProfile> tables, Map<String, RelationshipProfile> relationships, Set<String> failedTables) {
+
+    public DataProfile(Map<String, TableProfile> tables, Map<String, RelationshipProfile> relationships) {
+        this(tables, relationships, Set.of());
+    }
 
     public DataProfile {
         Map<String, TableProfile> t = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -20,6 +30,9 @@ public record DataProfile(Map<String, TableProfile> tables, Map<String, Relation
         Map<String, RelationshipProfile> r = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         r.putAll(relationships);
         relationships = Collections.unmodifiableMap(r);
+        Set<String> f = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        f.addAll(failedTables);
+        failedTables = Collections.unmodifiableSet(f);
     }
 
     public Optional<TableProfile> table(String name) {

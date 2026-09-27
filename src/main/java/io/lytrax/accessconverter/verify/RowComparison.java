@@ -2,10 +2,13 @@ package io.lytrax.accessconverter.verify;
 
 import io.lytrax.accessconverter.model.AccessType;
 import io.lytrax.accessconverter.source.RowStream;
+import io.lytrax.accessconverter.source.SourceException;
 import io.lytrax.accessconverter.value.CanonicalText;
 import io.lytrax.accessconverter.verify.VerifyResult.Collector;
 import io.lytrax.accessconverter.verify.VerifyResult.Difference;
 import io.lytrax.accessconverter.verify.VerifyResult.TableRows;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -67,45 +70,71 @@ public final class RowComparison {
         Object value(int column) throws SQLException;
     }
 
+    /** Opens a table's source rows. */
+    @FunctionalInterface
+    public interface SourceRows {
+        RowStream open() throws IOException;
+    }
+
     private RowComparison() {}
 
-    /** Walks both sides together; a row only one side has is a difference, and so is every unequal value. */
+    /**
+     * Walks both sides together; a row only one side has is a difference, and so is every unequal value. A source
+     * table that can't be read is one difference, and its comparison ends there.
+     */
     public static TableRows ordered(
-            String table, List<Column> columns, RowStream expected, OutputRows actual, Collector differences)
+            String table, List<Column> columns, SourceRows source, OutputRows actual, Collector differences)
             throws SQLException {
         long expectedRows = 0;
         long actualRows = 0;
-        boolean hasActual = actual.next();
-        while (expected.hasNext() || hasActual) {
-            if (!expected.hasNext()) {
-                actualRows++;
-                differences.add(new Difference(table, null, "row " + actualRows, "no row", "a row"));
-                hasActual = actual.next();
-                continue;
-            }
-            Object[] row = expected.next();
-            expectedRows++;
-            if (!hasActual) {
-                differences.add(new Difference(table, null, "row " + expectedRows, "a row", "no row"));
-                continue;
-            }
-            actualRows++;
-            for (int i = 0; i < columns.size(); i++) {
-                Column column = columns.get(i);
-                Object stored = column.expected(row);
-                Object read = column.actual(actual.value(i));
-                if (!ValueComparator.same(column.type(), stored, read, column.fractionDigits())) {
-                    differences.add(new Difference(
-                            table,
-                            column.name(),
-                            "row " + expectedRows,
-                            CanonicalText.of(stored),
-                            CanonicalText.of(read)));
+        try {
+            RowStream expected = source.open();
+            boolean hasActual = actual.next();
+            while (expected.hasNext() || hasActual) {
+                if (!expected.hasNext()) {
+                    actualRows++;
+                    differences.add(new Difference(table, null, "row " + actualRows, "no row", "a row"));
+                    hasActual = actual.next();
+                    continue;
                 }
+                Object[] row = expected.next();
+                expectedRows++;
+                if (!hasActual) {
+                    differences.add(new Difference(table, null, "row " + expectedRows, "a row", "no row"));
+                    continue;
+                }
+                actualRows++;
+                for (int i = 0; i < columns.size(); i++) {
+                    Column column = columns.get(i);
+                    Object stored = column.expected(row);
+                    Object read = column.actual(actual.value(i));
+                    if (!ValueComparator.same(column.type(), stored, read, column.fractionDigits())) {
+                        differences.add(new Difference(
+                                table,
+                                column.name(),
+                                "row " + expectedRows,
+                                CanonicalText.of(stored),
+                                CanonicalText.of(read)));
+                    }
+                }
+                hasActual = actual.next();
             }
-            hasActual = actual.next();
+        } catch (IOException | UncheckedIOException e) {
+            unreadable(table, e, differences);
         }
         return new TableRows(table, expectedRows, actualRows);
+    }
+
+    /**
+     * The source table couldn't be read, as a damaged one can't: one difference naming it. Reading the source rows
+     * fails with a {@link SourceException}; any other unchecked failure is the output's, and is thrown on.
+     */
+    private static void unreadable(String table, Exception e, Collector differences) {
+        if (e instanceof UncheckedIOException u && !(u.getCause() instanceof SourceException)) {
+            throw u;
+        }
+        String message = e instanceof UncheckedIOException u ? u.getCause().getMessage() : e.getMessage();
+        differences.keep(new Difference(table, null, "the source table", "readable", "unreadable: " + message));
     }
 
     /**
@@ -114,22 +143,31 @@ public final class RowComparison {
      * row the output lacks, or holds in addition, is a difference named by its key columns. Memory grows with the
      * number of distinct rows, so this is for tables whose order the output can't reproduce.
      *
+     * <p>A source table that can't be read is one difference, and its comparison ends there.
+     *
      * @param key the positions in {@code columns} that name a row in a difference (the primary key), or all of them
      */
     public static TableRows unordered(
-            String table, List<Column> columns, int[] key, RowStream expected, OutputRows actual, Collector differences)
+            String table, List<Column> columns, int[] key, SourceRows source, OutputRows actual, Collector differences)
             throws SQLException {
         Map<Long, Tally> tallies = new HashMap<>();
         long expectedRows = 0;
         long actualRows = 0;
         Object[] values = new Object[columns.size()];
-        while (expected.hasNext()) {
-            Object[] row = expected.next();
-            expectedRows++;
-            for (int i = 0; i < columns.size(); i++) {
-                values[i] = columns.get(i).expected(row);
+        try {
+            RowStream expected = source.open();
+            while (expected.hasNext()) {
+                Object[] row = expected.next();
+                expectedRows++;
+                for (int i = 0; i < columns.size(); i++) {
+                    values[i] = columns.get(i).expected(row);
+                }
+                tallies.computeIfAbsent(digest(columns, values), d -> new Tally(describe(columns, key, values)))
+                        .count++;
             }
-            tallies.computeIfAbsent(digest(columns, values), d -> new Tally(describe(columns, key, values))).count++;
+        } catch (IOException | UncheckedIOException e) {
+            unreadable(table, e, differences);
+            return new TableRows(table, expectedRows, actualRows);
         }
         List<String> extra = new ArrayList<>();
         long extraRows = 0;

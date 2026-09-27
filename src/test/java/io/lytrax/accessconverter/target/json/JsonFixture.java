@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 /** Test helper: converts an Access database to JSON in process, keeping the plan and the issues. */
 public final class JsonFixture {
@@ -41,7 +42,7 @@ public final class JsonFixture {
             SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
             DataProfile profile = options.profile() ? DataProfiler.profile(db, model) : null;
             JsonPlan plan = JsonPlanner.plan(model, profile, options, issues);
-            WriteOutcome outcome = JsonWriter.write(db, plan, output, options, json, PRODUCER, issues);
+            WriteOutcome outcome = JsonWriter.write(db, Set.of(), plan, output, options, json, PRODUCER, issues);
             return new Converted(source, open, output, plan, outcome, issues);
         } catch (IOException e) {
             throw new UncheckedIOException("converting " + source, e);

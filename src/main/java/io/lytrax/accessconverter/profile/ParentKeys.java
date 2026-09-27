@@ -4,7 +4,6 @@ import io.lytrax.accessconverter.model.ColumnModel;
 import io.lytrax.accessconverter.model.IndexModel;
 import io.lytrax.accessconverter.model.TableModel;
 import io.lytrax.accessconverter.source.AccessSource;
-import io.lytrax.accessconverter.source.KeyLookup;
 import io.lytrax.accessconverter.source.RowStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -36,7 +35,7 @@ final class ParentKeys {
         Optional<Object[]> find(Object[] key) throws IOException;
     }
 
-    private final AccessSource source;
+    private final ProfileSource source;
     private final TableModel parent;
     private final IndexModel key;
     private final Collator text;
@@ -44,7 +43,7 @@ final class ParentKeys {
     private Map<List<Object>, Object[]> scanned;
     private String fallbackReason;
 
-    private ParentKeys(AccessSource source, TableModel parent, IndexModel key) {
+    private ParentKeys(ProfileSource source, TableModel parent, IndexModel key) {
         this.source = source;
         this.parent = parent;
         this.key = key;
@@ -52,11 +51,10 @@ final class ParentKeys {
         this.text.setStrength(Collator.SECONDARY);
     }
 
-    static ParentKeys of(AccessSource source, TableModel parent, IndexModel key) throws IOException {
+    static ParentKeys of(ProfileSource source, TableModel parent, IndexModel key) throws IOException {
         ParentKeys keys = new ParentKeys(source, parent, key);
         try {
-            KeyLookup lookup = source.keyLookup(parent, key);
-            keys.seek = lookup::find;
+            keys.seek = source.keyLookup(parent, key)::find;
         } catch (RuntimeException e) {
             keys.fallbackReason = AccessSource.indexFailure(e);
             keys.scan();
@@ -65,7 +63,7 @@ final class ParentKeys {
     }
 
     /** As {@link #of}, with the index seek replaced: lets a test make a seek miss rows that are there. */
-    static ParentKeys withSeek(AccessSource source, TableModel parent, IndexModel key, Seeker seek) {
+    static ParentKeys withSeek(ProfileSource source, TableModel parent, IndexModel key, Seeker seek) {
         ParentKeys keys = new ParentKeys(source, parent, key);
         keys.seek = seek;
         return keys;

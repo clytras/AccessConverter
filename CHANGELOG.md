@@ -7,6 +7,13 @@ fixes the patch version.
 
 ## [Unreleased]
 
+### Fixed
+
+- `--on-table-error continue` now also goes on past a table that fails while the data is profiled: it is reported as
+  `TABLE_READ_FAILED` and written empty, and the other tables are converted, as when a table fails while being
+  written. It used to stop the whole conversion with no output and no report. `verify` reports such a table as a
+  difference and compares the rest.
+
 ## [3.2.0] - 2026-09-26
 
 ### Added
