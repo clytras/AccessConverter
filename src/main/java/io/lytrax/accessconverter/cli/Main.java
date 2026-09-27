@@ -38,6 +38,12 @@ public final class Main implements Callable<Integer> {
     /** Jackcess logs through System.Logger (JUL by default); held here so the level setting isn't collected. */
     private static final Logger JACKCESS_LOG = Logger.getLogger("com.healthmarketscience");
 
+    /**
+     * sqlite-jdbc logs through JUL too (it has no SLF4J here): a native library it can't load is logged with a stack
+     * trace before the connection fails, which our one error line already reports.
+     */
+    private static final Logger SQLITE_LOG = Logger.getLogger("org.sqlite");
+
     private final OutputStream stdout;
     private final PasswordReader passwordReader;
     private final Terminal terminal;
@@ -115,6 +121,7 @@ public final class Main implements Callable<Integer> {
                 .setExecutionStrategy(parseResult -> {
                     // Jackcess warns through JUL in the default locale; its findings are issues in our output
                     JACKCESS_LOG.setLevel(main.verbose ? Level.WARNING : Level.OFF);
+                    SQLITE_LOG.setLevel(main.verbose ? Level.WARNING : Level.OFF);
                     try {
                         return new CommandLine.RunLast().execute(parseResult);
                     } catch (OutOfMemoryError e) {

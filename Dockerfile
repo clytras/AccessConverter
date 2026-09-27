@@ -30,6 +30,23 @@ COPY ${JAR} /accessconverter.jar
 
 FROM ${JAR_SOURCE} AS jar
 
+# ---- sqlite-jdbc's native library for the image's architecture, taken out of the jar here: sqlite-jdbc would unpack
+# it into /tmp at run time, which fails with a read-only root filesystem (--read-only) or a noexec /tmp. Unpacking
+# doesn't depend on the architecture, so this runs on the build platform, never under emulation.
+FROM --platform=$BUILDPLATFORM eclipse-temurin:21-jdk@sha256:92a2a4d7a928d057e7bd999c418d66c26a34eb9a0442f3ab67721c3f88110b2d AS native
+ARG TARGETARCH
+COPY --from=jar /accessconverter.jar /accessconverter.jar
+WORKDIR /unpacked
+RUN case "$TARGETARCH" in \
+        amd64) arch=x86_64 ;; \
+        arm64) arch=aarch64 ;; \
+        *) echo "no sqlite-jdbc library is known for $TARGETARCH" >&2; exit 1 ;; \
+    esac \
+    && jar xf /accessconverter.jar "org/sqlite/native/Linux/$arch/libsqlitejdbc.so" \
+    && mkdir /native \
+    && mv "org/sqlite/native/Linux/$arch/libsqlitejdbc.so" /native/ \
+    && chmod 444 /native/libsqlitejdbc.so
+
 # ---- the image
 FROM gcr.io/distroless/java21-debian12:nonroot@sha256:7e37784d94dccbf5ccb195c73b295f5ad00cd266512dfbac12eb9c3c28f8077d
 
@@ -41,10 +58,15 @@ LABEL org.opencontainers.image.title="AccessConverter" \
 COPY LICENSE NOTICE /opt/accessconverter/
 COPY packaging/licenses /opt/accessconverter/licenses/
 COPY --from=jar /accessconverter.jar /opt/accessconverter/accessconverter.jar
+COPY --from=native /native/libsqlitejdbc.so /opt/accessconverter/native/libsqlitejdbc.so
 
 # Java takes the encoding of file names and standard output from the locale: under a POSIX one (C), a non-ASCII
 # file name can't even be opened, so the image sets a UTF-8 locale
 ENV LANG=C.UTF-8
 # Relative paths on the command line are relative to the mounted directory
 WORKDIR /data
-ENTRYPOINT ["java", "-jar", "/opt/accessconverter/accessconverter.jar"]
+# Nothing is written outside the mounted directory, so the container runs with a read-only root filesystem: SQLite's
+# library is loaded from where it was put above, and the JVM keeps no performance data in /tmp/hsperfdata_*
+ENTRYPOINT ["java", "-XX:-UsePerfData", \
+    "-Dorg.sqlite.lib.path=/opt/accessconverter/native", "-Dorg.sqlite.lib.name=libsqlitejdbc.so", \
+    "-jar", "/opt/accessconverter/accessconverter.jar"]
