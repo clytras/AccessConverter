@@ -1,5 +1,7 @@
 package io.lytrax.accessconverter.target.mysql;
 
+import java.io.IOException;
+import java.io.Writer;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -22,6 +24,9 @@ public final class MySqlLiterals {
     private static final DateTimeFormatter[] FORMATS = new DateTimeFormatter[7];
 
     private static final HexFormat HEX = HexFormat.of().withUpperCase();
+
+    /** Bytes hexed at a time when a large value is written straight to the output. */
+    private static final int HEX_CHUNK = 1 << 15;
 
     /** U+FFFD, written for what UTF-8 can't encode. */
     static final char REPLACEMENT = (char) 0xFFFD;
@@ -178,6 +183,26 @@ public final class MySqlLiterals {
         out.append("X'");
         HEX.formatHex(out, value);
         out.append('\'');
+    }
+
+    /**
+     * Writes {@code X'…'} as {@link #bytes(StringBuilder, byte[])} does, a chunk at a time, so the hex text of a large
+     * value is never held whole.
+     */
+    public static void bytes(Writer out, byte[] value) throws IOException {
+        out.write("X'");
+        StringBuilder chunk = new StringBuilder(2 * HEX_CHUNK);
+        for (int from = 0; from < value.length; from += HEX_CHUNK) {
+            chunk.setLength(0);
+            HEX.formatHex(chunk, value, from, Math.min(value.length, from + HEX_CHUNK));
+            out.append(chunk);
+        }
+        out.write('\'');
+    }
+
+    /** The length of {@code X'…'} for {@code value}, in bytes. */
+    public static long bytesLength(byte[] value) {
+        return 2L * value.length + 3;
     }
 
     /** The length of the text encoded as UTF-8, without encoding it. */

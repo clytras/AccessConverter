@@ -13,6 +13,10 @@ fixes the patch version.
   `TABLE_READ_FAILED` and written empty, and the other tables are converted, as when a table fails while being
   written. It used to stop the whole conversion with no output and no report. `verify` reports such a table as a
   difference and compares the rest.
+- A MySQL or MariaDB dump no longer needs memory several times the size of its largest value: a row larger than
+  `--batch-bytes` is written as it is built, its binary values turned into hex a piece at a time. A database whose
+  largest value is 6 MB needed more than 64 MB of heap, and one with a 50 MB value 384 MB; both now convert in the
+  heap a JSON export of them needs. The dump itself is unchanged.
 
 ## [3.2.0] - 2026-09-26
 
