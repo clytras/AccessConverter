@@ -130,20 +130,61 @@ jobs:
           type=$(file "$native/${expected[0]}")
           echo "$type"
           grep -qE "${expected[1]}" <<< "$type" || { echo "::error::not built for ${{ matrix.platform }}"; exit 1; }
-      # The zip as users get it, unpacked where no Java is installed (Linux: a bare Ubuntu container) or where any
-      # Java but the image's own fails loudly (macOS and Windows have JDKs installed: a poisoned java comes first
-      # on the PATH, JAVA_HOME points nowhere and the JDKs are off the PATH). The images that hold the SQLite library
-      # must not need the temporary folder: Linux also runs with a read-only root filesystem and no tmpfs, as sandboxed
-      # deployments run it, and Windows with java.io.tmpdir pointing at a folder that doesn't exist
-      - name: Smoke test
+      # The zip unpacked as users unpack it. On macOS, as downloaded with a browser: the zip quarantined, and unpacked
+      # with ditto (as Finder does), which quarantines every file
+      - name: Unpack
         run: |
           name="accessconverter-$VERSION-${{ matrix.platform }}"
           mkdir unpacked
-          if [[ "$RUNNER_OS" == Windows ]]; then
-            7z x -bso0 -ounpacked "dist/$name.zip"
-          else
-            unzip -q "dist/$name.zip" -d unpacked
+          case "$RUNNER_OS" in
+            Windows) 7z x -bso0 -ounpacked "dist/$name.zip" ;;
+            Linux) unzip -q "dist/$name.zip" -d unpacked ;;
+            macOS)
+              cp "dist/$name.zip" unpacked/
+              xattr -w com.apple.quarantine "0083;$(printf %x "$(date +%s)");Safari;" "unpacked/$name.zip"
+              (cd unpacked && ditto -x -k "$name.zip" .)
+              quarantined=$(xattr -rl "unpacked/$name" | grep -c com.apple.quarantine || true)
+              echo "$quarantined paths quarantined"
+              if (( quarantined == 0 )); then
+                echo "::error::ditto quarantined nothing: the quarantine step would test nothing"
+                exit 1
+              fi ;;
+          esac
+      # Every file and folder of the image is its user's to change: macOS won't clear the quarantine of a read-only
+      # file, and deleting the unpacked image would prompt. (On Windows, find sees the read-only attribute 7-Zip
+      # restores)
+      - name: Writable files
+        run: |
+          readonly=$(find "unpacked/accessconverter-$VERSION-${{ matrix.platform }}" ! -type l ! -perm -u+w)
+          if [[ -n "$readonly" ]]; then
+            echo "$readonly"
+            echo "::error::the image holds files its user can't write"
+            exit 1
           fi
+      # The README's command, exactly, where the user runs it: it must clear everything, silently
+      - name: Quarantine
+        if: runner.os == 'macOS'
+        working-directory: unpacked
+        run: |
+          status=0
+          output=$(xattr -dr com.apple.quarantine accessconverter-$VERSION-macos-* 2>&1) || status=$?
+          if [[ $status -ne 0 || -n "$output" ]]; then
+            printf '%s\n' "$output"
+            echo "::error::the README's xattr command exited $status"
+            exit 1
+          fi
+          if xattr -rl "accessconverter-$VERSION-${{ matrix.platform }}" | grep com.apple.quarantine; then
+            echo "::error::the README's xattr command left paths quarantined"
+            exit 1
+          fi
+      # The unpacked image run where no Java is installed (Linux: a bare Ubuntu container) or where any Java but the
+      # image's own fails loudly (macOS and Windows have JDKs installed: a poisoned java comes first on the PATH,
+      # JAVA_HOME points nowhere and the JDKs are off the PATH). The images that hold the SQLite library must not need
+      # the temporary folder: Linux also runs with a read-only root filesystem and no tmpfs, as sandboxed deployments
+      # run it, and Windows with java.io.tmpdir pointing at a folder that doesn't exist
+      - name: Smoke test
+        run: |
+          name="accessconverter-$VERSION-${{ matrix.platform }}"
           if [[ "$RUNNER_OS" == Linux ]]; then
             # First, while target/ is still the runner's: the run below is root's, and so is what it creates
             bash packaging/smoke-test.sh --read-only-root "unpacked/$name" target/smoke-read-only
