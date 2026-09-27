@@ -7,6 +7,15 @@ fixes the patch version.
 
 ## [Unreleased]
 
+### Fixed
+
+- The Linux and Windows runtime images convert to SQLite with a read-only root filesystem or a `noexec` temporary
+  folder, as in a sandbox (bubblewrap, systemd's `ProtectSystem=strict`): sqlite-jdbc's native library is now part of
+  the image, in `lib/native`, instead of being unpacked into `java.io.tmpdir` at run time, and the JVM keeps no
+  performance data there. SQLite used to fail with `Error opening connection` unless `java.io.tmpdir` was pointed at
+  a writable folder that allows running programs. The container image was fixed in 3.2.1; the macOS images are
+  unchanged, since macOS's temporary folder is always the user's own.
+
 ## [3.2.1] - 2026-09-27
 
 ### Fixed
