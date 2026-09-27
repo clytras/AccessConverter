@@ -7,6 +7,8 @@ fixes the patch version.
 
 ## [Unreleased]
 
+## [3.2.1] - 2026-09-27
+
 ### Fixed
 
 - `--on-table-error continue` now also goes on past a table that fails while the data is profiled: it is reported as
@@ -135,7 +137,8 @@ AccessConverter 3 is a complete rewrite of 2.x: a new command line, new output f
 
 - First release: Access databases to JSON, MySQL dumps and SQLite.
 
-[Unreleased]: https://github.com/clytras/AccessConverter/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/clytras/AccessConverter/compare/v3.2.1...HEAD
+[3.2.1]: https://github.com/clytras/AccessConverter/compare/v3.2.0...v3.2.1
 [3.2.0]: https://github.com/clytras/AccessConverter/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/clytras/AccessConverter/compare/v3.0.1...v3.1.0
 [3.0.1]: https://github.com/clytras/AccessConverter/compare/v2.0...v3.0.1
