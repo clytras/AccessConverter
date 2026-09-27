@@ -24,6 +24,11 @@ fixes the patch version.
   to do: `error: out.sqlite3: the SQLite library could not be unpacked into /tmp and loaded from there: make
   java.io.tmpdir a writable folder that allows running programs (…)`. It used to read as a problem with the output:
   `the SQLite output could not be written: Error opening connection`. `verify` of a SQLite file says the same.
+- On macOS, the README's `xattr -dr com.apple.quarantine accessconverter-<version>-macos-*` now clears the download
+  quarantine from every file of a runtime image and exits 0, silently: no file in the images is read-only any more.
+  It used to print 55 `Permission denied` lines and exit 1, leaving the runtime's legal notices and CDS archives
+  quarantined. On Windows, 7-Zip no longer unpacks the two CDS archives read-only, which made deleting the image
+  with PowerShell's `Remove-Item -Recurse` fail.
 
 ## [3.2.1] - 2026-09-27
 

@@ -76,6 +76,10 @@ else
     cp "$here/launcher/accessconverter" "$work/bin/"
     chmod 755 "$work/bin/accessconverter"
 fi
+# jlink writes the legal notices and the CDS archives read-only, and the zip would keep that: macOS then refuses to
+# clear their download quarantine (the README's xattr step fails), 7-Zip restores Windows's read-only attribute, and
+# deleting the unpacked image prompts. Git Bash's chmod clears that attribute too
+chmod -R u+w "$work"
 
 # zip keeps the executable bits and symbolic links the Unix images need; Windows has no zip, but 7-Zip on the
 # GitHub runners and PowerShell everywhere
