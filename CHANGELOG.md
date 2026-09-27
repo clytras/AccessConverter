@@ -27,6 +27,9 @@ fixes the patch version.
   JVM keeps no performance data there. SQLite used to fail with `Error opening connection`.
 - When the SQLite library can't be loaded, sqlite-jdbc's own log records (a timestamped line and a stack trace each)
   are no longer printed before the one `error:` line; `--verbose` shows them.
+- On Java 24 and later, `java -jar accessconverter.jar` no longer prints four JVM warnings about a restricted method
+  on every SQLite conversion or verification: the jar's manifest enables native access for sqlite-jdbc
+  (`Enable-Native-Access: ALL-UNNAMED`). Java 21 ignores it; the runtime images and the container were not affected.
 
 ## [3.2.0] - 2026-09-26
 

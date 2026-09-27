@@ -361,6 +361,31 @@
                             <goal>integration-test</goal>
                             <goal>verify</goal>
                         </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/ShadedJarIT.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                    <!-- The packaged jar run as users run it (java -jar), in every build, not only with -Pintegration:
+                         only there does its manifest apply -->
+                    <execution>
+                        <id>shaded-jar</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                        <configuration>
+                            <skipITs>false</skipITs>
+                            <includes>
+                                <include>**/ShadedJarIT.java</include>
+                            </includes>
+                            <summaryFile>${project.build.directory}/failsafe-reports/shaded-jar-summary.xml</summaryFile>
+                            <systemPropertyVariables>
+                                <fixtures.dir>${fixtures.dir}</fixtures.dir>
+                                <shaded.jar>${project.build.directory}/${project.build.finalName}.jar</shaded.jar>
+                            </systemPropertyVariables>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -430,6 +455,9 @@
                                     <mainClass>${main.class}</mainClass>
                                     <manifestEntries>
                                         <Multi-Release>true</Multi-Release>
+                                        <!-- sqlite-jdbc loads its native library, which Java 24 and later warn about
+                                             on stderr unless native access is enabled; Java 21 ignores this -->
+                                        <Enable-Native-Access>ALL-UNNAMED</Enable-Native-Access>
                                     </manifestEntries>
                                 </transformer>
                             </transformers>
