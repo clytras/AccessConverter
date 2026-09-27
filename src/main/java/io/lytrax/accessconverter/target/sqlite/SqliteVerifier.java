@@ -45,6 +45,7 @@ public final class SqliteVerifier {
     public static VerifyResult verify(AccessSource source, SqlitePlan plan, Path output) throws IOException {
         SqliteVerifier verifier = new SqliteVerifier(source, plan);
         verifier.outputDirectory = output.toAbsolutePath().getParent();
+        SqliteLibrary.load(output);
         try (Connection db = DriverManager.getConnection("jdbc:sqlite:" + output.toAbsolutePath())) {
             verifier.run(db);
         } catch (SQLException e) {

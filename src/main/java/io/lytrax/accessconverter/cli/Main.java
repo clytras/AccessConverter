@@ -1,6 +1,7 @@
 package io.lytrax.accessconverter.cli;
 
 import io.lytrax.accessconverter.source.SourceException;
+import io.lytrax.accessconverter.target.OutputException;
 import java.io.BufferedReader;
 import java.io.Console;
 import java.io.IOException;
@@ -245,13 +246,14 @@ public final class Main implements Callable<Integer> {
     }
 
     /**
-     * One line for the user. A {@link SourceException} (a database that can't be read) already says why; other I/O
-     * errors name their type; anything else is a bug.
+     * One line for the user. A {@link SourceException} (a database that can't be read) and an {@link OutputException}
+     * (an output that can't be written) already say which file and why; other I/O errors name their type; anything
+     * else is a bug.
      */
     static String message(Throwable e) {
         for (Throwable t = e; t != null; t = t.getCause()) {
-            if (t instanceof SourceException source) {
-                return source.getMessage();
+            if (t instanceof SourceException || t instanceof OutputException) {
+                return t.getMessage();
             }
         }
         String text = e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ": " + e.getMessage());

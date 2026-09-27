@@ -24,8 +24,20 @@ public final class AtomicOutput {
 
     private AtomicOutput() {}
 
+    /**
+     * Builds a file output. A failure to write it names the output as the user gave it, never its {@code .partial},
+     * and says why in words ({@link OutputException}).
+     */
     public static <T> T write(Path output, Build<T> build) throws IOException {
-        Path partial = output.resolveSibling(output.getFileName() + ".partial");
+        Path partial = partial(output);
+        try {
+            return writeFile(output, partial, build);
+        } catch (IOException e) {
+            throw OutputException.of(output, partial, true, e);
+        }
+    }
+
+    private static <T> T writeFile(Path output, Path partial, Build<T> build) throws IOException {
         Files.deleteIfExists(partial);
         try {
             T result = build.into(partial);
@@ -49,7 +61,20 @@ public final class AtomicOutput {
      * @param ours whether a file name is one this output consists of
      */
     public static <T> T writeDirectory(Path output, Predicate<String> ours, Build<T> build) throws IOException {
-        Path partial = output.resolveSibling(output.getFileName() + ".partial");
+        Path partial = partial(output);
+        try {
+            return writeDirectory(output, partial, ours, build);
+        } catch (IOException e) {
+            throw OutputException.of(output, partial, false, e);
+        }
+    }
+
+    private static Path partial(Path output) {
+        return output.resolveSibling(output.getFileName() + ".partial");
+    }
+
+    private static <T> T writeDirectory(Path output, Path partial, Predicate<String> ours, Build<T> build)
+            throws IOException {
         Path old = output.resolveSibling(output.getFileName() + ".old");
         removeOwn(partial, ours);
         removeOwn(old, ours);
@@ -80,14 +105,17 @@ public final class AtomicOutput {
 
     private static void checkOwn(Path directory, Predicate<String> ours) throws IOException {
         if (!Files.isDirectory(directory)) {
-            throw new IOException(directory + " exists and is not a directory; it won't be replaced");
+            throw new OutputException(directory, "it exists and is not a folder; it won't be replaced", null);
         }
         try (var entries = Files.list(directory)) {
             for (Path entry : (Iterable<Path>) entries::iterator) {
                 if (!Files.isRegularFile(entry, LinkOption.NOFOLLOW_LINKS)
                         || !ours.test(entry.getFileName().toString())) {
-                    throw new IOException(directory + " holds " + entry.getFileName()
-                            + ", which this conversion doesn't write; it won't be replaced");
+                    throw new OutputException(
+                            directory,
+                            "it holds " + entry.getFileName()
+                                    + ", which this conversion doesn't write; it won't be replaced",
+                            null);
                 }
             }
         }

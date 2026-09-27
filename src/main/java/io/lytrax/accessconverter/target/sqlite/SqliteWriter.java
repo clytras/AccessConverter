@@ -13,6 +13,7 @@ import io.lytrax.accessconverter.target.BinaryCells;
 import io.lytrax.accessconverter.target.BinaryFiles;
 import io.lytrax.accessconverter.target.BinaryMode;
 import io.lytrax.accessconverter.target.ConvertOptions;
+import io.lytrax.accessconverter.target.OutputException;
 import io.lytrax.accessconverter.target.RowSource;
 import io.lytrax.accessconverter.target.TableFailure;
 import io.lytrax.accessconverter.target.WriteOutcome;
@@ -120,10 +121,16 @@ public final class SqliteWriter {
         files = options.binary() == BinaryMode.FILES ? new BinaryFiles(output) : null;
         try {
             AtomicOutput.write(output, partial -> {
+                SqliteLibrary.load(output);
                 try (Connection db = connect(partial)) {
                     build(db, integrityCheck);
                 } catch (SQLException e) {
-                    throw new IOException("the SQLite output could not be written: " + e.getMessage(), e);
+                    // Opening the file failed (build reports its own): why, in words, where the file system tells
+                    String reason = OutputException.diskFull(e)
+                            ? "the disk is full"
+                            : OutputException.folderProblem(output, true);
+                    throw new OutputException(
+                            output, reason != null ? reason : "SQLite could not write it: " + e.getMessage(), e);
                 }
                 return null;
             });
