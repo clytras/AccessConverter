@@ -236,15 +236,14 @@ public final class AccessSource implements AutoCloseable {
             db = builder.open();
         } catch (InvalidCredentialsException e) {
             throw password == null
-                    ? new SourceException(Kind.PASSWORD_REQUIRED, file, "the database is encrypted: pass --password", e)
+                    ? new SourceException(Kind.PASSWORD_REQUIRED, file, "the file is encrypted: pass --password", e)
                     : new SourceException(Kind.WRONG_PASSWORD, file, "the password is wrong", e);
         } catch (UnsupportedOperationException | InvalidCryptoConfigurationException e) {
             // UnsupportedOperationException is what Jackcess's UnsupportedCodecException extends
             throw new SourceException(
                     Kind.UNSUPPORTED_ENCRYPTION,
                     file,
-                    "the database is encrypted with a method that can't be decrypted (" + SourceException.describe(e)
-                            + ")",
+                    "the file is encrypted with a method that can't be decrypted (" + SourceException.describe(e) + ")",
                     e);
         } catch (IOException e) {
             if (e.getMessage() != null && e.getMessage().startsWith("Unsupported version")) {

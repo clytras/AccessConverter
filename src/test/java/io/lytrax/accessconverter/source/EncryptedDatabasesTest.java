@@ -39,7 +39,7 @@ class EncryptedDatabasesTest {
         assertThatThrownBy(() -> AccessSource.open(file.file(), OpenOptions.DEFAULT, new Issues()))
                 .isInstanceOfSatisfying(
                         SourceException.class, e -> assertThat(e.kind()).isEqualTo(Kind.PASSWORD_REQUIRED))
-                .hasMessage(file.fileName() + ": the database is encrypted: pass --password");
+                .hasMessage(file.fileName() + ": the file is encrypted: pass --password");
     }
 
     @ParameterizedTest(name = "{0}")

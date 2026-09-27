@@ -43,7 +43,7 @@ class SourceOptionsTest {
         Cli cli = Cli.answering("", "inspect", ENCRYPTED.file().toString(), "--password");
         assertThat(cli.exitCode()).isEqualTo(ExitCodes.FAILED);
         assertThat(cli.err().lines())
-                .containsExactly("error: db2007-enc.accdb: the database is encrypted: pass --password");
+                .containsExactly("error: db2007-enc.accdb: the file is encrypted: pass --password");
     }
 
     @Test
@@ -52,7 +52,7 @@ class SourceOptionsTest {
         assertThat(cli.exitCode()).isEqualTo(ExitCodes.FAILED);
         assertThat(cli.out()).isEmpty();
         assertThat(cli.err().lines())
-                .containsExactly("error: db2007-enc.accdb: the database is encrypted: pass --password");
+                .containsExactly("error: db2007-enc.accdb: the file is encrypted: pass --password");
     }
 
     @Test
