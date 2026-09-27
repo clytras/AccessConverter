@@ -73,7 +73,8 @@ jobs:
             target/fixtures/jackcess-encrypt
             target/fixtures/mdb-reader
           key: corpus-${{ hashFiles('src/test/resources/fixtures/corpus.tsv', 'src/test/java/**/fixtures/CorpusFile.java') }}
-      - run: ./mvnw -B -ntp verify -Pintegration -Dit.db.images=${{ matrix.db }}
+      # The ITs only: the build jobs run the unit tests
+      - run: ./mvnw -B -ntp verify -Pintegration -DskipUTs -Dit.db.images=${{ matrix.db }}
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
