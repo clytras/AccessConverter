@@ -59,6 +59,9 @@ public final class MySqlDumpWriter {
 
     private static final int WRITE_BUFFER = 1 << 16;
 
+    /** A statement builder that grew past this is replaced after its statement, so it doesn't keep the memory. */
+    private static final int RETAINED_CAPACITY = 4 << 20;
+
     private final RowSource source;
     private final MySqlPlan plan;
     private final ConvertOptions options;
@@ -279,7 +282,7 @@ public final class MySqlDumpWriter {
         private final PlannedTable table;
         private final String head;
         private final long headBytes;
-        private final StringBuilder statement = new StringBuilder();
+        private StringBuilder statement = new StringBuilder();
         private long statementBytes;
         private int statementRows;
         private long largest;
@@ -293,12 +296,20 @@ public final class MySqlDumpWriter {
             this.headBytes = MySqlLiterals.utf8Length(head);
         }
 
-        void add(CharSequence tuple) throws IOException {
-            long tupleBytes = MySqlLiterals.utf8Length(tuple);
+        void add(Tuple tuple) throws IOException {
+            long tupleBytes = tuple.utf8Length();
             if (statementRows > 0
                     && (statementRows == options.batchRows()
                             || statementBytes + 2 + tupleBytes + 2 > mysql.batchBytes())) {
                 flush();
+            }
+            if (headBytes + tupleBytes + 2 > mysql.batchBytes()) {
+                // A row over --batch-bytes is a statement of its own anyway: written as it is built, never held whole
+                out.append(head);
+                tuple.writeTo(out);
+                out.append(";\n");
+                largest = Math.max(largest, headBytes + tupleBytes + 2);
+                return;
             }
             if (statementRows == 0) {
                 statement.append(head);
@@ -307,7 +318,7 @@ public final class MySqlDumpWriter {
                 statement.append(",\n");
                 statementBytes += 2;
             }
-            statement.append(tuple);
+            tuple.appendTo(statement);
             statementBytes += tupleBytes;
             statementRows++;
         }
@@ -320,7 +331,11 @@ public final class MySqlDumpWriter {
             statementBytes += 2;
             largest = Math.max(largest, statementBytes);
             out.append(statement);
-            statement.setLength(0);
+            if (statement.capacity() > RETAINED_CAPACITY) {
+                statement = new StringBuilder(); // setLength(0) would keep the largest statement's memory
+            } else {
+                statement.setLength(0);
+            }
             statementRows = 0;
         }
 
@@ -339,13 +354,75 @@ public final class MySqlDumpWriter {
         }
     }
 
+    /**
+     * One row as {@code (v1, v2, …)}: its text, except that a large binary value is kept as its bytes and hexed only as
+     * it is written, so a value's hex text, twice its size, is never built whole for a row that goes out on its own.
+     */
+    private static final class Tuple {
+        /** A value this large or larger is kept as bytes; a smaller one is hexed into the text at once. */
+        private static final int LARGE_VALUE = 1 << 16;
+
+        private final List<Object> parts = new ArrayList<>();
+        private StringBuilder text = new StringBuilder(64);
+        private long largeBytes;
+
+        /** Where the text of the next value goes. */
+        StringBuilder text() {
+            return text;
+        }
+
+        void bytes(byte[] value) {
+            if (value.length < LARGE_VALUE) {
+                MySqlLiterals.bytes(text, value);
+                return;
+            }
+            parts.add(text);
+            parts.add(value);
+            largeBytes += MySqlLiterals.bytesLength(value);
+            text = new StringBuilder(64);
+        }
+
+        long utf8Length() {
+            long length = largeBytes + MySqlLiterals.utf8Length(text);
+            for (Object part : parts) {
+                if (part instanceof CharSequence chars) {
+                    length += MySqlLiterals.utf8Length(chars);
+                }
+            }
+            return length;
+        }
+
+        void writeTo(Writer out) throws IOException {
+            for (Object part : parts) {
+                if (part instanceof byte[] value) {
+                    MySqlLiterals.bytes(out, value);
+                } else {
+                    out.append((CharSequence) part);
+                }
+            }
+            out.append(text);
+        }
+
+        void appendTo(StringBuilder out) {
+            for (Object part : parts) {
+                if (part instanceof byte[] value) {
+                    MySqlLiterals.bytes(out, value);
+                } else {
+                    out.append((CharSequence) part);
+                }
+            }
+            out.append(text);
+        }
+    }
+
     /** One row as {@code (v1, v2, …)}. Nothing is substituted: a NULL stays NULL. */
-    private StringBuilder row(PlannedTable table, BinaryCells cells, Object[] row, long ordinal) throws IOException {
-        StringBuilder tuple = new StringBuilder(64).append('(');
+    private Tuple row(PlannedTable table, BinaryCells cells, Object[] row, long ordinal) throws IOException {
+        Tuple tuple = new Tuple();
+        tuple.text().append('(');
         List<PlannedColumn> columns = table.columns();
         for (int i = 0; i < columns.size(); i++) {
             if (i > 0) {
-                tuple.append(", ");
+                tuple.text().append(", ");
             }
             PlannedColumn column = columns.get(i);
             Object value = column.olePart() != null || BinaryCells.isPayload(column.source())
@@ -353,10 +430,12 @@ public final class MySqlDumpWriter {
                     : row[column.sourceIndex()];
             value(tuple, table, column, value);
         }
-        return tuple.append(')');
+        tuple.text().append(')');
+        return tuple;
     }
 
-    private void value(StringBuilder out, PlannedTable table, PlannedColumn column, Object value) {
+    private void value(Tuple tuple, PlannedTable table, PlannedColumn column, Object value) {
+        StringBuilder out = tuple.text();
         if (value == null) {
             if (column.notNull()) {
                 throw new IllegalStateException("column " + table.name() + "." + column.name()
@@ -387,7 +466,7 @@ public final class MySqlDumpWriter {
             }
             case DATETIME -> out.append(date(table, column, (LocalDateTime) value));
             case TEXT -> MySqlLiterals.string(out, text(table, column, (String) value));
-            case BYTES -> MySqlLiterals.bytes(out, BinaryCells.bytes(value));
+            case BYTES -> tuple.bytes(BinaryCells.bytes(value));
             case PATH -> MySqlLiterals.string(out, (String) value);
             case SIZE -> out.append((long) (Long) value);
             case COMPLEX_ID -> out.append(((ComplexRef) value).complexId());

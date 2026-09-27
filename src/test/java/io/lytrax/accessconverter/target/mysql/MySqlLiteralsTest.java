@@ -2,6 +2,8 @@ package io.lytrax.accessconverter.target.mysql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.io.StringWriter;
 import java.time.LocalDateTime;
 import net.jqwik.api.Assume;
 import net.jqwik.api.ForAll;
@@ -78,6 +80,24 @@ class MySqlLiteralsTest {
     void bytesAreHexAndAnEmptyValueStaysEmpty() {
         assertThat(MySqlLiterals.bytes(new byte[] {0, (byte) 0xFF, 0x1A})).isEqualTo("X'00FF1A'");
         assertThat(MySqlLiterals.bytes(new byte[0])).isEqualTo("X''");
+    }
+
+    /** A large value is written a chunk at a time, to the same text, and its length is known without writing it. */
+    @Test
+    void bytesWrittenInChunksAreTheSameLiteral() throws IOException {
+        byte[] value = new byte[100_001];
+        for (int i = 0; i < value.length; i++) {
+            value[i] = (byte) (i * 31);
+        }
+        StringWriter streamed = new StringWriter();
+        MySqlLiterals.bytes(streamed, value);
+        assertThat(streamed.toString()).isEqualTo(MySqlLiterals.bytes(value));
+        assertThat(MySqlLiterals.bytesLength(value))
+                .isEqualTo(streamed.toString().length());
+
+        StringWriter empty = new StringWriter();
+        MySqlLiterals.bytes(empty, new byte[0]);
+        assertThat(empty.toString()).isEqualTo("X''");
     }
 
     @Test
