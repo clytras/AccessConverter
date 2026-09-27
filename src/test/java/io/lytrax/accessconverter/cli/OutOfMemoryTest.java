@@ -63,6 +63,8 @@ class OutOfMemoryTest {
                 // The test classpath has slf4j-api (from the schema validator) and no provider, which sqlite-jdbc
                 // would warn about; the jar has neither
                 "-Dslf4j.internal.verbosity=ERROR",
+                // Java 24 and later warn when sqlite-jdbc loads its native library, unless native access is enabled
+                "--enable-native-access=ALL-UNNAMED",
                 "-cp",
                 System.getProperty("java.class.path"),
                 Main.class.getName(),
