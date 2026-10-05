@@ -65,7 +65,7 @@
         <maven-surefire-plugin.version>3.6.0</maven-surefire-plugin.version>
         <maven-wrapper-plugin.version>3.3.4</maven-wrapper-plugin.version>
         <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
-        <spotless-maven-plugin.version>3.10.2</spotless-maven-plugin.version>
+        <spotless-maven-plugin.version>3.10.3</spotless-maven-plugin.version>
         <palantir-java-format.version>2.98.0</palantir-java-format.version>
 
         <!-- Test runs -->
