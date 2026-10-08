@@ -16,3 +16,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # The build stage's JDK must be the release build's (21): the release workflow checks that the jar built here
+      # is byte for byte the released one. A new Java major is a decision of its own, for every build at once
+      - dependency-name: eclipse-temurin
+        update-types: [version-update:semver-major]
