@@ -5,11 +5,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.lytrax.accessconverter.fixtures.CorpusFile;
 import io.lytrax.accessconverter.fixtures.GeneratedFixture;
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -52,7 +56,47 @@ class MainTest {
     void aMissingInputFails(@TempDir Path dir) {
         Cli cli = Cli.run("inspect", dir.resolve("missing.accdb").toString());
         assertThat(cli.exitCode()).isEqualTo(ExitCodes.FAILED);
-        assertThat(cli.err()).startsWith("error: NoSuchFileException").contains("missing.accdb");
+        assertThat(cli.err().lines()).containsExactly("error: " + dir.resolve("missing.accdb") + ": no such file");
+    }
+
+    @Test
+    void aDatabaseThatCantBeConnectedToIsNamed() {
+        String url = "jdbc:nothing://localhost/db";
+        Cli cli = Cli.run("verify", GeneratedFixture.HUNDRED_ROWS.path().toString(), "--jdbc-url", url);
+        assertThat(cli.exitCode()).isEqualTo(ExitCodes.FAILED);
+        assertThat(cli.err().lines())
+                .singleElement()
+                .satisfies(line -> assertThat(line)
+                        .startsWith("error: " + url + ": can't connect: ")
+                        .endsWith("; pass --jdbc-driver with MariaDB Connector/J or MySQL Connector/J"));
+    }
+
+    @Test
+    void aMissingJdbcDriverIsNamed(@TempDir Path dir) {
+        Path driver = dir.resolve("driver.jar");
+        Cli cli = Cli.run(
+                "verify",
+                GeneratedFixture.HUNDRED_ROWS.path().toString(),
+                "--jdbc-url",
+                "jdbc:mariadb://localhost/db",
+                "--jdbc-driver",
+                driver.toString());
+        assertThat(cli.exitCode()).isEqualTo(ExitCodes.FAILED);
+        assertThat(cli.err().lines()).containsExactly("error: " + driver + ": no such JDBC driver jar");
+    }
+
+    @Test
+    void errorsNameWhatFailedNotAJavaClass() {
+        assertThat(Main.message(new IOException("x.jar: no JDBC driver in it accepts jdbc:y")))
+                .isEqualTo("x.jar: no JDBC driver in it accepts jdbc:y");
+        assertThat(Main.message(new NoSuchFileException("a.accdb"))).isEqualTo("a.accdb: no such file");
+        assertThat(Main.message(new AccessDeniedException("a.accdb"))).isEqualTo("a.accdb: no permission");
+        assertThat(Main.message(new AccessDeniedException("a.accdb", null, "locked")))
+                .isEqualTo("a.accdb: locked");
+        // An I/O error the tool didn't word, and a bug, still say what they are
+        assertThat(Main.message(new EOFException("end of stream"))).isEqualTo("EOFException: end of stream");
+        assertThat(Main.message(new IllegalStateException("oops")))
+                .isEqualTo("IllegalStateException: oops (unexpected; run with --verbose for details)");
     }
 
     @Test

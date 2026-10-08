@@ -184,7 +184,7 @@ public final class AccessSource implements AutoCloseable {
                 IssueCode.CATALOG_INDEX_UNUSABLE,
                 null,
                 null,
-                "Jackcess can't use this database's catalog index (" + indexed.missingFrom(byScan)
+                "this database's catalog index is damaged (" + indexed.missingFrom(byScan)
                         + "); the catalog was read by scanning it instead");
         db.close();
         return scanned;
@@ -434,15 +434,23 @@ public final class AccessSource implements AutoCloseable {
 
     /**
      * Finds rows by the key of a PK or unique index, with Access's own index semantics. Creating the lookup, or a
-     * seek, throws an unchecked exception when Jackcess can't encode keys for the index's collation.
+     * seek, throws an unchecked exception when Jackcess can't encode keys for the index's collation; an index that
+     * can't be read, as a damaged one can't, fails with a {@link SourceException}, as reading the rows does.
      */
     public KeyLookup keyLookup(TableModel table, IndexModel key) throws IOException {
+        Path file = fileOf(table);
         Table jt = localTable(table);
-        IndexCursor cursor = CursorBuilder.createCursor(jackcessIndex(jt, key));
+        String what = "table " + jt.getName();
+        IndexCursor cursor;
+        try {
+            cursor = CursorBuilder.createCursor(jackcessIndex(jt, key));
+        } catch (IOException e) {
+            throw SourceException.readFailed(file, what, e);
+        }
         List<ColumnModel> columns = key.columnNames().stream()
                 .map(name -> table.column(name).orElseThrow())
                 .toList();
-        return new KeyLookup(cursor, columns);
+        return new KeyLookup(file, what, cursor, columns);
     }
 
     /**

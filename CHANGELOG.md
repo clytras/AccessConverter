@@ -17,6 +17,17 @@ fixes the patch version.
 - A date/time whose stored value isn't on a whole millisecond keeps the fraction of a second it holds, where it was
   rounded to milliseconds: Jackcess now reads the value that converts back to the same stored number. Dates and
   times entered in Access are whole seconds and unchanged.
+- Two warnings describe the database instead of naming the library that reads it, with the same codes:
+  `CATALOG_INDEX_UNUSABLE` says "this database's catalog index is damaged (…); the catalog was read by scanning it
+  instead", and `UNSUPPORTED_COLUMN_TYPE` says "this column type (…) can't be decoded; its raw bytes are kept".
+- Errors name what failed instead of a Java class, as `error: <what>: <reason>`: `verify --jdbc-url` that can't
+  connect says `error: <url>: can't connect: …` (was `error: IOException: can't connect to <url>: …`), and an input
+  that isn't there `error: <file>: no such file` (was `error: NoSuchFileException: …`). So do a missing or wrong
+  `--jdbc-driver`, a database or SQLite output `verify` can't read back, and a SQLite output that fails while it is
+  written, which is named as the output.
+- A damaged index that fails while relationships are checked, before anything is written, reads like any damaged
+  table: `error: <input>: reading table <name> failed (…); the file may be damaged: try Compact and Repair in Access`,
+  where it was `error: table <name> failed: IOException: Unexpected order in index entries …`.
 
 ### Fixed
 

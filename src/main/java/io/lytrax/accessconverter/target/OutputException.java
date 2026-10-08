@@ -25,8 +25,9 @@ public final class OutputException extends IOException {
     /**
      * What a failure writing {@code output} is to the user: a full disk, or a file-system error on the output or on
      * {@code written} (the path actually being written, such as its {@code .partial}), in words and under the
-     * output's own name. {@code file} is whether the output is a file, not a directory of files. Anything else, a
-     * failure reading the source included, is returned unchanged.
+     * output's own name. {@code file} is whether the output is a file, not a directory of files. A plain
+     * {@link IOException}, whose message says what went wrong writing it, is put under the output's name. Anything
+     * else, a failure reading the source included, is returned unchanged.
      */
     public static IOException of(Path output, Path written, boolean file, IOException e) {
         if (e instanceof OutputException || causedBy(e, SourceException.class)) {
@@ -43,6 +44,9 @@ public final class OutputException extends IOException {
                         : fs.getReason() != null ? fs.getReason() : "it could not be written";
             }
             return new OutputException(output, reason, e);
+        }
+        if (e.getClass() == IOException.class && e.getMessage() != null) {
+            return new OutputException(output, e.getMessage(), e);
         }
         return e;
     }

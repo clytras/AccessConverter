@@ -24,7 +24,7 @@ import java.util.Random;
 /**
  * Test helper: a copy of a database with one part damaged, as a disk or a crashed write damages it. The corpus ships
  * no damaged files, so the damage is made where the test needs it, and the rest of the file is left intact: a
- * table's first data page, or one entry of the catalog's index.
+ * table's first data page, a table's index, or one entry of the catalog's index.
  */
 public final class DamagedCopy {
 
@@ -63,6 +63,27 @@ public final class DamagedCopy {
         garbage[0] = DATA_PAGE; // still a data page, with nonsense for its row offsets and rows
         try (FileChannel file = FileChannel.open(copy, StandardOpenOption.WRITE)) {
             file.write(ByteBuffer.wrap(garbage), page * pageSize);
+        }
+        return copy;
+    }
+
+    /**
+     * Copies {@code source} to {@code copy} and damages the root page of {@code table}'s index {@code index}: past its
+     * header, most of the page is overwritten with nonsense, so its entries are out of order. The table's rows, which
+     * a scan reads, are left intact; a lookup through the index fails.
+     */
+    public static Path withIndexDamaged(Path source, String table, String index, Path copy) throws IOException {
+        Files.copy(source, copy, StandardCopyOption.REPLACE_EXISTING);
+        int pageSize;
+        int root;
+        try (Database db = Fixtures.openReadOnly(copy)) {
+            pageSize = ((DatabaseImpl) db).getPageChannel().getFormat().PAGE_SIZE;
+            root = rootPage((IndexImpl) db.getTable(table).getIndex(index));
+        }
+        byte[] garbage = new byte[3000];
+        new Random(42).nextBytes(garbage);
+        try (FileChannel file = FileChannel.open(copy, StandardOpenOption.WRITE)) {
+            file.write(ByteBuffer.wrap(garbage), (long) root * pageSize + 40);
         }
         return copy;
     }

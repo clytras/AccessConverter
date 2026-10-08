@@ -99,6 +99,7 @@ class VerifyJdbcIT {
         Run refused = run("verify", input, "--jdbc-url", url, "--db-user", user, "--db-password", "pw");
         assertThat(refused.code()).isEqualTo(ExitCodes.FAILED);
         assertThat(refused.err())
+                .startsWith("error: " + url + ": can't connect: ")
                 .contains("RSA public key is not available")
                 .contains(url + "?allowPublicKeyRetrieval=true");
 

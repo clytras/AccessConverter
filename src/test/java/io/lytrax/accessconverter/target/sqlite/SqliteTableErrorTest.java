@@ -21,6 +21,7 @@ import io.lytrax.accessconverter.source.SourceException;
 import io.lytrax.accessconverter.target.BinaryMode;
 import io.lytrax.accessconverter.target.ConvertOptions;
 import io.lytrax.accessconverter.target.ConvertOptions.OnTableError;
+import io.lytrax.accessconverter.target.OutputException;
 import io.lytrax.accessconverter.target.RowSource;
 import io.lytrax.accessconverter.target.WriteOutcome;
 import java.io.IOException;
@@ -212,6 +213,31 @@ class SqliteTableErrorTest {
                 .singleElement()
                 .satisfies(i -> assertThat(i.table()).isEqualTo("Files"));
         assertThat(issues.list()).noneMatch(i -> i.code() == IssueCode.BINARY_FILES_NOT_REMOVED);
+    }
+
+    /** A table that fails to be written stops the conversion under {@code fail}, named after the output. */
+    @Test
+    void aWriteFailureUnderFailNamesTheOutput() throws IOException {
+        Path output = dir.resolve("write.sqlite3");
+        Issues issues = new Issues();
+        ConvertOptions options = new ConvertOptions(true, false, OnTableError.FAIL, 1);
+        try (AccessSource db = AccessSource.open(GeneratedFixture.SCHEMA_FIDELITY.path())) {
+            SchemaModel model = SchemaExtractor.extract(db, ExtractOptions.ALL, issues);
+            SqlitePlan plan =
+                    SqlitePlanner.plan(model, DataProfiler.profile(db, model), options, SqliteOptions.DEFAULT, issues);
+            assertThatThrownBy(() -> SqliteWriter.write(
+                            db::rows,
+                            required(plan),
+                            output,
+                            options,
+                            SqliteOptions.DEFAULT,
+                            "AccessConverter",
+                            false,
+                            issues))
+                    .isInstanceOf(OutputException.class)
+                    .hasMessageStartingWith(output + ": table Files failed: ");
+        }
+        assertThat(output).doesNotExist();
     }
 
     /** The plan with {@code Files.Raw} NOT NULL, which the second row contradicts. */

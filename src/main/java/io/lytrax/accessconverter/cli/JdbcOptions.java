@@ -85,9 +85,9 @@ final class JdbcOptions {
                     }
                 }
             }
-            throw new IOException(driver + " has no JDBC driver for " + url);
+            throw new IOException(driver + ": no JDBC driver in it accepts " + url);
         } catch (SQLException e) {
-            throw new IOException("can't connect to " + url + ": " + e.getMessage() + hint(e), e);
+            throw new IOException(url + ": can't connect: " + e.getMessage() + hint(e), e);
         }
     }
 

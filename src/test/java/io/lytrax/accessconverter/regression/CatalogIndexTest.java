@@ -92,8 +92,8 @@ class CatalogIndexTest {
         assertThat(extraction.issues(IssueCode.CATALOG_INDEX_UNUSABLE))
                 .singleElement()
                 .satisfies(i -> assertThat(i.message())
-                        .contains("1 of " + tables + " tables can't be looked up")
-                        .contains("scanning"));
+                        .isEqualTo("this database's catalog index is damaged (1 of " + tables
+                                + " tables can't be looked up); the catalog was read by scanning it instead"));
         assertThat(extraction.issues())
                 .extracting(Issue::code)
                 .doesNotContain(IssueCode.TABLE_NOT_IN_CATALOG, IssueCode.RELATIONSHIPS_UNREADABLE);

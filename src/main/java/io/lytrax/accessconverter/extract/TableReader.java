@@ -94,7 +94,7 @@ final class TableReader {
                     IssueCode.UNSUPPORTED_COLUMN_TYPE,
                     table,
                     name,
-                    "Jackcess can't decode this column type (" + column.getType() + "); its raw bytes are kept");
+                    "this column type (" + column.getType() + ") can't be decoded; its raw bytes are kept");
         }
 
         Properties props = Properties.of(table, name, column::getProperties, issues);

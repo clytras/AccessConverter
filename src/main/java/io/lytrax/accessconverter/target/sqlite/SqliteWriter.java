@@ -184,7 +184,7 @@ public final class SqliteWriter {
             pragma(db, "journal_mode = DELETE");
             execute(db, sqlite.analyze() ? "ANALYZE" : "PRAGMA optimize");
         } catch (SQLException e) {
-            throw new IOException("writing the SQLite output failed: " + e.getMessage(), e);
+            throw new IOException("SQLite could not write it: " + e.getMessage(), e);
         }
     }
 

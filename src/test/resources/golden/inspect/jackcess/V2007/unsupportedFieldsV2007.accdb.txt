@@ -18,6 +18,6 @@ Profile:
     UnknownComplex: nulls 0
 
 Issues: 3
-  warning UNSUPPORTED_COLUMN_TYPE Test / UnknownComplex: Jackcess can't decode this column type (COMPLEX_TYPE); its raw bytes are kept
-  warning UNSUPPORTED_COLUMN_TYPE Test / UnknownFix: Jackcess can't decode this column type (UNSUPPORTED_FIXEDLEN); its raw bytes are kept
-  warning UNSUPPORTED_COLUMN_TYPE Test / UnknownVar: Jackcess can't decode this column type (UNSUPPORTED_VARLEN); its raw bytes are kept
+  warning UNSUPPORTED_COLUMN_TYPE Test / UnknownComplex: this column type (COMPLEX_TYPE) can't be decoded; its raw bytes are kept
+  warning UNSUPPORTED_COLUMN_TYPE Test / UnknownFix: this column type (UNSUPPORTED_FIXEDLEN) can't be decoded; its raw bytes are kept
+  warning UNSUPPORTED_COLUMN_TYPE Test / UnknownVar: this column type (UNSUPPORTED_VARLEN) can't be decoded; its raw bytes are kept
