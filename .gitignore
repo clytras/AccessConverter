@@ -22,6 +22,7 @@ samples/
 /*.jar
 /*.json
 /docs/plans/
+/docs/bugs/
 
 # IDE metadata: IDEs import pom.xml, nothing IDE-specific is committed
 .classpath
