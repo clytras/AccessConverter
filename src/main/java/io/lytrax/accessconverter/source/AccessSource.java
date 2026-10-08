@@ -23,6 +23,7 @@ import io.lytrax.accessconverter.report.Issues;
 import io.lytrax.accessconverter.source.SourceException.Kind;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -90,7 +91,10 @@ public final class AccessSource implements AutoCloseable {
 
     public static AccessSource open(Path file, OpenOptions options, Issues issues) throws IOException {
         FileSignature.check(file);
-        Database db = openDatabase(file, options.password(), null, false);
+        // An Access 97 file is opened first only to read its code page: in ISO-8859-1, which decodes every byte and
+        // leaves no decoder of the code page's JDK charset cached on this thread (bug 010)
+        Charset first = FileSignature.version(file) == FileSignature.VERSION_JET3 ? StandardCharsets.ISO_8859_1 : null;
+        Database db = openDatabase(file, options.password(), first, false);
         try {
             Integer codePage = null;
             Charset charset = null;
@@ -288,9 +292,12 @@ public final class AccessSource implements AutoCloseable {
         return codePage;
     }
 
-    /** The charset text is decoded with: the code page's (or --charset) for Access 97, UTF-16LE otherwise. */
+    /**
+     * The charset text is decoded with: the code page's (or --charset) for Access 97, UTF-16LE otherwise. For Access
+     * 97 it is the JDK charset, under the name users know; the text itself is decoded as Windows decodes it.
+     */
     public Charset charset() {
-        return db.getCharset();
+        return WindowsSingleByte.base(db.getCharset());
     }
 
     /** Local user tables, ordered by name. Jackcess types are for the extractor only. */

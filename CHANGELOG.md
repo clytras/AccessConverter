@@ -7,6 +7,15 @@ fixes the patch version.
 
 ## [Unreleased]
 
+### Fixed
+
+- Access 97 text can no longer lose the bytes Java leaves undefined in a code page (0x81, 0x8D, 0x8F, 0x90 and 0x9D
+  in windows-1252, and the few in 874, 1253, 1255 and 1257 that Windows maps into the private use area). The charset
+  they are decoded with, as Windows decodes them, could be handed Java's own decoder for the code page, which turns
+  them into U+FFFD, silently and with exit 0, once Java's charset had decoded anything on the same thread. Nothing in
+  3.2.2 made that happen, but the next Jackcess does on every Access 97 file. The report, `inspect` and the
+  `CHARSET_*` messages still name the code page's charset as before (`windows-1252`).
+
 ## [3.2.2] - 2026-09-27
 
 ### Fixed
