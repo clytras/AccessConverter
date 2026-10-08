@@ -25,6 +25,9 @@ fixes the patch version.
   that isn't there `error: <file>: no such file` (was `error: NoSuchFileException: …`). So do a missing or wrong
   `--jdbc-driver`, a database or SQLite output `verify` can't read back, and a SQLite output that fails while it is
   written, which is named as the output.
+- A damaged index that fails while relationships are checked, before anything is written, reads like any damaged
+  table: `error: <input>: reading table <name> failed (…); the file may be damaged: try Compact and Repair in Access`,
+  where it was `error: table <name> failed: IOException: Unexpected order in index entries …`.
 
 ### Fixed
 

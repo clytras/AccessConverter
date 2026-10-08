@@ -287,6 +287,26 @@ class ConvertCommandTest {
     }
 
     /**
+     * A damaged index fails while the relationship check looks parent keys up through it, not while rows are read:
+     * the error still names the input and the table, and says what to do, as a damaged data page does.
+     */
+    @Test
+    void aDamagedIndexReadsLikeAnyDamagedTable() throws IOException {
+        Path damaged = DamagedCopy.withIndexDamaged(
+                GeneratedFixture.SCHEMA_FIDELITY.path(), "Customers", "PrimaryKey", dir.resolve("damaged.accdb"));
+        Path output = dir.resolve("damaged.sqlite3");
+
+        Cli cli = Cli.run("convert", "--to", "sqlite", "-o", output.toString(), damaged.toString());
+        assertThat(cli.exitCode()).isEqualTo(ExitCodes.FAILED);
+        assertThat(cli.err().lines())
+                .singleElement()
+                .satisfies(line -> assertThat(line)
+                        .startsWith("error: damaged.accdb: reading table Customers failed (IOException: ")
+                        .endsWith("); the file may be damaged: try Compact and Repair in Access"));
+        assertThat(output).doesNotExist();
+    }
+
+    /**
      * A table damaged so that the profiling pass can't read it (04): {@code continue} writes the other tables and a
      * failed report naming it, {@code fail} leaves nothing, and {@code verify} reports it and compares the rest.
      */

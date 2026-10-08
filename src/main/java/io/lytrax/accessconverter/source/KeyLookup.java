@@ -5,6 +5,7 @@ import com.healthmarketscience.jackcess.Row;
 import io.lytrax.accessconverter.model.ColumnModel;
 import io.lytrax.accessconverter.value.AccessValues;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -15,11 +16,15 @@ import java.util.Set;
  * as the index sort order does. The stored key is returned, so callers can tell exact matches from inexact ones.
  */
 public final class KeyLookup {
+    private final Path file;
+    private final String what;
     private final IndexCursor cursor;
     private final List<ColumnModel> columns;
     private final Set<String> names = new LinkedHashSet<>();
 
-    KeyLookup(IndexCursor cursor, List<ColumnModel> columns) {
+    KeyLookup(Path file, String what, IndexCursor cursor, List<ColumnModel> columns) {
+        this.file = file;
+        this.what = what;
         this.cursor = cursor;
         this.columns = List.copyOf(columns);
         this.columns.forEach(c -> names.add(c.name()));
@@ -30,7 +35,11 @@ public final class KeyLookup {
         return columns;
     }
 
-    /** The stored key (canonical values) of the first row matching {@code key}, or empty. */
+    /**
+     * The stored key (canonical values) of the first row matching {@code key}, or empty.
+     *
+     * @throws SourceException when the index or the row can't be read
+     */
     public Optional<Object[]> find(Object... key) throws IOException {
         if (key.length != columns.size()) {
             throw new IllegalArgumentException("expected " + columns.size() + " key values, got " + key.length);
@@ -39,10 +48,15 @@ public final class KeyLookup {
         for (int i = 0; i < key.length; i++) {
             entry[i] = AccessValues.toJackcess(columns.get(i).type(), key[i]);
         }
-        if (!cursor.findFirstRowByEntry(entry)) {
-            return Optional.empty();
+        Row row;
+        try {
+            if (!cursor.findFirstRowByEntry(entry)) {
+                return Optional.empty();
+            }
+            row = cursor.getCurrentRow(names);
+        } catch (IOException e) {
+            throw SourceException.readFailed(file, what, e);
         }
-        Row row = cursor.getCurrentRow(names);
         Object[] stored = new Object[columns.size()];
         for (int i = 0; i < stored.length; i++) {
             ColumnModel column = columns.get(i);
