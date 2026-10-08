@@ -34,8 +34,8 @@ public final class Fixtures {
                 .setCharset(charset)
                 .setReadOnly(true)
                 .setCodecProvider(new CryptCodecProvider(password))
-                // Some fixtures are written by a non-English Access, whose catalog index Jackcess can't use; tests
-                // compare against the whole catalog, as the converter reads it
+                // Tests compare against the whole catalog, as the converter reads it, a damaged catalog index
+                // included
                 .setIgnoreBrokenSystemCatalogIndex(true)
                 .open();
         db.setDateTimeType(DateTimeType.LOCAL_DATE_TIME);

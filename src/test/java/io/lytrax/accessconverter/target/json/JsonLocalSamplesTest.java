@@ -54,8 +54,8 @@ class JsonLocalSamplesTest {
     @Test
     void theGreekAccess97NorthwindKeepsEveryRelationship() {
         Converted converted = JsonFixture.convert(LocalSample.NORTHWIND_97.path(), dir.resolve("nw97.json"));
-        // Jackcess 5.0.1 can't use this file's catalog index; before the fallback it gave 3 of 8 tables and none of
-        // the 7 relationships
+        // Jackcess 5.0.1 couldn't use this file's catalog index; before the fallback it gave 3 of 8 tables and none
+        // of the 7 relationships
         assertThat(converted.plan().tables()).hasSize(8);
         assertThat(converted.plan().relationships()).hasSize(7);
     }

@@ -307,10 +307,10 @@ Profile:
     name: nulls 0
   Table6: 23 rows scanned
     name: nulls 0
-    data: fraction-digits 3
+    data: fraction-digits 7
   Table6_desc: 23 rows scanned
     name: nulls 0
-    data: fraction-digits 3
+    data: fraction-digits 7
   Table7: 20 rows scanned
     name: nulls 0
     data: max-digits 15 max-scale 9

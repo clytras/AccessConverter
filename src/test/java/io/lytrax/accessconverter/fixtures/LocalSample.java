@@ -21,7 +21,7 @@ public enum LocalSample {
     MARKET_BASKET("samples/MarketBasket.accdb"),
     FAV_DATABASE("test/FavDatabase.mdb"),
     HOTEL_MANAGEMENT_SYSTEM("test/HotelManagementSystem.accdb"),
-    /** Access 97 from the maintainer's Windows 98 guest, Greek Office: the catalog index Jackcess can't use. */
+    /** Access 97 from the maintainer's Windows 98 guest, Greek Office: the catalog index Jackcess 5.0.1 couldn't use. */
     NORTHWIND_97("samples/win98/Northwind.mdb", "samples/win98/northwind.dump.txt"),
     SOLUTIONS_97("samples/win98/Solutions.mdb"),
     ORDERS_97("samples/win98/ORDERS.MDB");

@@ -6,6 +6,8 @@ import io.lytrax.accessconverter.Extraction;
 import io.lytrax.accessconverter.fixtures.Access97Fixture;
 import io.lytrax.accessconverter.fixtures.CorpusCase;
 import io.lytrax.accessconverter.fixtures.CorpusFile;
+import io.lytrax.accessconverter.fixtures.DamagedCopy;
+import io.lytrax.accessconverter.fixtures.GeneratedFixture;
 import io.lytrax.accessconverter.fixtures.LocalSample;
 import io.lytrax.accessconverter.fixtures.LocalSamples;
 import io.lytrax.accessconverter.model.ForeignKeyModel;
@@ -16,23 +18,31 @@ import io.lytrax.accessconverter.report.IssueCode;
 import io.lytrax.accessconverter.report.Issues;
 import io.lytrax.accessconverter.source.AccessSource;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * Jackcess 5.0.1 can't use the {@code MSysObjects} index of databases written by a non-English Access: tables and
- * the system tables then look absent, and a conversion would quietly leave them out (Northwind from a Greek Access
- * 97: 3 of 8 tables, none of the 7 relationships). The source layer reads such a catalog by scanning it instead.
+ * Jackcess 5.0.1 couldn't use the {@code MSysObjects} index of databases written by a non-English Access: tables and
+ * the system tables then looked absent, and a conversion would quietly have left them out (Northwind from a Greek
+ * Access 97: 3 of 8 tables, none of the 7 relationships). Jackcess 5.0.2 scans such a catalog itself. The source
+ * layer still reads the catalog by scanning it when the index misses part of it, which now takes a damaged index:
+ * those tests damage one entry of an English file's catalog index ({@link DamagedCopy}).
  */
 class CatalogIndexTest {
     private static final Set<IssueCode> CATALOG_ISSUES = Set.of(
             IssueCode.CATALOG_INDEX_UNUSABLE, IssueCode.TABLE_NOT_IN_CATALOG, IssueCode.RELATIONSHIPS_UNREADABLE);
+
+    @TempDir
+    Path dir;
 
     @Test
     void aGreekAccessNinetySevenDatabaseIsReadWhole() {
@@ -43,22 +53,12 @@ class CatalogIndexTest {
         assertThat(extraction.model().relationships())
                 .extracting(ForeignKeyModel::name)
                 .containsExactly("CustomersOrders");
-        assertThat(extraction.issues(IssueCode.CATALOG_INDEX_UNUSABLE))
-                .singleElement()
-                .satisfies(i -> assertThat(i.message())
-                        .contains("MSysRelationships is invisible")
-                        .contains("scanning"));
-        // Nothing was left out, so nothing is reported as lost
-        assertThat(extraction.issues()).extracting(Issue::code).doesNotContain(IssueCode.TABLE_NOT_IN_CATALOG);
+        assertThat(extraction.issues()).extracting(Issue::code).doesNotContainAnyElementsOf(CATALOG_ISSUES);
     }
 
-    /**
-     * The fallback opens the database a second time, so it has to carry everything the first open had: an encoded
-     * Access 97 database (readable only through the codec provider) whose catalog index is unusable and which also
-     * has a database password. Dropping either on the way would fail the open or lose the tables again.
-     */
+    /** The encoded copy, which also has a database password, is read whole too. */
     @Test
-    void anEncodedAndPasswordProtectedDatabaseSurvivesTheFallback() {
+    void anEncodedAndPasswordProtectedGreekDatabaseIsReadWhole() {
         Access97Fixture fixture = Access97Fixture.GR97_ENC;
         Extraction extraction = Extraction.of(fixture.file(), fixture.openOptions());
         assertThat(extraction.model().tables())
@@ -67,8 +67,55 @@ class CatalogIndexTest {
         assertThat(extraction.model().relationships()).hasSize(1);
         assertThat(extraction.issues())
                 .extracting(Issue::code)
-                .contains(IssueCode.CATALOG_INDEX_UNUSABLE, IssueCode.PASSWORD_NOT_REQUIRED)
+                .contains(IssueCode.PASSWORD_NOT_REQUIRED)
+                .doesNotContainAnyElementsOf(CATALOG_ISSUES);
+    }
+
+    /**
+     * A table the catalog index can't find is read by scanning the catalog. The fallback opens the database a second
+     * time, so it has to carry everything the first open had: the encoded files are readable only through the codec
+     * provider. An encrypted (AES) file can't be damaged this way: one flipped bit garbles a whole block of the page,
+     * the entries fall out of order, and Jackcess then fails the open, which is reported as a damaged file.
+     */
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+        "jackcess/V1997/common1V1997.mdb, Table1, 4",
+        "jackcess/V2003/delV2003.mdb, Table, 1",
+        "jackcess-encrypt/db97-enc.mdb, Table1, 1",
+        "jackcess-encrypt/db-enc.mdb, Table1, 1"
+    })
+    void aTableTheDamagedCatalogIndexMissesIsReadByScanning(String id, String table, int tables) throws IOException {
+        Path damaged = DamagedCopy.withCatalogIndexDamaged(
+                CorpusFile.get(id).file(), null, table, dir.resolve(Path.of(id).getFileName()));
+        Extraction extraction = Extraction.of(damaged);
+        assertThat(extraction.model().tables()).extracting(TableModel::name).contains(table);
+        assertThat(extraction.issues(IssueCode.CATALOG_INDEX_UNUSABLE))
+                .singleElement()
+                .satisfies(i -> assertThat(i.message())
+                        .contains("1 of " + tables + " tables can't be looked up")
+                        .contains("scanning"));
+        assertThat(extraction.issues())
+                .extracting(Issue::code)
                 .doesNotContain(IssueCode.TABLE_NOT_IN_CATALOG, IssueCode.RELATIONSHIPS_UNREADABLE);
+    }
+
+    /** A relationship table the catalog index can't find is read by scanning too, with every relationship. */
+    @Test
+    void anInvisibleRelationshipTableIsReadByScanning() throws IOException {
+        Path source = GeneratedFixture.SCHEMA_FIDELITY.path();
+        Path damaged = DamagedCopy.withCatalogIndexDamaged(
+                source, null, AccessSource.RELATIONSHIPS_TABLE, dir.resolve("schemaFidelity.accdb"));
+        Extraction extraction = Extraction.of(damaged);
+        assertThat(extraction.model().relationships())
+                .hasSize(6)
+                .extracting(ForeignKeyModel::name)
+                .containsExactlyElementsOf(Extraction.of(source).model().relationships().stream()
+                        .map(ForeignKeyModel::name)
+                        .toList());
+        assertThat(extraction.issues(IssueCode.CATALOG_INDEX_UNUSABLE))
+                .singleElement()
+                .satisfies(i -> assertThat(i.message()).contains("MSysRelationships is invisible"));
+        assertThat(extraction.issues()).extracting(Issue::code).doesNotContain(IssueCode.RELATIONSHIPS_UNREADABLE);
     }
 
     /** Its data is the data of the plain fixture, so the encoded pages decoded correctly after the second open. */
@@ -86,18 +133,17 @@ class CatalogIndexTest {
         assertThat(names).contains("Αφοι Παπαδοπούλου ΑΕ");
     }
 
-    /** Tiers A and B: no other file's catalog needs the fallback, and none hides a table. */
+    /** Tiers A, B and D: no file's catalog needs the fallback, the Greek Access 97 ones included. */
     @ParameterizedTest(name = "{0}")
     @MethodSource("databases")
-    void everyOtherCatalogResolvesOnItsOwn(CorpusCase database) {
+    void everyCatalogResolvesOnItsOwn(CorpusCase database) {
         assertThat(Extraction.of(database.file(), database.options()).issues())
                 .extracting(Issue::code)
                 .doesNotContainAnyElementsOf(CATALOG_ISSUES);
     }
 
-    /** Tier D's Greek Access 97 file is the known-broken one, checked above. */
     static Stream<CorpusCase> databases() {
-        return CorpusCase.databases().filter(c -> !c.id().startsWith("access97/"));
+        return CorpusCase.databases();
     }
 
     /** A text collation Jackcess can't index (04) affects table indexes, not the catalog. */
@@ -112,7 +158,7 @@ class CatalogIndexTest {
     @LocalSamples
     class Samples {
 
-        /** Northwind as Greek Access 97 wrote it: what Jackcess alone reads is 3 tables and no relationship. */
+        /** Northwind as Greek Access 97 wrote it: what Jackcess 5.0.1 read was 3 tables and no relationship. */
         @Test
         void northwindKeepsAllItsTablesAndRelationships() {
             Extraction extraction = Extraction.of(LocalSample.NORTHWIND_97.path());
@@ -135,9 +181,7 @@ class CatalogIndexTest {
                     .isEqualTo(Action.CASCADE);
             assertThat(relationship(relationships, "OrdersOrder Details").onDelete())
                     .isEqualTo(Action.CASCADE);
-            assertThat(extraction.issues(IssueCode.CATALOG_INDEX_UNUSABLE))
-                    .singleElement()
-                    .satisfies(i -> assertThat(i.message()).contains("5 of 8 tables"));
+            assertThat(extraction.issues()).extracting(Issue::code).doesNotContainAnyElementsOf(CATALOG_ISSUES);
         }
 
         @Test
@@ -160,7 +204,7 @@ class CatalogIndexTest {
                 assertThat(extraction.issues())
                         .as(sample.name())
                         .extracting(Issue::code)
-                        .doesNotContain(IssueCode.TABLE_NOT_IN_CATALOG, IssueCode.RELATIONSHIPS_UNREADABLE);
+                        .doesNotContainAnyElementsOf(CATALOG_ISSUES);
             }
         }
     }

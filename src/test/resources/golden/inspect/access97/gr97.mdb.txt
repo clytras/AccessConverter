@@ -56,8 +56,7 @@ Profile:
     Total: max-digits 6 max-scale 2
   CustomersOrders: 40 keys checked, 0 orphans
 
-Issues: 4
-  warning CATALOG_INDEX_UNUSABLE: Jackcess can't use this database's catalog index (MSysRelationships is invisible); the catalog was read by scanning it instead
+Issues: 3
   info NO_PRIMARY_KEY AllTypes: table has no primary key; targets create none
   info INDEX_BACKING_DROPPED Customers / .rB: hidden relationship index on (CustomerID) repeats the primary key PrimaryKey; dropped
   info NO_PRIMARY_KEY Orders: table has no primary key; targets create none

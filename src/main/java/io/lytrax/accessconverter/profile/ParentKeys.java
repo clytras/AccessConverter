@@ -24,9 +24,9 @@ import java.util.Optional;
  * follows Access's text comparison: case-insensitive, accent-sensitive, trailing spaces ignored.
  *
  * <p>A seek that finds nothing is never trusted on its own: the parent's keys are scanned to confirm the row really
- * isn't there. Jackcess's seek misses existing rows in some databases (measured on a Greek Access 97 Northwind,
- * where 512 of 830 primary-key seeks failed while the same index iterated all 830 rows), and an orphan that isn't
- * one would cost the output a foreign key.
+ * isn't there. Jackcess's seek missed existing rows in some databases (Jackcess 5.0.1 on a Greek Access 97
+ * Northwind: 512 of 830 primary-key seeks failed while the same index iterated all 830 rows; 5.0.3 finds a row in a
+ * Jet 3 index past its first leaf page), and an orphan that isn't one would cost the output a foreign key.
  */
 final class ParentKeys {
 

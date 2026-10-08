@@ -34,8 +34,8 @@
         <main.class>io.lytrax.accessconverter.cli.Main</main.class>
 
         <!-- Runtime -->
-        <jackcess.version>5.0.1</jackcess.version>
-        <jackcess-encrypt.version>5.0.0</jackcess-encrypt.version>
+        <jackcess.version>5.0.3</jackcess.version>
+        <jackcess-encrypt.version>5.0.2</jackcess-encrypt.version>
         <bouncycastle.version>1.86</bouncycastle.version>
         <sqlite-jdbc.version>3.53.4.0</sqlite-jdbc.version>
         <jackson.version>3.2.3</jackson.version>
@@ -82,7 +82,7 @@
 
     <dependencyManagement>
         <dependencies>
-            <!-- jackcess-encrypt 5.0.0 declares jackcess 5.0.0 -->
+            <!-- jackcess-encrypt 5.0.2 still declares jackcess 5.0.0 -->
             <dependency>
                 <groupId>com.healthmarketscience.jackcess</groupId>
                 <artifactId>jackcess</artifactId>
