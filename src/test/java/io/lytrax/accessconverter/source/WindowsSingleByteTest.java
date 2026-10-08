@@ -2,6 +2,7 @@ package io.lytrax.accessconverter.source;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
@@ -68,11 +69,33 @@ class WindowsSingleByteTest {
         }
     }
 
+    /**
+     * Bug 010: {@link Charset#decode} takes its decoder from a per-thread cache that matches charsets by name. Once the
+     * JDK charset has decoded on a thread, a charset equal to it would be handed the JDK's decoder there.
+     */
     @Test
-    void itKeepsTheJdkNameAndEncodesTheRestAsTheJdkDoes() {
+    void theJdkCharsetDecodingFirstOnTheSameThreadChangesNothing() {
         Charset cp1252 = WindowsSingleByte.of(JDK_1252);
-        assertThat(cp1252).isEqualTo(JDK_1252).hasToString("windows-1252");
+        ByteBuffer c1 = ByteBuffer.wrap(new byte[] {(byte) 0x81});
+        assertThat(JDK_1252.decode(c1.duplicate()).toString()).isEqualTo(String.valueOf(REPLACEMENT));
+        assertThat(cp1252.decode(c1.duplicate()).toString()).isEqualTo("");
+
+        Charset jdk1253 = Charset.forName("windows-1253");
+        ByteBuffer privateUse = ByteBuffer.wrap(new byte[] {(byte) 0xAA, (byte) 0xD2, (byte) 0xFF});
+        assertThat(jdk1253.decode(privateUse.duplicate()).toString()).isEqualTo("���");
+        assertThat(WindowsSingleByte.of(jdk1253).decode(privateUse.duplicate()).toString())
+                .isEqualTo("");
+    }
+
+    @Test
+    void itHasANameOfItsOwnAndEncodesTheRestAsTheJdkDoes() {
+        Charset cp1252 = WindowsSingleByte.of(JDK_1252);
+        assertThat(cp1252).isNotEqualTo(JDK_1252).hasToString("x-windows-1252-access");
+        assertThat(WindowsSingleByte.of(Charset.forName("x-windows-874"))).hasToString("x-windows-874-access");
+        assertThat(WindowsSingleByte.base(cp1252)).isSameAs(JDK_1252);
+        assertThat(WindowsSingleByte.base(StandardCharsets.UTF_16LE)).isSameAs(StandardCharsets.UTF_16LE);
         assertThat(cp1252.contains(StandardCharsets.US_ASCII)).isTrue();
+        assertThat(cp1252.contains(JDK_1252)).isTrue();
         assertThat("Ωx😀".getBytes(cp1252)).isEqualTo("?x?".getBytes(StandardCharsets.US_ASCII));
     }
 

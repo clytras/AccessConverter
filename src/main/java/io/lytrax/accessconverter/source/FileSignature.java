@@ -23,6 +23,8 @@ final class FileSignature {
     private static final int HEADER = 0x20;
     private static final int OFFSET_IDENTIFIER = 0x04;
     private static final int OFFSET_VERSION = 0x14;
+    /** The version byte of an Access 97 (Jet 3) file. */
+    static final int VERSION_JET3 = 0;
 
     private FileSignature() {}
 
@@ -68,7 +70,7 @@ final class FileSignature {
         }
     }
 
-    /** The version byte, for the error when Jackcess rejects it. */
+    /** The version byte: {@link #VERSION_JET3}, or another for the error when Jackcess rejects it. */
     static int version(Path file) throws IOException {
         try (InputStream in = Files.newInputStream(file)) {
             byte[] header = in.readNBytes(HEADER);

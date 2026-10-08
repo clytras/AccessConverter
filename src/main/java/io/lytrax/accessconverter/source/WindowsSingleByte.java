@@ -17,7 +17,10 @@ import java.util.Map;
  * with Windows' own {@code MultiByteToWideChar} on Windows 11 (3.0.1), and 1253's 0xAA confirmed in Access 97 itself,
  * which returns U+F8F9 for it. Every byte therefore decodes, and encodes back to itself.
  *
- * <p>It keeps the JDK charset's name, so it is equal to it; it differs only on bytes the JDK can't decode.
+ * <p>It has a name of its own ({@code x-windows-1252-access} for windows-1252), so it never equals the JDK charset:
+ * {@link Charset#decode} takes its decoder from a per-thread cache that matches charsets by name, and would otherwise
+ * hand it the JDK's decoder once the JDK charset has decoded anything on that thread. {@link #base} gives the JDK
+ * charset back, whose name is the one users see.
  */
 final class WindowsSingleByte extends Charset {
     /** U+FFFD, what a byte the code page does not define decodes to. */
@@ -45,7 +48,7 @@ final class WindowsSingleByte extends Charset {
     private final Map<Character, Byte> encode = new HashMap<>();
 
     private WindowsSingleByte(Charset base) {
-        super(base.name(), null);
+        super((base.name().startsWith("x-") ? "" : "x-") + base.name() + "-access", null);
         this.base = base;
         for (int b = 0; b < 256; b++) {
             String s = new String(new byte[] {(byte) b}, base);
@@ -77,6 +80,11 @@ final class WindowsSingleByte extends Charset {
         return new WindowsSingleByte(charset);
     }
 
+    /** The JDK charset {@code charset} decodes like, or {@code charset} itself if it isn't one of these. */
+    static Charset base(Charset charset) {
+        return charset instanceof WindowsSingleByte windows ? windows.base : charset;
+    }
+
     private static boolean isSingleByte(Charset charset) {
         return charset.canEncode()
                 && charset.newEncoder().maxBytesPerChar() == 1f
@@ -85,7 +93,7 @@ final class WindowsSingleByte extends Charset {
 
     @Override
     public boolean contains(Charset cs) {
-        return cs.name().equals(name()) || base.contains(cs);
+        return cs.name().equals(name()) || base.contains(base(cs));
     }
 
     @Override
