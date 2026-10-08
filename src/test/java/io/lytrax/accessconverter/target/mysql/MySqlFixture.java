@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Set;
 
@@ -96,6 +97,8 @@ public final class MySqlFixture {
                 return MySqlVerifier.verify(access, plan, db, dumpDirectory);
             } catch (IOException e) {
                 throw new UncheckedIOException("verifying " + source, e);
+            } catch (SQLException e) {
+                throw new IllegalStateException("verifying " + source, e);
             }
         }
     }

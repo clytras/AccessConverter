@@ -184,7 +184,7 @@ public final class AccessSource implements AutoCloseable {
                 IssueCode.CATALOG_INDEX_UNUSABLE,
                 null,
                 null,
-                "Jackcess can't use this database's catalog index (" + indexed.missingFrom(byScan)
+                "this database's catalog index is damaged (" + indexed.missingFrom(byScan)
                         + "); the catalog was read by scanning it instead");
         db.close();
         return scanned;

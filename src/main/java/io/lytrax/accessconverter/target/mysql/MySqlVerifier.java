@@ -62,7 +62,8 @@ public final class MySqlVerifier {
     }
 
     /** @param db a connection whose current database holds the imported dump */
-    public static VerifyResult verify(AccessSource source, MySqlPlan plan, Connection db) throws IOException {
+    public static VerifyResult verify(AccessSource source, MySqlPlan plan, Connection db)
+            throws IOException, SQLException {
         return verify(source, plan, db, Path.of(""));
     }
 
@@ -73,13 +74,9 @@ public final class MySqlVerifier {
      *     are relative to
      */
     public static VerifyResult verify(AccessSource source, MySqlPlan plan, Connection db, Path dumpDirectory)
-            throws IOException {
+            throws IOException, SQLException {
         MySqlVerifier verifier = new MySqlVerifier(source, plan, dumpDirectory);
-        try {
-            verifier.run(db);
-        } catch (SQLException e) {
-            throw new IOException("the database could not be read back: " + e.getMessage(), e);
-        }
+        verifier.run(db);
         return verifier.differences.result();
     }
 

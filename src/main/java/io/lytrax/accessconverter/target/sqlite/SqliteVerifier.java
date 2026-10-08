@@ -49,7 +49,7 @@ public final class SqliteVerifier {
         try (Connection db = DriverManager.getConnection("jdbc:sqlite:" + output.toAbsolutePath())) {
             verifier.run(db);
         } catch (SQLException e) {
-            throw new IOException("the output could not be read back: " + e.getMessage(), e);
+            throw new IOException(output + ": the output could not be read back: " + e.getMessage(), e);
         }
         return verifier.differences.result();
     }

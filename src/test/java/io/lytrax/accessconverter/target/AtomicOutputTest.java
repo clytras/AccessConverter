@@ -52,6 +52,13 @@ class AtomicOutputTest {
     }
 
     @Test
+    void aFailureInWordsIsPutUnderTheOutputsName() {
+        assertThatThrownBy(() -> failing(new IOException("PRAGMA integrity_check failed: x")))
+                .isInstanceOf(OutputException.class)
+                .hasMessage(output() + ": PRAGMA integrity_check failed: x");
+    }
+
+    @Test
     void aFileErrorElsewhereIsNotTheOutputs() {
         NoSuchFileException elsewhere =
                 new NoSuchFileException(dir.resolve("input.accdb").toString());

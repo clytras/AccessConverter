@@ -197,7 +197,7 @@ final class VerifyCommand implements Callable<Integer> {
             result = MySqlVerifier.verify(
                     access, planned, db, jdbc.dumpDirectory == null ? Path.of("") : jdbc.dumpDirectory);
         } catch (SQLException e) {
-            throw new IOException("reading the database failed: " + e.getMessage(), e);
+            throw new IOException(jdbc.url + ": reading the database failed: " + e.getMessage(), e);
         }
         return print(model, jdbc.url + " (" + server + ")", result, issues);
     }

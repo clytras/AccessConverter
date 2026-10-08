@@ -12,8 +12,13 @@ import java.io.PrintWriter;
 import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.DirectoryNotEmptyException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
@@ -246,9 +251,10 @@ public final class Main implements Callable<Integer> {
     }
 
     /**
-     * One line for the user. A {@link SourceException} (a database that can't be read) and an {@link OutputException}
-     * (an output that can't be written) already say which file and why; other I/O errors name their type; anything
-     * else is a bug.
+     * One line for the user, {@code <what>: <reason>}. A {@link SourceException} (a database that can't be read), an
+     * {@link OutputException} (an output that can't be written), the other I/O errors this tool words itself and a
+     * file-system error with a reason already say which and why; a common file-system error without a reason gets
+     * one in words. Other I/O errors name their type; anything else is a bug.
      */
     static String message(Throwable e) {
         for (Throwable t = e; t != null; t = t.getCause()) {
@@ -256,8 +262,29 @@ public final class Main implements Callable<Integer> {
                 return t.getMessage();
             }
         }
+        if (e.getMessage() != null
+                && (e.getClass() == IOException.class
+                        || e instanceof FileSystemException fs && fs.getReason() != null)) {
+            return e.getMessage();
+        }
+        String reason = e instanceof FileSystemException fs && fs.getFile() != null ? reason(fs) : null;
+        if (reason != null) {
+            return e.getMessage() + ": " + reason;
+        }
         String text = e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ": " + e.getMessage());
         return e instanceof IOException ? text : text + " (unexpected; run with --verbose for details)";
+    }
+
+    /** What a file-system error that gives no reason means, in words; null for one that isn't common. */
+    private static String reason(FileSystemException e) {
+        return switch (e) {
+            case NoSuchFileException x -> "no such file";
+            case AccessDeniedException x -> "no permission";
+            case NotDirectoryException x -> "not a folder";
+            case FileAlreadyExistsException x -> "it already exists";
+            case DirectoryNotEmptyException x -> "the folder isn't empty";
+            default -> null;
+        };
     }
 
     static final class Version implements IVersionProvider {
