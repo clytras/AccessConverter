@@ -392,10 +392,13 @@ class ConvertCommandTest {
     }
 
     @Test
-    void verifySaysWhyAMatchingOutputStillExitsWithWarnings() {
-        // gr97 warns while it is read (CATALOG_INDEX_UNUSABLE), in the conversion and again in verify
-        String input = Access97Fixture.GR97.file().toString();
-        Path output = dir.resolve("gr97.sqlite3");
+    void verifySaysWhyAMatchingOutputStillExitsWithWarnings() throws IOException {
+        // A damaged catalog index warns while the file is read (CATALOG_INDEX_UNUSABLE), in the conversion and again in
+        // verify
+        String input = DamagedCopy.withCatalogIndexDamaged(
+                        GeneratedFixture.HUNDRED_ROWS.path(), null, "Hundred", dir.resolve("hundred.accdb"))
+                .toString();
+        Path output = dir.resolve("hundred.sqlite3");
         assertThat(Cli.run("convert", "--to", "sqlite", "-o", output.toString(), input)
                         .exitCode())
                 .isEqualTo(ExitCodes.WARNINGS);
@@ -559,7 +562,7 @@ class ConvertCommandTest {
 
         Cli converted = Cli.run("convert", front.toString(), "--to", "sqlite", "--linked", "resolve", "--verify");
 
-        assertThat(converted.exitCode()).as(converted.err()).isEqualTo(ExitCodes.WARNINGS);
+        assertThat(converted.exitCode()).as(converted.err()).isEqualTo(ExitCodes.OK);
         assertThat(converted.out()).contains("4 tables, 14 rows");
         try (Sqlite sqlite = Sqlite.open(output)) {
             assertThat(sqlite.value("SELECT count(*) FROM \"Είδη\"")).isEqualTo(6);
@@ -628,7 +631,7 @@ class ConvertCommandTest {
                 "resolve",
                 "--linked-root",
                 Access97Fixture.LINK_BACK.file().getParent().toString());
-        assertThat(root.exitCode()).isEqualTo(ExitCodes.WARNINGS);
+        assertThat(root.exitCode()).isEqualTo(ExitCodes.OK);
         assertThat(root.out()).contains("2 read from their back-end");
     }
 }

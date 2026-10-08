@@ -25,8 +25,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * gr97.mdb read against the dump Access 97 itself printed for it in the Windows 98 guest. It is a Greek Access 97
- * file, so it covers both of the Access 97 findings at once: the catalog index Jackcess can't use, and text in
- * code page 1253.
+ * file, so it covers both of the Access 97 findings at once: the catalog index Jackcess 5.0.1 couldn't use, and text
+ * in code page 1253.
  */
 class Access97GroundTruthTest {
     private static final Path FILE = Access97Fixture.GR97.file();

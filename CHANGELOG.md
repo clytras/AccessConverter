@@ -7,6 +7,17 @@ fixes the patch version.
 
 ## [Unreleased]
 
+### Changed
+
+- Jackcess 5.0.3 (from 5.0.1) and jackcess-encrypt 5.0.2 (from 5.0.0) read the Access files. Fewer warnings on
+  Access 97 files from a non-English Access (Greek, for one): Jackcess now reads their catalog by itself, so they no
+  longer report `CATALOG_INDEX_UNUSABLE`, and a conversion that had no other warning now exits 0 instead of 1. The
+  tables and relationships found are the same. `CATALOG_INDEX_UNUSABLE` is now only reported for a damaged catalog
+  index, which is still read by scanning the catalog.
+- A date/time whose stored value isn't on a whole millisecond keeps the fraction of a second it holds, where it was
+  rounded to milliseconds: Jackcess now reads the value that converts back to the same stored number. Dates and
+  times entered in Access are whole seconds and unchanged.
+
 ### Fixed
 
 - Access 97 text can no longer lose the bytes Java leaves undefined in a code page (0x81, 0x8D, 0x8F, 0x90 and 0x9D

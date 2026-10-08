@@ -38,6 +38,7 @@ import io.lytrax.accessconverter.target.json.JsonFixture;
 import io.lytrax.accessconverter.target.json.JsonOptions;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.charset.Charset;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -191,7 +192,9 @@ class LinkedTablesResolvedTest {
                 .containsExactly("SupplierID", "Επωνυμία");
 
         // What opening the back-end said is said under its name, apart from the same issue of the front-end
-        assertThat(extraction.issues(IssueCode.CATALOG_INDEX_UNUSABLE))
+        Extraction overridden =
+                extract(front, new OpenOptions(null, Charset.forName("windows-1253"), OpenOptions.Links.resolve(null)));
+        assertThat(overridden.issues(IssueCode.CHARSET_OVERRIDDEN))
                 .extracting(Issue::object)
                 .containsExactlyInAnyOrder(null, "linkBack97.mdb");
         assertThat(extraction.issues(IssueCode.PASSWORD_NOT_REQUIRED))

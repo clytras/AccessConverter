@@ -258,7 +258,7 @@ The warnings you are most likely to meet:
 | `LINKED_TABLE_SKIPPED` | A linked table: its data lives in another database and isn't converted. | Pass `--linked resolve` for a table linked to another Access file, or convert that database too. |
 | `LINKED_TABLE_RESOLVED` (info) | `--linked resolve` read a linked table from its back-end; the message names the file. | — |
 | `LINKED_CONNECTION_PASSWORD` | JSON: a linked table's ODBC connection string, kept as Access stores it, holds a password. | Remove it before sharing the file, or export with `--no-schema`. |
-| `CATALOG_INDEX_UNUSABLE` | The database's catalog index couldn't be used (common in non-English Access 97 files); the catalog was read by scanning instead. | Nothing: every table and relationship is still found. |
+| `CATALOG_INDEX_UNUSABLE` | The database's catalog index is damaged and misses some of its tables; the catalog was read by scanning instead. | Nothing: every table and relationship is still found. Compact and Repair in Access fixes the index. |
 
 ## MySQL and MariaDB
 

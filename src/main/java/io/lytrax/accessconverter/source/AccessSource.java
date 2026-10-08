@@ -160,11 +160,12 @@ public final class AccessSource implements AutoCloseable {
     }
 
     /**
-     * Makes sure the whole catalog can be read. Jackcess 5.0.1 can't always use the {@code MSysObjects} index of a
-     * database written by a non-English Access (Greek Access 97 here): {@link Database#getTableMetaData} then
-     * returns null for some tables and the system tables go missing, which would silently drop them (Northwind
-     * from a Greek Access 97: 3 of 8 tables, no relationships). Jackcess reads the catalog by scanning it instead
-     * when asked, which costs a millisecond or two, so anything incomplete is read again that way.
+     * Makes sure the whole catalog can be read. When the {@code MSysObjects} index misses part of the catalog,
+     * {@link Database#getTableMetaData} returns null for some tables and the system tables go missing, which would
+     * silently drop them. Jackcess 5.0.1 did so for every database written by a non-English Access (Northwind from a
+     * Greek Access 97: 3 of 8 tables, no relationships); 5.0.2 scans such a catalog itself, and a damaged index is
+     * what is left. Jackcess reads the catalog by scanning it instead when asked, which costs a millisecond or two,
+     * so anything incomplete is read again that way.
      */
     private static Database withReadableCatalog(Path file, Database db, String password, Charset charset, Issues issues)
             throws IOException {

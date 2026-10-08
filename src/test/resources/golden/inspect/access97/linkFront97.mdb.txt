@@ -30,8 +30,7 @@ Profile:
   Suppliers: 1 rows scanned
     SupplierID: nulls 0
 
-Issues: 4
-  warning CATALOG_INDEX_UNUSABLE: Jackcess can't use this database's catalog index (2 of 4 tables can't be looked up, MSysRelationships is invisible); the catalog was read by scanning it instead
+Issues: 3
   warning FK_SKIPPED_LINKED_TABLE Orders / ΕίδηOrders: relationship skipped: table Είδη is linked
   warning LINKED_TABLE_SKIPPED Είδη: linked to Προϊόντα in C:\WORK\LINKBACK97.MDB; its data lives in that database and is not read: convert that file directly, or pass --linked resolve
   warning LINKED_TABLE_SKIPPED Κατηγορίες: linked to Κατηγορίες in C:\WORK\LINKBACK97.MDB; its data lives in that database and is not read: convert that file directly, or pass --linked resolve
