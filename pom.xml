@@ -44,7 +44,7 @@
         <!-- Test. JUnit stays on 5.14: jqwik 1.10 is built against JUnit Platform 1.14 -->
         <junit.version>5.14.4</junit.version>
         <assertj.version>3.27.7</assertj.version>
-        <jqwik.version>1.10.1</jqwik.version>
+        <jqwik.version>1.10.2</jqwik.version>
         <testcontainers.version>2.0.5</testcontainers.version>
         <mysql-connector.version>26.7.0</mysql-connector.version>
         <mariadb-client.version>3.5.10</mariadb-client.version>
