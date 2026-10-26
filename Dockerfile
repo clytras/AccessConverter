@@ -13,7 +13,7 @@
 ARG JAR_SOURCE=build
 
 # ---- the jar, compiled from the sources
-FROM eclipse-temurin:21-jdk@sha256:3e3c176ffed168beb42c607be9bc1639b466cf00261a0fb04425562c9d0c5c2b AS build
+FROM eclipse-temurin:21-jdk@sha256:23cc5734ff46e776f51ce66eb9ee08444fd47caabec0a95b7eb6e94be2d3696d AS build
 WORKDIR /src
 COPY mvnw pom.xml ./
 COPY .mvn .mvn
@@ -33,7 +33,7 @@ FROM ${JAR_SOURCE} AS jar
 # ---- sqlite-jdbc's native library for the image's architecture, taken out of the jar here: sqlite-jdbc would unpack
 # it into /tmp at run time, which fails with a read-only root filesystem (--read-only) or a noexec /tmp. Unpacking
 # doesn't depend on the architecture, so this runs on the build platform, never under emulation.
-FROM --platform=$BUILDPLATFORM eclipse-temurin:21-jdk@sha256:3e3c176ffed168beb42c607be9bc1639b466cf00261a0fb04425562c9d0c5c2b AS native
+FROM --platform=$BUILDPLATFORM eclipse-temurin:21-jdk@sha256:23cc5734ff46e776f51ce66eb9ee08444fd47caabec0a95b7eb6e94be2d3696d AS native
 ARG TARGETARCH
 COPY --from=jar /accessconverter.jar /accessconverter.jar
 WORKDIR /unpacked
